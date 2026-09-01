@@ -15,6 +15,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{82BE6D7B
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MerchantIntelligence.Tests", "tests\MerchantIntelligence.Tests\MerchantIntelligence.Tests.csproj", "{448B9C87-DC17-4C23-AF87-83925189A1BE}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MerchantIntelligence.MccValidation", "src\MerchantIntelligence.MccValidation\MerchantIntelligence.MccValidation.csproj", "{5C0CF8B0-7C06-4E79-9439-7643C29059C5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MerchantIntelligence.MccValidation.DataPipeline", "src\MerchantIntelligence.MccValidation.DataPipeline\MerchantIntelligence.MccValidation.DataPipeline.csproj", "{40A2AB1C-B08A-49B1-B6DB-21A1352C5831}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -40,11 +44,21 @@ Global
 		{448B9C87-DC17-4C23-AF87-83925189A1BE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{448B9C87-DC17-4C23-AF87-83925189A1BE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{448B9C87-DC17-4C23-AF87-83925189A1BE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5C0CF8B0-7C06-4E79-9439-7643C29059C5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5C0CF8B0-7C06-4E79-9439-7643C29059C5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5C0CF8B0-7C06-4E79-9439-7643C29059C5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5C0CF8B0-7C06-4E79-9439-7643C29059C5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{40A2AB1C-B08A-49B1-B6DB-21A1352C5831}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{40A2AB1C-B08A-49B1-B6DB-21A1352C5831}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{40A2AB1C-B08A-49B1-B6DB-21A1352C5831}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{40A2AB1C-B08A-49B1-B6DB-21A1352C5831}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{E59A66E9-ED54-4E1F-BA9A-1ABB1A916C6A} = {AFC3E532-40A6-46EC-BCB4-B8EE3B8831A4}
 		{4BDD8BB4-C567-42C0-9032-665423C55FD9} = {AFC3E532-40A6-46EC-BCB4-B8EE3B8831A4}
 		{4C64BA0C-6C84-4376-88E2-587E44173FAE} = {AFC3E532-40A6-46EC-BCB4-B8EE3B8831A4}
 		{448B9C87-DC17-4C23-AF87-83925189A1BE} = {82BE6D7B-8BE5-47B8-978B-423E3DA06098}
+		{5C0CF8B0-7C06-4E79-9439-7643C29059C5} = {AFC3E532-40A6-46EC-BCB4-B8EE3B8831A4}
+		{40A2AB1C-B08A-49B1-B6DB-21A1352C5831} = {AFC3E532-40A6-46EC-BCB4-B8EE3B8831A4}
 	EndGlobalSection
 EndGlobal

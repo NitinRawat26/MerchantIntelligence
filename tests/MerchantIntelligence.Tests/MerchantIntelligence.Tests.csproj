@@ -24,6 +24,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\MerchantIntelligence.CreditDecision\MerchantIntelligence.CreditDecision.csproj" />
     <ProjectReference Include="..\..\src\MerchantIntelligence.Api\MerchantIntelligence.Api.csproj" />
+    <ProjectReference Include="..\..\src\MerchantIntelligence.MccValidation\MerchantIntelligence.MccValidation.csproj" />
   </ItemGroup>
 
 </Project>
