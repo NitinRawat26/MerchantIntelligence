@@ -12,10 +12,13 @@
 
   <ItemGroup>
     <None Include="..\..\models\credit-decision.zip" Link="models\credit-decision.zip" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\models\credit-decision.zip')" />
+    <None Include="..\..\models\mcc-classifier.zip" Link="models\mcc-classifier.zip" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\models\mcc-classifier.zip')" />
+    <None Include="..\..\models\filer-domains.json" Link="models\filer-domains.json" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\models\filer-domains.json')" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\MerchantIntelligence.CreditDecision\MerchantIntelligence.CreditDecision.csproj" />
+    <ProjectReference Include="..\MerchantIntelligence.MccValidation\MerchantIntelligence.MccValidation.csproj" />
   </ItemGroup>
 
 </Project>

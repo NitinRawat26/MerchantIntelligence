@@ -1,0 +1,2222 @@
+[
+ {
+  "sic": 100,
+  "sicDescription": "Agricultural Production-Crops",
+  "mcc": 763
+ },
+ {
+  "sic": 200,
+  "sicDescription": "Agricultural Prod-Livestock & Animal Specialties",
+  "mcc": 763
+ },
+ {
+  "sic": 700,
+  "sicDescription": "Agricultural Services",
+  "mcc": 763
+ },
+ {
+  "sic": 800,
+  "sicDescription": "Forestry",
+  "mcc": 763
+ },
+ {
+  "sic": 900,
+  "sicDescription": "Fishing, Hunting And Trapping",
+  "mcc": 763
+ },
+ {
+  "sic": 1000,
+  "sicDescription": "Metal Mining",
+  "mcc": 1520
+ },
+ {
+  "sic": 1040,
+  "sicDescription": "Gold And Silver Ores",
+  "mcc": 1520
+ },
+ {
+  "sic": 1090,
+  "sicDescription": "Miscellaneous Metal Ores",
+  "mcc": 1520
+ },
+ {
+  "sic": 1220,
+  "sicDescription": "Bituminous Coal & Lignite Mining",
+  "mcc": 1520
+ },
+ {
+  "sic": 1221,
+  "sicDescription": "Bituminous Coal & Lignite Surface Mining",
+  "mcc": 1520
+ },
+ {
+  "sic": 1311,
+  "sicDescription": "Crude Petroleum & Natural Gas",
+  "mcc": 1520
+ },
+ {
+  "sic": 1381,
+  "sicDescription": "Drilling Oil & Gas Wells",
+  "mcc": 1520
+ },
+ {
+  "sic": 1382,
+  "sicDescription": "Oil & Gas Field Exploration Services",
+  "mcc": 1520
+ },
+ {
+  "sic": 1389,
+  "sicDescription": "Oil & Gas Field Services, Nec",
+  "mcc": 1520
+ },
+ {
+  "sic": 1400,
+  "sicDescription": "Mining & Quarrying Of Nonmetallic Minerals (No Fuels)",
+  "mcc": 1520
+ },
+ {
+  "sic": 1520,
+  "sicDescription": "General Bldg Contractors - Residential Bldgs",
+  "mcc": 1520
+ },
+ {
+  "sic": 1531,
+  "sicDescription": "Operative Builders",
+  "mcc": 1520
+ },
+ {
+  "sic": 1540,
+  "sicDescription": "General Bldg Contractors - Nonresidential Bldgs",
+  "mcc": 1520
+ },
+ {
+  "sic": 1600,
+  "sicDescription": "Heavy Construction Other Than Bldg Const - Contractors",
+  "mcc": 1520
+ },
+ {
+  "sic": 1623,
+  "sicDescription": "Water, Sewer, Pipeline, Comm & Power Line Construction",
+  "mcc": 1520
+ },
+ {
+  "sic": 1700,
+  "sicDescription": "Construction - Special Trade Contractors",
+  "mcc": 1520
+ },
+ {
+  "sic": 1731,
+  "sicDescription": "Electrical Work",
+  "mcc": 1520
+ },
+ {
+  "sic": 2000,
+  "sicDescription": "Food And Kindred Products",
+  "mcc": 5499
+ },
+ {
+  "sic": 2011,
+  "sicDescription": "Meat Packing Plants",
+  "mcc": 5499
+ },
+ {
+  "sic": 2013,
+  "sicDescription": "Sausages & Other Prepared Meat Products",
+  "mcc": 5499
+ },
+ {
+  "sic": 2015,
+  "sicDescription": "Poultry Slaughtering And Processing",
+  "mcc": 5499
+ },
+ {
+  "sic": 2020,
+  "sicDescription": "Dairy Products",
+  "mcc": 5499
+ },
+ {
+  "sic": 2024,
+  "sicDescription": "Ice Cream & Frozen Desserts",
+  "mcc": 5499
+ },
+ {
+  "sic": 2030,
+  "sicDescription": "Canned, Frozen & Preservd Fruit, Veg & Food Specialties",
+  "mcc": 5499
+ },
+ {
+  "sic": 2033,
+  "sicDescription": "Canned, Fruits, Veg, Preserves, Jams & Jellies",
+  "mcc": 5499
+ },
+ {
+  "sic": 2040,
+  "sicDescription": "Grain Mill Products",
+  "mcc": 5499
+ },
+ {
+  "sic": 2050,
+  "sicDescription": "Bakery Products",
+  "mcc": 5499
+ },
+ {
+  "sic": 2052,
+  "sicDescription": "Cookies & Crackers",
+  "mcc": 5499
+ },
+ {
+  "sic": 2060,
+  "sicDescription": "Sugar & Confectionery Products",
+  "mcc": 5499
+ },
+ {
+  "sic": 2070,
+  "sicDescription": "Fats & Oils",
+  "mcc": 5499
+ },
+ {
+  "sic": 2080,
+  "sicDescription": "Beverages",
+  "mcc": 5921
+ },
+ {
+  "sic": 2082,
+  "sicDescription": "Malt Beverages",
+  "mcc": 5921
+ },
+ {
+  "sic": 2086,
+  "sicDescription": "Bottled & Canned Soft Drinks & Carbonated Waters",
+  "mcc": 5499
+ },
+ {
+  "sic": 2090,
+  "sicDescription": "Miscellaneous Food Preparations & Kindred Products",
+  "mcc": 5499
+ },
+ {
+  "sic": 2092,
+  "sicDescription": "Prepared Fresh Or Frozen Fish & Seafoods",
+  "mcc": 5499
+ },
+ {
+  "sic": 2100,
+  "sicDescription": "Tobacco Products",
+  "mcc": 5993
+ },
+ {
+  "sic": 2111,
+  "sicDescription": "Cigarettes",
+  "mcc": 5993
+ },
+ {
+  "sic": 2200,
+  "sicDescription": "Textile Mill Products",
+  "mcc": 5651
+ },
+ {
+  "sic": 2211,
+  "sicDescription": "Broadwoven Fabric Mills, Cotton",
+  "mcc": 5651
+ },
+ {
+  "sic": 2221,
+  "sicDescription": "Broadwoven Fabric Mills, Man Made Fiber & Silk",
+  "mcc": 5651
+ },
+ {
+  "sic": 2250,
+  "sicDescription": "Knitting Mills",
+  "mcc": 5651
+ },
+ {
+  "sic": 2253,
+  "sicDescription": "Knit Outerwear Mills",
+  "mcc": 5651
+ },
+ {
+  "sic": 2273,
+  "sicDescription": "Carpets & Rugs",
+  "mcc": 5651
+ },
+ {
+  "sic": 2300,
+  "sicDescription": "Apparel & Other Finishd Prods Of Fabrics & Similar Matl",
+  "mcc": 5651
+ },
+ {
+  "sic": 2320,
+  "sicDescription": "Men's & Boys' Furnishgs, Work Clothg, & Allied Garments",
+  "mcc": 5651
+ },
+ {
+  "sic": 2330,
+  "sicDescription": "Women's, Misses', And Juniors Outerwear",
+  "mcc": 5651
+ },
+ {
+  "sic": 2340,
+  "sicDescription": "Women's, Misses', Children's & Infants' Undergarments",
+  "mcc": 5651
+ },
+ {
+  "sic": 2390,
+  "sicDescription": "Miscellaneous Fabricated Textile Products",
+  "mcc": 5651
+ },
+ {
+  "sic": 2400,
+  "sicDescription": "Lumber & Wood Products (No Furniture)",
+  "mcc": 5211
+ },
+ {
+  "sic": 2421,
+  "sicDescription": "Sawmills & Planting Mills, General",
+  "mcc": 5211
+ },
+ {
+  "sic": 2430,
+  "sicDescription": "Millwood, Veneer, Plywood, & Structural Wood Members",
+  "mcc": 5211
+ },
+ {
+  "sic": 2451,
+  "sicDescription": "Mobile Homes",
+  "mcc": 5211
+ },
+ {
+  "sic": 2452,
+  "sicDescription": "Prefabricated Wood Bldgs & Components",
+  "mcc": 5211
+ },
+ {
+  "sic": 2510,
+  "sicDescription": "Household Furniture",
+  "mcc": 5712
+ },
+ {
+  "sic": 2511,
+  "sicDescription": "Wood Household Furniture, (No Upholstered)",
+  "mcc": 5712
+ },
+ {
+  "sic": 2520,
+  "sicDescription": "Office Furniture",
+  "mcc": 5712
+ },
+ {
+  "sic": 2522,
+  "sicDescription": "Office Furniture (No Wood)",
+  "mcc": 5712
+ },
+ {
+  "sic": 2531,
+  "sicDescription": "Public Bldg & Related Furniture",
+  "mcc": 5712
+ },
+ {
+  "sic": 2540,
+  "sicDescription": "Partitions, Shelvg, Lockers, & Office & Store Fixtures",
+  "mcc": 5712
+ },
+ {
+  "sic": 2590,
+  "sicDescription": "Miscellaneous Furniture & Fixtures",
+  "mcc": 5712
+ },
+ {
+  "sic": 2600,
+  "sicDescription": "Papers & Allied Products",
+  "mcc": 5111
+ },
+ {
+  "sic": 2611,
+  "sicDescription": "Pulp Mills",
+  "mcc": 5111
+ },
+ {
+  "sic": 2621,
+  "sicDescription": "Paper Mills",
+  "mcc": 5111
+ },
+ {
+  "sic": 2631,
+  "sicDescription": "Paperboard Mills",
+  "mcc": 5111
+ },
+ {
+  "sic": 2650,
+  "sicDescription": "Paperboard Containers & Boxes",
+  "mcc": 5111
+ },
+ {
+  "sic": 2670,
+  "sicDescription": "Converted Paper & Paperboard Prods (No Contaners/Boxes)",
+  "mcc": 5111
+ },
+ {
+  "sic": 2673,
+  "sicDescription": "Plastics, Foil & Coated Paper Bags",
+  "mcc": 5111
+ },
+ {
+  "sic": 2711,
+  "sicDescription": "Newspapers: Publishing Or Publishing & Printing",
+  "mcc": 2741
+ },
+ {
+  "sic": 2721,
+  "sicDescription": "Periodicals: Publishing Or Publishing & Printing",
+  "mcc": 2741
+ },
+ {
+  "sic": 2731,
+  "sicDescription": "Books: Publishing Or Publishing & Printing",
+  "mcc": 2741
+ },
+ {
+  "sic": 2732,
+  "sicDescription": "Book Printing",
+  "mcc": 2741
+ },
+ {
+  "sic": 2741,
+  "sicDescription": "Miscellaneous Publishing",
+  "mcc": 2741
+ },
+ {
+  "sic": 2750,
+  "sicDescription": "Commercial Printing",
+  "mcc": 2741
+ },
+ {
+  "sic": 2761,
+  "sicDescription": "Manifold Business Forms",
+  "mcc": 2741
+ },
+ {
+  "sic": 2771,
+  "sicDescription": "Greeting Cards",
+  "mcc": 2741
+ },
+ {
+  "sic": 2780,
+  "sicDescription": "Blankbooks, Looseleaf Binders & Bookbindg & Relatd Work",
+  "mcc": 2741
+ },
+ {
+  "sic": 2790,
+  "sicDescription": "Service Industries For The Printing Trade",
+  "mcc": 2741
+ },
+ {
+  "sic": 2800,
+  "sicDescription": "Chemicals & Allied Products",
+  "mcc": 5169
+ },
+ {
+  "sic": 2810,
+  "sicDescription": "Industrial Inorganic Chemicals",
+  "mcc": 5169
+ },
+ {
+  "sic": 2820,
+  "sicDescription": "Plastic Material, Synth Resin/Rubber, Cellulos (No Glass)",
+  "mcc": 5169
+ },
+ {
+  "sic": 2821,
+  "sicDescription": "Plastic Materials, Synth Resins & Nonvulcan Elastomers",
+  "mcc": 5169
+ },
+ {
+  "sic": 2833,
+  "sicDescription": "Medicinal Chemicals & Botanical Products",
+  "mcc": 5122
+ },
+ {
+  "sic": 2834,
+  "sicDescription": "Pharmaceutical Preparations",
+  "mcc": 5122
+ },
+ {
+  "sic": 2835,
+  "sicDescription": "In Vitro & In Vivo Diagnostic Substances",
+  "mcc": 5122
+ },
+ {
+  "sic": 2836,
+  "sicDescription": "Biological Products, (No Disgnostic Substances)",
+  "mcc": 5122
+ },
+ {
+  "sic": 2840,
+  "sicDescription": "Soap, Detergents, Cleang Preparations, Perfumes, Cosmetics",
+  "mcc": 5169
+ },
+ {
+  "sic": 2842,
+  "sicDescription": "Specialty Cleaning, Polishing And Sanitation Preparations",
+  "mcc": 5169
+ },
+ {
+  "sic": 2844,
+  "sicDescription": "Perfumes, Cosmetics & Other Toilet Preparations",
+  "mcc": 5977
+ },
+ {
+  "sic": 2851,
+  "sicDescription": "Paints, Varnishes, Lacquers, Enamels & Allied Prods",
+  "mcc": 5169
+ },
+ {
+  "sic": 2860,
+  "sicDescription": "Industrial Organic Chemicals",
+  "mcc": 5169
+ },
+ {
+  "sic": 2870,
+  "sicDescription": "Agricultural Chemicals",
+  "mcc": 5169
+ },
+ {
+  "sic": 2890,
+  "sicDescription": "Miscellaneous Chemical Products",
+  "mcc": 5169
+ },
+ {
+  "sic": 2891,
+  "sicDescription": "Adhesives & Sealants",
+  "mcc": 5169
+ },
+ {
+  "sic": 2911,
+  "sicDescription": "Petroleum Refining",
+  "mcc": 5172
+ },
+ {
+  "sic": 2950,
+  "sicDescription": "Asphalt Paving & Roofing Materials",
+  "mcc": 5172
+ },
+ {
+  "sic": 2990,
+  "sicDescription": "Miscellaneous Products Of Petroleum & Coal",
+  "mcc": 5172
+ },
+ {
+  "sic": 3011,
+  "sicDescription": "Tires & Inner Tubes",
+  "mcc": 5199
+ },
+ {
+  "sic": 3021,
+  "sicDescription": "Rubber & Plastics Footwear",
+  "mcc": 5661
+ },
+ {
+  "sic": 3050,
+  "sicDescription": "Gaskets, Packg & Sealg Devices & Rubber & Plastics Hose",
+  "mcc": 5199
+ },
+ {
+  "sic": 3060,
+  "sicDescription": "Fabricated Rubber Products, Nec",
+  "mcc": 5199
+ },
+ {
+  "sic": 3080,
+  "sicDescription": "Miscellaneous Plastics Products",
+  "mcc": 5199
+ },
+ {
+  "sic": 3081,
+  "sicDescription": "Unsupported Plastics Film & Sheet",
+  "mcc": 5199
+ },
+ {
+  "sic": 3086,
+  "sicDescription": "Plastics Foam Products",
+  "mcc": 5199
+ },
+ {
+  "sic": 3089,
+  "sicDescription": "Plastics Products, Nec",
+  "mcc": 5199
+ },
+ {
+  "sic": 3100,
+  "sicDescription": "Leather & Leather Products",
+  "mcc": 5948
+ },
+ {
+  "sic": 3140,
+  "sicDescription": "Footwear, (No Rubber)",
+  "mcc": 5661
+ },
+ {
+  "sic": 3211,
+  "sicDescription": "Flat Glass",
+  "mcc": 5039
+ },
+ {
+  "sic": 3220,
+  "sicDescription": "Glass & Glassware, Pressed Or Blown",
+  "mcc": 5039
+ },
+ {
+  "sic": 3221,
+  "sicDescription": "Glass Containers",
+  "mcc": 5039
+ },
+ {
+  "sic": 3231,
+  "sicDescription": "Glass Products, Made Of Purchased Glass",
+  "mcc": 5039
+ },
+ {
+  "sic": 3241,
+  "sicDescription": "Cement, Hydraulic",
+  "mcc": 5039
+ },
+ {
+  "sic": 3250,
+  "sicDescription": "Structural Clay Products",
+  "mcc": 5039
+ },
+ {
+  "sic": 3260,
+  "sicDescription": "Pottery & Related Products",
+  "mcc": 5039
+ },
+ {
+  "sic": 3270,
+  "sicDescription": "Concrete, Gypsum & Plaster Products",
+  "mcc": 5039
+ },
+ {
+  "sic": 3272,
+  "sicDescription": "Concrete Products, Except Block & Brick",
+  "mcc": 5039
+ },
+ {
+  "sic": 3281,
+  "sicDescription": "Cut Stone & Stone Products",
+  "mcc": 5039
+ },
+ {
+  "sic": 3290,
+  "sicDescription": "Abrasive, Asbestos & Misc Nonmetallic Mineral Prods",
+  "mcc": 5039
+ },
+ {
+  "sic": 3310,
+  "sicDescription": "Steel Works, Blast Furnaces & Rolling & Finishing Mills",
+  "mcc": 5051
+ },
+ {
+  "sic": 3312,
+  "sicDescription": "Steel Works, Blast Furnaces & Rolling Mills (Coke Ovens)",
+  "mcc": 5051
+ },
+ {
+  "sic": 3317,
+  "sicDescription": "Steel Pipe & Tubes",
+  "mcc": 5051
+ },
+ {
+  "sic": 3320,
+  "sicDescription": "Iron & Steel Foundries",
+  "mcc": 5051
+ },
+ {
+  "sic": 3330,
+  "sicDescription": "Primary Smelting & Refining Of Nonferrous Metals",
+  "mcc": 5051
+ },
+ {
+  "sic": 3334,
+  "sicDescription": "Primary Production Of Aluminum",
+  "mcc": 5051
+ },
+ {
+  "sic": 3341,
+  "sicDescription": "Secondary Smelting & Refining Of Nonferrous Metals",
+  "mcc": 5051
+ },
+ {
+  "sic": 3350,
+  "sicDescription": "Rolling Drawing & Extruding Of Nonferrous Metals",
+  "mcc": 5051
+ },
+ {
+  "sic": 3357,
+  "sicDescription": "Drawing & Insulating Of Nonferrous Wire",
+  "mcc": 5051
+ },
+ {
+  "sic": 3360,
+  "sicDescription": "Nonferrous Foundries (Castings)",
+  "mcc": 5051
+ },
+ {
+  "sic": 3390,
+  "sicDescription": "Miscellaneous Primary Metal Products",
+  "mcc": 5051
+ },
+ {
+  "sic": 3411,
+  "sicDescription": "Metal Cans",
+  "mcc": 5051
+ },
+ {
+  "sic": 3412,
+  "sicDescription": "Metal Shipping Barrels, Drums, Kegs & Pails",
+  "mcc": 5051
+ },
+ {
+  "sic": 3420,
+  "sicDescription": "Cutlery, Handtools & General Hardware",
+  "mcc": 5051
+ },
+ {
+  "sic": 3430,
+  "sicDescription": "Heating Equip, Except Elec & Warm Air; & Plumbing Fixtures",
+  "mcc": 5051
+ },
+ {
+  "sic": 3433,
+  "sicDescription": "Heating Equipment, Except Electric & Warm Air Furnaces",
+  "mcc": 5051
+ },
+ {
+  "sic": 3440,
+  "sicDescription": "Fabricated Structural Metal Products",
+  "mcc": 5051
+ },
+ {
+  "sic": 3442,
+  "sicDescription": "Metal Doors, Sash, Frames, Moldings & Trim",
+  "mcc": 5051
+ },
+ {
+  "sic": 3443,
+  "sicDescription": "Fabricated Plate Work (Boiler Shops)",
+  "mcc": 5051
+ },
+ {
+  "sic": 3444,
+  "sicDescription": "Sheet Metal Work",
+  "mcc": 5051
+ },
+ {
+  "sic": 3448,
+  "sicDescription": "Prefabricated Metal Buildings & Components",
+  "mcc": 5051
+ },
+ {
+  "sic": 3451,
+  "sicDescription": "Screw Machine Products",
+  "mcc": 5051
+ },
+ {
+  "sic": 3452,
+  "sicDescription": "Bolts, Nuts, Screws, Rivets & Washers",
+  "mcc": 5051
+ },
+ {
+  "sic": 3460,
+  "sicDescription": "Metal Forgings & Stampings",
+  "mcc": 5051
+ },
+ {
+  "sic": 3470,
+  "sicDescription": "Coating, Engraving & Allied Services",
+  "mcc": 5051
+ },
+ {
+  "sic": 3480,
+  "sicDescription": "Ordnance & Accessories, (No Vehicles/Guided Missiles)",
+  "mcc": 5051
+ },
+ {
+  "sic": 3490,
+  "sicDescription": "Miscellaneous Fabricated Metal Products",
+  "mcc": 5051
+ },
+ {
+  "sic": 3510,
+  "sicDescription": "Engines & Turbines",
+  "mcc": 5085
+ },
+ {
+  "sic": 3523,
+  "sicDescription": "Farm Machinery & Equipment",
+  "mcc": 5085
+ },
+ {
+  "sic": 3524,
+  "sicDescription": "Lawn & Garden Tractors & Home Lawn & Gardens Equip",
+  "mcc": 5085
+ },
+ {
+  "sic": 3530,
+  "sicDescription": "Construction, Mining & Materials Handling Machinery & Equip",
+  "mcc": 5085
+ },
+ {
+  "sic": 3531,
+  "sicDescription": "Construction Machinery & Equip",
+  "mcc": 5085
+ },
+ {
+  "sic": 3532,
+  "sicDescription": "Mining Machinery & Equip (No Oil & Gas Field Mach & Equip)",
+  "mcc": 5085
+ },
+ {
+  "sic": 3533,
+  "sicDescription": "Oil & Gas Field Machinery & Equipment",
+  "mcc": 5085
+ },
+ {
+  "sic": 3537,
+  "sicDescription": "Industrial Trucks, Tractors, Trailors & Stackers",
+  "mcc": 5085
+ },
+ {
+  "sic": 3540,
+  "sicDescription": "Metalworkg Machinery & Equipment",
+  "mcc": 5085
+ },
+ {
+  "sic": 3541,
+  "sicDescription": "Machine Tools, Metal Cutting Types",
+  "mcc": 5085
+ },
+ {
+  "sic": 3550,
+  "sicDescription": "Special Industry Machinery (No Metalworking Machinery)",
+  "mcc": 5085
+ },
+ {
+  "sic": 3555,
+  "sicDescription": "Printing Trades Machinery & Equipment",
+  "mcc": 5085
+ },
+ {
+  "sic": 3559,
+  "sicDescription": "Special Industry Machinery, Nec",
+  "mcc": 5085
+ },
+ {
+  "sic": 3560,
+  "sicDescription": "General Industrial Machinery & Equipment",
+  "mcc": 5085
+ },
+ {
+  "sic": 3561,
+  "sicDescription": "Pumps & Pumping Equipment",
+  "mcc": 5085
+ },
+ {
+  "sic": 3562,
+  "sicDescription": "Ball & Roller Bearings",
+  "mcc": 5085
+ },
+ {
+  "sic": 3564,
+  "sicDescription": "Industrial & Commercial Fans & Blowers & Air Purifing Equip",
+  "mcc": 5085
+ },
+ {
+  "sic": 3567,
+  "sicDescription": "Industrial Process Furnaces & Ovens",
+  "mcc": 5085
+ },
+ {
+  "sic": 3569,
+  "sicDescription": "General Industrial Machinery & Equipment, Nec",
+  "mcc": 5085
+ },
+ {
+  "sic": 3570,
+  "sicDescription": "Computer & Office Equipment",
+  "mcc": 5085
+ },
+ {
+  "sic": 3571,
+  "sicDescription": "Electronic Computers",
+  "mcc": 5045
+ },
+ {
+  "sic": 3572,
+  "sicDescription": "Computer Storage Devices",
+  "mcc": 5045
+ },
+ {
+  "sic": 3575,
+  "sicDescription": "Computer Terminals",
+  "mcc": 5045
+ },
+ {
+  "sic": 3576,
+  "sicDescription": "Computer Communications Equipment",
+  "mcc": 5085
+ },
+ {
+  "sic": 3577,
+  "sicDescription": "Computer Peripheral Equipment, Nec",
+  "mcc": 5045
+ },
+ {
+  "sic": 3578,
+  "sicDescription": "Calculating & Accounting Machines (No Electronic Computers)",
+  "mcc": 5045
+ },
+ {
+  "sic": 3579,
+  "sicDescription": "Office Machines, Nec",
+  "mcc": 5085
+ },
+ {
+  "sic": 3580,
+  "sicDescription": "Refrigeration & Service Industry Machinery",
+  "mcc": 5085
+ },
+ {
+  "sic": 3585,
+  "sicDescription": "Air-Cond & Warm Air Heatg Equip & Comm & Indl Refrig Equip",
+  "mcc": 5085
+ },
+ {
+  "sic": 3590,
+  "sicDescription": "Misc Industrial & Commercial Machinery & Equipment",
+  "mcc": 5085
+ },
+ {
+  "sic": 3600,
+  "sicDescription": "Electronic & Other Electrical Equipment (No Computer Equip)",
+  "mcc": 5065
+ },
+ {
+  "sic": 3612,
+  "sicDescription": "Power, Distribution & Specialty Transformers",
+  "mcc": 5065
+ },
+ {
+  "sic": 3613,
+  "sicDescription": "Switchgear & Switchboard Apparatus",
+  "mcc": 5065
+ },
+ {
+  "sic": 3620,
+  "sicDescription": "Electrical Industrial Apparatus",
+  "mcc": 5065
+ },
+ {
+  "sic": 3621,
+  "sicDescription": "Motors & Generators",
+  "mcc": 5065
+ },
+ {
+  "sic": 3630,
+  "sicDescription": "Household Appliances",
+  "mcc": 5065
+ },
+ {
+  "sic": 3634,
+  "sicDescription": "Electric Housewares & Fans",
+  "mcc": 5065
+ },
+ {
+  "sic": 3640,
+  "sicDescription": "Electric Lighting & Wiring Equipment",
+  "mcc": 5065
+ },
+ {
+  "sic": 3651,
+  "sicDescription": "Household Audio & Video Equipment",
+  "mcc": 5732
+ },
+ {
+  "sic": 3652,
+  "sicDescription": "Phonograph Records & Prerecorded Audio Tapes & Disks",
+  "mcc": 5065
+ },
+ {
+  "sic": 3661,
+  "sicDescription": "Telephone & Telegraph Apparatus",
+  "mcc": 4812
+ },
+ {
+  "sic": 3663,
+  "sicDescription": "Radio & Tv Broadcasting & Communications Equipment",
+  "mcc": 4812
+ },
+ {
+  "sic": 3669,
+  "sicDescription": "Communications Equipment, Nec",
+  "mcc": 4812
+ },
+ {
+  "sic": 3670,
+  "sicDescription": "Electronic Components & Accessories",
+  "mcc": 5065
+ },
+ {
+  "sic": 3672,
+  "sicDescription": "Printed Circuit Boards",
+  "mcc": 5065
+ },
+ {
+  "sic": 3674,
+  "sicDescription": "Semiconductors & Related Devices",
+  "mcc": 5065
+ },
+ {
+  "sic": 3677,
+  "sicDescription": "Electronic Coils, Transformers & Other Inductors",
+  "mcc": 5065
+ },
+ {
+  "sic": 3678,
+  "sicDescription": "Electronic Connectors",
+  "mcc": 5065
+ },
+ {
+  "sic": 3679,
+  "sicDescription": "Electronic Components, Nec",
+  "mcc": 5065
+ },
+ {
+  "sic": 3690,
+  "sicDescription": "Miscellaneous Electrical Machinery, Equipment & Supplies",
+  "mcc": 5065
+ },
+ {
+  "sic": 3695,
+  "sicDescription": "Magnetic & Optical Recording Media",
+  "mcc": 5065
+ },
+ {
+  "sic": 3711,
+  "sicDescription": "Motor Vehicles & Passenger Car Bodies",
+  "mcc": 5511
+ },
+ {
+  "sic": 3713,
+  "sicDescription": "Truck & Bus Bodies",
+  "mcc": 5511
+ },
+ {
+  "sic": 3714,
+  "sicDescription": "Motor Vehicle Parts & Accessories",
+  "mcc": 5511
+ },
+ {
+  "sic": 3715,
+  "sicDescription": "Truck Trailers",
+  "mcc": 5511
+ },
+ {
+  "sic": 3716,
+  "sicDescription": "Motor Homes",
+  "mcc": 5511
+ },
+ {
+  "sic": 3720,
+  "sicDescription": "Aircraft & Parts",
+  "mcc": 4511
+ },
+ {
+  "sic": 3721,
+  "sicDescription": "Aircraft",
+  "mcc": 4511
+ },
+ {
+  "sic": 3724,
+  "sicDescription": "Aircraft Engines & Engine Parts",
+  "mcc": 4511
+ },
+ {
+  "sic": 3728,
+  "sicDescription": "Aircraft Parts & Auxiliary Equipment, Nec",
+  "mcc": 4511
+ },
+ {
+  "sic": 3730,
+  "sicDescription": "Ship & Boat Building & Repairing",
+  "mcc": 5551
+ },
+ {
+  "sic": 3743,
+  "sicDescription": "Railroad Equipment",
+  "mcc": 5599
+ },
+ {
+  "sic": 3751,
+  "sicDescription": "Motorcycles, Bicycles & Parts",
+  "mcc": 5571
+ },
+ {
+  "sic": 3760,
+  "sicDescription": "Guided Missiles & Space Vehicles & Parts",
+  "mcc": 5599
+ },
+ {
+  "sic": 3790,
+  "sicDescription": "Miscellaneous Transportation Equipment",
+  "mcc": 5599
+ },
+ {
+  "sic": 3812,
+  "sicDescription": "Search, Detection, Navagation, Guidance, Aeronautical Sys",
+  "mcc": 5047
+ },
+ {
+  "sic": 3821,
+  "sicDescription": "Laboratory Apparatus & Furniture",
+  "mcc": 5047
+ },
+ {
+  "sic": 3822,
+  "sicDescription": "Auto Controls For Regulating Residential & Comml Environments",
+  "mcc": 5047
+ },
+ {
+  "sic": 3823,
+  "sicDescription": "Industrial Instruments For Measurement, Display, And Control",
+  "mcc": 5047
+ },
+ {
+  "sic": 3824,
+  "sicDescription": "Totalizing Fluid Meters & Counting Devices",
+  "mcc": 5047
+ },
+ {
+  "sic": 3825,
+  "sicDescription": "Instruments For Meas & Testing Of Electricity & Elec Signals",
+  "mcc": 5047
+ },
+ {
+  "sic": 3826,
+  "sicDescription": "Laboratory Analytical Instruments",
+  "mcc": 5047
+ },
+ {
+  "sic": 3827,
+  "sicDescription": "Optical Instruments & Lenses",
+  "mcc": 5047
+ },
+ {
+  "sic": 3829,
+  "sicDescription": "Measuring & Controlling Devices, Nec",
+  "mcc": 5047
+ },
+ {
+  "sic": 3841,
+  "sicDescription": "Surgical & Medical Instruments & Apparatus",
+  "mcc": 5047
+ },
+ {
+  "sic": 3842,
+  "sicDescription": "Orthopedic, Prosthetic & Surgical Appliances & Supplies",
+  "mcc": 5047
+ },
+ {
+  "sic": 3843,
+  "sicDescription": "Dental Equipment & Supplies",
+  "mcc": 5047
+ },
+ {
+  "sic": 3844,
+  "sicDescription": "X-Ray Apparatus & Tubes & Related Irradiation Apparatus",
+  "mcc": 5047
+ },
+ {
+  "sic": 3845,
+  "sicDescription": "Electromedical & Electrotherapeutic Apparatus",
+  "mcc": 5047
+ },
+ {
+  "sic": 3851,
+  "sicDescription": "Ophthalmic Goods",
+  "mcc": 5047
+ },
+ {
+  "sic": 3861,
+  "sicDescription": "Photographic Equipment & Supplies",
+  "mcc": 5047
+ },
+ {
+  "sic": 3873,
+  "sicDescription": "Watches, Clocks, Clockwork Operated Devices/Parts",
+  "mcc": 5944
+ },
+ {
+  "sic": 3910,
+  "sicDescription": "Jewelry, Silverware & Plated Ware",
+  "mcc": 5944
+ },
+ {
+  "sic": 3911,
+  "sicDescription": "Jewelry, Precious Metal",
+  "mcc": 5944
+ },
+ {
+  "sic": 3931,
+  "sicDescription": "Musical Instruments",
+  "mcc": 5399
+ },
+ {
+  "sic": 3942,
+  "sicDescription": "Dolls & Stuffed Toys",
+  "mcc": 5945
+ },
+ {
+  "sic": 3944,
+  "sicDescription": "Games, Toys & Children's Vehicles (No Dolls & Bicycles)",
+  "mcc": 5945
+ },
+ {
+  "sic": 3949,
+  "sicDescription": "Sporting & Athletic Goods, Nec",
+  "mcc": 5941
+ },
+ {
+  "sic": 3950,
+  "sicDescription": "Pens, Pencils & Other Artists' Materials",
+  "mcc": 5399
+ },
+ {
+  "sic": 3960,
+  "sicDescription": "Costume Jewelry & Novelties",
+  "mcc": 5399
+ },
+ {
+  "sic": 3990,
+  "sicDescription": "Miscellaneous Manufacturing Industries",
+  "mcc": 5399
+ },
+ {
+  "sic": 4011,
+  "sicDescription": "Railroads, Line-Haul Operating",
+  "mcc": 4011
+ },
+ {
+  "sic": 4013,
+  "sicDescription": "Railroad Switching & Terminal Establishments",
+  "mcc": 4011
+ },
+ {
+  "sic": 4100,
+  "sicDescription": "Local & Suburban Transit & Interurban Hwy Passenger Trans",
+  "mcc": 4111
+ },
+ {
+  "sic": 4210,
+  "sicDescription": "Trucking & Courier Services (No Air)",
+  "mcc": 4214
+ },
+ {
+  "sic": 4213,
+  "sicDescription": "Trucking (No Local)",
+  "mcc": 4214
+ },
+ {
+  "sic": 4220,
+  "sicDescription": "Public Warehousing & Storage",
+  "mcc": 4214
+ },
+ {
+  "sic": 4231,
+  "sicDescription": "Terminal Maintenance Facilities For Motor Freight Transport",
+  "mcc": 4214
+ },
+ {
+  "sic": 4400,
+  "sicDescription": "Water Transportation",
+  "mcc": 4468
+ },
+ {
+  "sic": 4412,
+  "sicDescription": "Deep Sea Foreign Transportation Of Freight",
+  "mcc": 4468
+ },
+ {
+  "sic": 4512,
+  "sicDescription": "Air Transportation, Scheduled",
+  "mcc": 4511
+ },
+ {
+  "sic": 4513,
+  "sicDescription": "Air Courier Services",
+  "mcc": 4511
+ },
+ {
+  "sic": 4522,
+  "sicDescription": "Air Transportation, Nonscheduled",
+  "mcc": 4511
+ },
+ {
+  "sic": 4581,
+  "sicDescription": "Airports, Flying Fields & Airport Terminal Services",
+  "mcc": 4582
+ },
+ {
+  "sic": 4610,
+  "sicDescription": "Pipe Lines (No Natural Gas)",
+  "mcc": 4900
+ },
+ {
+  "sic": 4700,
+  "sicDescription": "Transportation Services",
+  "mcc": 4214
+ },
+ {
+  "sic": 4731,
+  "sicDescription": "Arrangement Of Transportation Of Freight & Cargo",
+  "mcc": 4214
+ },
+ {
+  "sic": 4812,
+  "sicDescription": "Radiotelephone Communications",
+  "mcc": 4814
+ },
+ {
+  "sic": 4813,
+  "sicDescription": "Telephone Communications (No Radiotelephone)",
+  "mcc": 4814
+ },
+ {
+  "sic": 4822,
+  "sicDescription": "Telegraph & Other Message Communications",
+  "mcc": 4814
+ },
+ {
+  "sic": 4832,
+  "sicDescription": "Radio Broadcasting Stations",
+  "mcc": 4899
+ },
+ {
+  "sic": 4833,
+  "sicDescription": "Television Broadcasting Stations",
+  "mcc": 4899
+ },
+ {
+  "sic": 4841,
+  "sicDescription": "Cable & Other Pay Television Services",
+  "mcc": 4899
+ },
+ {
+  "sic": 4899,
+  "sicDescription": "Communications Services, Nec",
+  "mcc": 4814
+ },
+ {
+  "sic": 4900,
+  "sicDescription": "Electric, Gas & Sanitary Services",
+  "mcc": 4900
+ },
+ {
+  "sic": 4911,
+  "sicDescription": "Electric Services",
+  "mcc": 4900
+ },
+ {
+  "sic": 4922,
+  "sicDescription": "Natural Gas Transmission",
+  "mcc": 4900
+ },
+ {
+  "sic": 4923,
+  "sicDescription": "Natural Gas Transmisison & Distribution",
+  "mcc": 4900
+ },
+ {
+  "sic": 4924,
+  "sicDescription": "Natural Gas Distribution",
+  "mcc": 4900
+ },
+ {
+  "sic": 4931,
+  "sicDescription": "Electric & Other Services Combined",
+  "mcc": 4900
+ },
+ {
+  "sic": 4932,
+  "sicDescription": "Gas & Other Services Combined",
+  "mcc": 4900
+ },
+ {
+  "sic": 4941,
+  "sicDescription": "Water Supply",
+  "mcc": 4900
+ },
+ {
+  "sic": 4950,
+  "sicDescription": "Sanitary Services",
+  "mcc": 4900
+ },
+ {
+  "sic": 4953,
+  "sicDescription": "Refuse Systems",
+  "mcc": 4900
+ },
+ {
+  "sic": 4955,
+  "sicDescription": "Hazardous Waste Management",
+  "mcc": 4900
+ },
+ {
+  "sic": 4961,
+  "sicDescription": "Steam & Air-Conditioning Supply",
+  "mcc": 4900
+ },
+ {
+  "sic": 4991,
+  "sicDescription": "Cogeneration Services & Small Power Producers",
+  "mcc": 4900
+ },
+ {
+  "sic": 5000,
+  "sicDescription": "Wholesale-Durable Goods",
+  "mcc": 5013
+ },
+ {
+  "sic": 5010,
+  "sicDescription": "Wholesale-Motor Vehicles & Motor Vehicle Parts & Supplies",
+  "mcc": 5013
+ },
+ {
+  "sic": 5013,
+  "sicDescription": "Wholesale-Motor Vehicle Supplies & New Parts",
+  "mcc": 5013
+ },
+ {
+  "sic": 5020,
+  "sicDescription": "Wholesale-Furniture & Home Furnishings",
+  "mcc": 5039
+ },
+ {
+  "sic": 5030,
+  "sicDescription": "Wholesale-Lumber & Other Construction Materials",
+  "mcc": 5039
+ },
+ {
+  "sic": 5031,
+  "sicDescription": "Wholesale-Lumber, Plywood, Millwork & Wood Panels",
+  "mcc": 5039
+ },
+ {
+  "sic": 5040,
+  "sicDescription": "Wholesale-Professional & Commercial Equipment & Supplies",
+  "mcc": 5045
+ },
+ {
+  "sic": 5045,
+  "sicDescription": "Wholesale-Computers & Peripheral Equipment & Software",
+  "mcc": 5045
+ },
+ {
+  "sic": 5047,
+  "sicDescription": "Wholesale-Medical, Dental & Hospital Equipment & Supplies",
+  "mcc": 5047
+ },
+ {
+  "sic": 5050,
+  "sicDescription": "Wholesale-Metals & Minerals (No Petroleum)",
+  "mcc": 5051
+ },
+ {
+  "sic": 5051,
+  "sicDescription": "Wholesale-Metals Service Centers & Offices",
+  "mcc": 5051
+ },
+ {
+  "sic": 5063,
+  "sicDescription": "Wholesale-Electrical Apparatus & Equipment, Wiring Supplies",
+  "mcc": 5065
+ },
+ {
+  "sic": 5064,
+  "sicDescription": "Wholesale-Electrical Appliances, Tv & Radio Sets",
+  "mcc": 5065
+ },
+ {
+  "sic": 5065,
+  "sicDescription": "Wholesale-Electronic Parts & Equipment, Nec",
+  "mcc": 5065
+ },
+ {
+  "sic": 5070,
+  "sicDescription": "Wholesale-Hardware & Plumbing & Heating Equipment & Supplies",
+  "mcc": 5072
+ },
+ {
+  "sic": 5072,
+  "sicDescription": "Wholesale-Hardware",
+  "mcc": 5072
+ },
+ {
+  "sic": 5080,
+  "sicDescription": "Wholesale-Machinery, Equipment & Supplies",
+  "mcc": 5085
+ },
+ {
+  "sic": 5082,
+  "sicDescription": "Wholesale-Construction & Mining (No Petro) Machinery & Equip",
+  "mcc": 5085
+ },
+ {
+  "sic": 5084,
+  "sicDescription": "Wholesale-Industrial Machinery & Equipment",
+  "mcc": 5085
+ },
+ {
+  "sic": 5090,
+  "sicDescription": "Wholesale-Misc Durable Goods",
+  "mcc": 5099
+ },
+ {
+  "sic": 5094,
+  "sicDescription": "Wholesale-Jewelry, Watches, Precious Stones & Metals",
+  "mcc": 5094
+ },
+ {
+  "sic": 5099,
+  "sicDescription": "Wholesale-Durable Goods, Nec",
+  "mcc": 5099
+ },
+ {
+  "sic": 5110,
+  "sicDescription": "Wholesale-Paper & Paper Products",
+  "mcc": 5122
+ },
+ {
+  "sic": 5122,
+  "sicDescription": "Wholesale-Drugs, Proprietaries & Druggists' Sundries",
+  "mcc": 5122
+ },
+ {
+  "sic": 5130,
+  "sicDescription": "Wholesale-Apparel, Piece Goods & Notions",
+  "mcc": 5137
+ },
+ {
+  "sic": 5140,
+  "sicDescription": "Wholesale-Groceries & Related Products",
+  "mcc": 5141
+ },
+ {
+  "sic": 5141,
+  "sicDescription": "Wholesale-Groceries, General Line",
+  "mcc": 5141
+ },
+ {
+  "sic": 5150,
+  "sicDescription": "Wholesale-Farm Product Raw Materials",
+  "mcc": 5193
+ },
+ {
+  "sic": 5160,
+  "sicDescription": "Wholesale-Chemicals & Allied Products",
+  "mcc": 5172
+ },
+ {
+  "sic": 5171,
+  "sicDescription": "Wholesale-Petroleum Bulk Stations & Terminals",
+  "mcc": 5172
+ },
+ {
+  "sic": 5172,
+  "sicDescription": "Wholesale-Petroleum & Petroleum Products (No Bulk Stations)",
+  "mcc": 5172
+ },
+ {
+  "sic": 5180,
+  "sicDescription": "Wholesale-Beer, Wine & Distilled Alcoholic Beverages",
+  "mcc": 5921
+ },
+ {
+  "sic": 5190,
+  "sicDescription": "Wholesale-Miscellaneous Nondurable Goods",
+  "mcc": 5199
+ },
+ {
+  "sic": 5200,
+  "sicDescription": "Retail-Building Materials, Hardware, Garden Supply",
+  "mcc": 5200
+ },
+ {
+  "sic": 5211,
+  "sicDescription": "Retail-Lumber & Other Building Materials Dealers",
+  "mcc": 5211
+ },
+ {
+  "sic": 5271,
+  "sicDescription": "Retail-Mobile Home Dealers",
+  "mcc": 5271
+ },
+ {
+  "sic": 5311,
+  "sicDescription": "Retail-Department Stores",
+  "mcc": 5311
+ },
+ {
+  "sic": 5331,
+  "sicDescription": "Retail-Variety Stores",
+  "mcc": 5331
+ },
+ {
+  "sic": 5399,
+  "sicDescription": "Retail-Misc General Merchandise Stores",
+  "mcc": 5399
+ },
+ {
+  "sic": 5400,
+  "sicDescription": "Retail-Food Stores",
+  "mcc": 5411
+ },
+ {
+  "sic": 5411,
+  "sicDescription": "Retail-Grocery Stores",
+  "mcc": 5411
+ },
+ {
+  "sic": 5412,
+  "sicDescription": "Retail-Convenience Stores",
+  "mcc": 5499
+ },
+ {
+  "sic": 5500,
+  "sicDescription": "Retail-Auto Dealers & Gasoline Stations",
+  "mcc": 5533
+ },
+ {
+  "sic": 5531,
+  "sicDescription": "Retail-Auto & Home Supply Stores",
+  "mcc": 5533
+ },
+ {
+  "sic": 5600,
+  "sicDescription": "Retail-Apparel & Accessory Stores",
+  "mcc": 5651
+ },
+ {
+  "sic": 5621,
+  "sicDescription": "Retail-Women's Clothing Stores",
+  "mcc": 5651
+ },
+ {
+  "sic": 5651,
+  "sicDescription": "Retail-Family Clothing Stores",
+  "mcc": 5651
+ },
+ {
+  "sic": 5661,
+  "sicDescription": "Retail-Shoe Stores",
+  "mcc": 5661
+ },
+ {
+  "sic": 5700,
+  "sicDescription": "Retail-Home Furniture, Furnishings & Equipment Stores",
+  "mcc": 5712
+ },
+ {
+  "sic": 5712,
+  "sicDescription": "Retail-Furniture Stores",
+  "mcc": 5712
+ },
+ {
+  "sic": 5731,
+  "sicDescription": "Retail-Radio, Tv & Consumer Electronics Stores",
+  "mcc": 5732
+ },
+ {
+  "sic": 5734,
+  "sicDescription": "Retail-Computer & Computer Software Stores",
+  "mcc": 5734
+ },
+ {
+  "sic": 5735,
+  "sicDescription": "Retail-Record & Prerecorded Tape Stores",
+  "mcc": 5735
+ },
+ {
+  "sic": 5810,
+  "sicDescription": "Retail-Eating & Drinking Places",
+  "mcc": 5812
+ },
+ {
+  "sic": 5812,
+  "sicDescription": "Retail-Eating Places",
+  "mcc": 5812
+ },
+ {
+  "sic": 5900,
+  "sicDescription": "Retail-Miscellaneous Retail",
+  "mcc": 5912
+ },
+ {
+  "sic": 5912,
+  "sicDescription": "Retail-Drug Stores And Proprietary Stores",
+  "mcc": 5912
+ },
+ {
+  "sic": 5940,
+  "sicDescription": "Retail-Miscellaneous Shopping Goods Stores",
+  "mcc": 5941
+ },
+ {
+  "sic": 5944,
+  "sicDescription": "Retail-Jewelry Stores",
+  "mcc": 5944
+ },
+ {
+  "sic": 5945,
+  "sicDescription": "Retail-Hobby, Toy & Game Shops",
+  "mcc": 5945
+ },
+ {
+  "sic": 5960,
+  "sicDescription": "Retail-Nonstore Retailers",
+  "mcc": 5964
+ },
+ {
+  "sic": 5961,
+  "sicDescription": "Retail-Catalog & Mail-Order Houses",
+  "mcc": 5964
+ },
+ {
+  "sic": 5990,
+  "sicDescription": "Retail-Retail Stores, Nec",
+  "mcc": 5999
+ },
+ {
+  "sic": 6021,
+  "sicDescription": "National Commercial Banks",
+  "mcc": 6011
+ },
+ {
+  "sic": 6022,
+  "sicDescription": "State Commercial Banks",
+  "mcc": 6011
+ },
+ {
+  "sic": 6029,
+  "sicDescription": "Commercial Banks, Nec",
+  "mcc": 6011
+ },
+ {
+  "sic": 6035,
+  "sicDescription": "Savings Institution, Federally Chartered",
+  "mcc": 6011
+ },
+ {
+  "sic": 6036,
+  "sicDescription": "Savings Institutions, Not Federally Chartered",
+  "mcc": 6011
+ },
+ {
+  "sic": 6099,
+  "sicDescription": "Functions Related To Depository Banking, Nec",
+  "mcc": 6012
+ },
+ {
+  "sic": 6111,
+  "sicDescription": "Federal & Federally-Sponsored Credit Agencies",
+  "mcc": 6012
+ },
+ {
+  "sic": 6141,
+  "sicDescription": "Personal Credit Institutions",
+  "mcc": 6012
+ },
+ {
+  "sic": 6153,
+  "sicDescription": "Short-Term Business Credit Institutions",
+  "mcc": 6012
+ },
+ {
+  "sic": 6159,
+  "sicDescription": "Miscellaneous Business Credit Institution",
+  "mcc": 6012
+ },
+ {
+  "sic": 6162,
+  "sicDescription": "Mortgage Bankers & Loan Correspondents",
+  "mcc": 6012
+ },
+ {
+  "sic": 6163,
+  "sicDescription": "Loan Brokers",
+  "mcc": 6012
+ },
+ {
+  "sic": 6172,
+  "sicDescription": "Finance Lessors",
+  "mcc": 6012
+ },
+ {
+  "sic": 6189,
+  "sicDescription": "Asset-Backed Securities",
+  "mcc": 6012
+ },
+ {
+  "sic": 6199,
+  "sicDescription": "Finance Services",
+  "mcc": 6012
+ },
+ {
+  "sic": 6200,
+  "sicDescription": "Security & Commodity Brokers, Dealers, Exchanges & Services",
+  "mcc": 6012
+ },
+ {
+  "sic": 6211,
+  "sicDescription": "Security Brokers, Dealers & Flotation Companies",
+  "mcc": 6012
+ },
+ {
+  "sic": 6221,
+  "sicDescription": "Commodity Contracts Brokers & Dealers",
+  "mcc": 6012
+ },
+ {
+  "sic": 6282,
+  "sicDescription": "Investment Advice",
+  "mcc": 6012
+ },
+ {
+  "sic": 6311,
+  "sicDescription": "Life Insurance",
+  "mcc": 6300
+ },
+ {
+  "sic": 6321,
+  "sicDescription": "Accident & Health Insurance",
+  "mcc": 6300
+ },
+ {
+  "sic": 6324,
+  "sicDescription": "Hospital & Medical Service Plans",
+  "mcc": 6300
+ },
+ {
+  "sic": 6331,
+  "sicDescription": "Fire, Marine & Casualty Insurance",
+  "mcc": 6300
+ },
+ {
+  "sic": 6351,
+  "sicDescription": "Surety Insurance",
+  "mcc": 6300
+ },
+ {
+  "sic": 6361,
+  "sicDescription": "Title Insurance",
+  "mcc": 6300
+ },
+ {
+  "sic": 6399,
+  "sicDescription": "Insurance Carriers, Nec",
+  "mcc": 6300
+ },
+ {
+  "sic": 6411,
+  "sicDescription": "Insurance Agents, Brokers & Service",
+  "mcc": 6300
+ },
+ {
+  "sic": 6500,
+  "sicDescription": "Real Estate",
+  "mcc": 6513
+ },
+ {
+  "sic": 6510,
+  "sicDescription": "Real Estate Operators (No Developers) & Lessors",
+  "mcc": 6513
+ },
+ {
+  "sic": 6512,
+  "sicDescription": "Operators Of Nonresidential Buildings",
+  "mcc": 6513
+ },
+ {
+  "sic": 6513,
+  "sicDescription": "Operators Of Apartment Buildings",
+  "mcc": 6513
+ },
+ {
+  "sic": 6519,
+  "sicDescription": "Lessors Of Real Property, Nec",
+  "mcc": 6513
+ },
+ {
+  "sic": 6531,
+  "sicDescription": "Real Estate Agents & Managers (For Others)",
+  "mcc": 6513
+ },
+ {
+  "sic": 6532,
+  "sicDescription": "Real Estate Dealers (For Their Own Account)",
+  "mcc": 6513
+ },
+ {
+  "sic": 6552,
+  "sicDescription": "Land Subdividers & Developers (No Cemeteries)",
+  "mcc": 6513
+ },
+ {
+  "sic": 6770,
+  "sicDescription": "Blank Checks",
+  "mcc": 6012
+ },
+ {
+  "sic": 6792,
+  "sicDescription": "Oil Royalty Traders",
+  "mcc": 6012
+ },
+ {
+  "sic": 6794,
+  "sicDescription": "Patent Owners & Lessors",
+  "mcc": 6012
+ },
+ {
+  "sic": 6795,
+  "sicDescription": "Mineral Royalty Traders",
+  "mcc": 6012
+ },
+ {
+  "sic": 6798,
+  "sicDescription": "Real Estate Investment Trusts",
+  "mcc": 6012
+ },
+ {
+  "sic": 6799,
+  "sicDescription": "Investors, Nec",
+  "mcc": 6012
+ },
+ {
+  "sic": 7000,
+  "sicDescription": "Hotels, Rooming Houses, Camps & Other Lodging Places",
+  "mcc": 7011
+ },
+ {
+  "sic": 7011,
+  "sicDescription": "Hotels & Motels",
+  "mcc": 7011
+ },
+ {
+  "sic": 7200,
+  "sicDescription": "Services-Personal Services",
+  "mcc": 7311
+ },
+ {
+  "sic": 7310,
+  "sicDescription": "Services-Advertising",
+  "mcc": 7311
+ },
+ {
+  "sic": 7311,
+  "sicDescription": "Services-Advertising Agencies",
+  "mcc": 7311
+ },
+ {
+  "sic": 7320,
+  "sicDescription": "Services-Consumer Credit Reporting, Collection Agencies",
+  "mcc": 7311
+ },
+ {
+  "sic": 7330,
+  "sicDescription": "Services-Mailing, Reproduction, Commercial Art & Photography",
+  "mcc": 7311
+ },
+ {
+  "sic": 7331,
+  "sicDescription": "Services-Direct Mail Advertising Services",
+  "mcc": 7311
+ },
+ {
+  "sic": 7340,
+  "sicDescription": "Services-To Dwellings & Other Buildings",
+  "mcc": 7349
+ },
+ {
+  "sic": 7350,
+  "sicDescription": "Services-Miscellaneous Equipment Rental & Leasing",
+  "mcc": 7394
+ },
+ {
+  "sic": 7359,
+  "sicDescription": "Services-Equipment Rental & Leasing, Nec",
+  "mcc": 7394
+ },
+ {
+  "sic": 7361,
+  "sicDescription": "Services-Employment Agencies",
+  "mcc": 7361
+ },
+ {
+  "sic": 7363,
+  "sicDescription": "Services-Help Supply Services",
+  "mcc": 7361
+ },
+ {
+  "sic": 7370,
+  "sicDescription": "Services-Computer Programming, Data Processing, Etc.",
+  "mcc": 7372
+ },
+ {
+  "sic": 7371,
+  "sicDescription": "Services-Computer Programming Services",
+  "mcc": 7372
+ },
+ {
+  "sic": 7372,
+  "sicDescription": "Services-Prepackaged Software",
+  "mcc": 7372
+ },
+ {
+  "sic": 7373,
+  "sicDescription": "Services-Computer Integrated Systems Design",
+  "mcc": 7372
+ },
+ {
+  "sic": 7374,
+  "sicDescription": "Services-Computer Processing & Data Preparation",
+  "mcc": 7372
+ },
+ {
+  "sic": 7377,
+  "sicDescription": "Services-Computer Rental & Leasing",
+  "mcc": 7372
+ },
+ {
+  "sic": 7380,
+  "sicDescription": "Services-Miscellaneous Business Services",
+  "mcc": 7399
+ },
+ {
+  "sic": 7381,
+  "sicDescription": "Services-Detective, Guard & Armored Car Services",
+  "mcc": 7399
+ },
+ {
+  "sic": 7384,
+  "sicDescription": "Services-Photofinishing Laboratories",
+  "mcc": 7399
+ },
+ {
+  "sic": 7385,
+  "sicDescription": "Services-Telephone Interconnect Systems",
+  "mcc": 7399
+ },
+ {
+  "sic": 7389,
+  "sicDescription": "Services-Business Services, Nec",
+  "mcc": 7399
+ },
+ {
+  "sic": 7500,
+  "sicDescription": "Services-Automotive Repair, Services & Parking",
+  "mcc": 7512
+ },
+ {
+  "sic": 7510,
+  "sicDescription": "Services-Auto Rental & Leasing (No Drivers)",
+  "mcc": 7512
+ },
+ {
+  "sic": 7600,
+  "sicDescription": "Services-Miscellaneous Repair Services",
+  "mcc": 7699
+ },
+ {
+  "sic": 7812,
+  "sicDescription": "Services-Motion Picture & Video Tape Production",
+  "mcc": 7829
+ },
+ {
+  "sic": 7819,
+  "sicDescription": "Services-Allied To Motion Picture Production",
+  "mcc": 7829
+ },
+ {
+  "sic": 7822,
+  "sicDescription": "Services-Motion Picture & Video Tape Distribution",
+  "mcc": 7829
+ },
+ {
+  "sic": 7829,
+  "sicDescription": "Services-Allied To Motion Picture Distribution",
+  "mcc": 7829
+ },
+ {
+  "sic": 7830,
+  "sicDescription": "Services-Motion Picture Theaters",
+  "mcc": 7829
+ },
+ {
+  "sic": 7841,
+  "sicDescription": "Services-Video Tape Rental",
+  "mcc": 7829
+ },
+ {
+  "sic": 7900,
+  "sicDescription": "Services-Amusement & Recreation Services",
+  "mcc": 7997
+ },
+ {
+  "sic": 7948,
+  "sicDescription": "Services-Racing, Including Track Operation",
+  "mcc": 7997
+ },
+ {
+  "sic": 7990,
+  "sicDescription": "Services-Miscellaneous Amusement & Recreation",
+  "mcc": 7997
+ },
+ {
+  "sic": 7997,
+  "sicDescription": "Services-Membership Sports & Recreation Clubs",
+  "mcc": 7997
+ },
+ {
+  "sic": 8000,
+  "sicDescription": "Services-Health Services",
+  "mcc": 8011
+ },
+ {
+  "sic": 8011,
+  "sicDescription": "Services-Offices & Clinics Of Doctors Of Medicine",
+  "mcc": 8011
+ },
+ {
+  "sic": 8050,
+  "sicDescription": "Services-Nursing & Personal Care Facilities",
+  "mcc": 8050
+ },
+ {
+  "sic": 8051,
+  "sicDescription": "Services-Skilled Nursing Care Facilities",
+  "mcc": 8050
+ },
+ {
+  "sic": 8060,
+  "sicDescription": "Services-Hospitals",
+  "mcc": 8062
+ },
+ {
+  "sic": 8062,
+  "sicDescription": "Services-General Medical & Surgical Hospitals, Nec",
+  "mcc": 8062
+ },
+ {
+  "sic": 8071,
+  "sicDescription": "Services-Medical Laboratories",
+  "mcc": 8071
+ },
+ {
+  "sic": 8082,
+  "sicDescription": "Services-Home Health Care Services",
+  "mcc": 8099
+ },
+ {
+  "sic": 8090,
+  "sicDescription": "Services-Misc Health & Allied Services, Nec",
+  "mcc": 8099
+ },
+ {
+  "sic": 8093,
+  "sicDescription": "Services-Specialty Outpatient Facilities, Nec",
+  "mcc": 8099
+ },
+ {
+  "sic": 8111,
+  "sicDescription": "Services-Legal Services",
+  "mcc": 8111
+ },
+ {
+  "sic": 8200,
+  "sicDescription": "Services-Educational Services",
+  "mcc": 8299
+ },
+ {
+  "sic": 8300,
+  "sicDescription": "Services-Social Services",
+  "mcc": 8351
+ },
+ {
+  "sic": 8351,
+  "sicDescription": "Services-Child Day Care Services",
+  "mcc": 8351
+ },
+ {
+  "sic": 8600,
+  "sicDescription": "Services-Membership Organizations",
+  "mcc": 8641
+ },
+ {
+  "sic": 8700,
+  "sicDescription": "Services-Engineering, Accounting, Research, Management",
+  "mcc": 8999
+ },
+ {
+  "sic": 8711,
+  "sicDescription": "Services-Engineering Services",
+  "mcc": 8999
+ },
+ {
+  "sic": 8731,
+  "sicDescription": "Services-Commercial Physical & Biological Research",
+  "mcc": 8999
+ },
+ {
+  "sic": 8734,
+  "sicDescription": "Services-Testing Laboratories",
+  "mcc": 8999
+ },
+ {
+  "sic": 8741,
+  "sicDescription": "Services-Management Services",
+  "mcc": 8999
+ },
+ {
+  "sic": 8742,
+  "sicDescription": "Services-Management Consulting Services",
+  "mcc": 8999
+ },
+ {
+  "sic": 8744,
+  "sicDescription": "Services-Facilities Support Management Services",
+  "mcc": 8999
+ },
+ {
+  "sic": 8880,
+  "sicDescription": "American Depositary Receipts",
+  "mcc": 8999
+ },
+ {
+  "sic": 8888,
+  "sicDescription": "Foreign Governments",
+  "mcc": 8999
+ },
+ {
+  "sic": 8900,
+  "sicDescription": "Services-Services, Nec",
+  "mcc": 8999
+ },
+ {
+  "sic": 9721,
+  "sicDescription": "International Affairs",
+  "mcc": 8999
+ },
+ {
+  "sic": 9995,
+  "sicDescription": "Non-Operating Establishments",
+  "mcc": 8999
+ }
+]

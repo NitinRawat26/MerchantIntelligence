@@ -482,3 +482,11 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# EDGAR download cache and generated training data
+data/
+
+# Angular
+web/**/node_modules/
+web/**/dist/
+web/**/.angular/

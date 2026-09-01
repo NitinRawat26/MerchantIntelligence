@@ -1,0 +1,248 @@
+<mat-toolbar color="primary" class="toolbar">
+  <mat-icon>fact_check</mat-icon>
+  <span class="toolbar-title">Merchant Intelligence · MCC Validator</span>
+  <span class="spacer"></span>
+  <span class="toolbar-subtitle">Multi-source merchant category verification</span>
+</mat-toolbar>
+
+<main class="page">
+  <mat-card class="input-card" appearance="outlined">
+    <mat-card-header>
+      <mat-card-title>Validate a declared MCC</mat-card-title>
+      <mat-card-subtitle>
+        Enter the merchant category code the business declared and its website. Evidence is collected from the
+        website text, structured data, an EDGAR-trained classifier and the SEC filer index, then combined.
+      </mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content>
+      <form [formGroup]="form" (ngSubmit)="submit()" class="form">
+        <mat-form-field appearance="outline" class="mcc-field">
+          <mat-label>Declared MCC</mat-label>
+          <input matInput formControlName="mcc" [matAutocomplete]="auto" placeholder="e.g. 5812 or 'restaurant'">
+          <mat-icon matSuffix>category</mat-icon>
+          <mat-autocomplete #auto="matAutocomplete" [displayWith]="displayMcc">
+            @for (item of filteredCatalog(); track item.mcc) {
+              <mat-option [value]="item.mcc.toString()">
+                <span class="option-code">{{ item.mcc }}</span>
+                <span class="option-desc">{{ item.description }}</span>
+                <span class="option-tier" [class]="tierClass(item.riskTier)">{{ item.riskTier }}</span>
+              </mat-option>
+            }
+          </mat-autocomplete>
+          @if (selectedEntry(); as entry) {
+            <mat-hint>{{ entry.description }} · {{ entry.category }} · {{ entry.riskTier }} risk</mat-hint>
+          } @else {
+            <mat-hint>Type a code or search by description</mat-hint>
+          }
+          @if (form.controls.mcc.touched && form.controls.mcc.invalid) {
+            <mat-error>Enter a 4-digit MCC</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="url-field">
+          <mat-label>Business website</mat-label>
+          <input matInput formControlName="websiteUrl" placeholder="https://www.example.com" type="url" autocomplete="url">
+          <mat-icon matSuffix>language</mat-icon>
+          @if (form.controls.websiteUrl.touched && form.controls.websiteUrl.invalid) {
+            <mat-error>Enter a valid website address</mat-error>
+          }
+        </mat-form-field>
+
+        <button mat-flat-button color="primary" type="submit" class="submit" [disabled]="loading()">
+          @if (loading()) {
+            <mat-spinner diameter="20"></mat-spinner>
+          } @else {
+            <ng-container><mat-icon>search</mat-icon> Validate</ng-container>
+          }
+        </button>
+      </form>
+
+      <div class="examples">
+        <span class="examples-label">Try:</span>
+        @for (ex of examples; track ex.websiteUrl) {
+          <button mat-stroked-button type="button" (click)="useExample(ex)" [disabled]="loading()">
+            {{ ex.mcc }} · {{ ex.websiteUrl.replace('https://www.', '') }}
+          </button>
+        }
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  @if (loading()) {
+    <mat-card appearance="outlined" class="status-card">
+      <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+      <p>Fetching the website and running evidence providers…</p>
+    </mat-card>
+  }
+
+  @if (error(); as message) {
+    <mat-card appearance="outlined" class="status-card error">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ message }}</span>
+    </mat-card>
+  }
+
+  @if (result(); as r) {
+    <section class="results">
+      <mat-card appearance="outlined" class="verdict-card" [class]="verdictClass(r.verdict)">
+        <div class="verdict-main">
+          <mat-icon class="verdict-icon">{{ verdictIcon(r.verdict) }}</mat-icon>
+          <div>
+            <div class="verdict-title">{{ r.verdict }}</div>
+            <div class="verdict-label">{{ verdictLabel(r.verdict) }}</div>
+            <div class="verdict-declared">
+              Declared <strong>{{ r.declaredMcc }}</strong> — {{ r.declaredDescription }}
+              <span class="tier-chip" [class]="tierClass(r.declaredRiskTier)">{{ r.declaredRiskTier }} risk</span>
+            </div>
+          </div>
+          <div class="gauge">
+            <div class="gauge-value">{{ r.accuracyPercent | number:'1.0-0' }}<span>%</span></div>
+            <div class="gauge-label">MCC accuracy</div>
+            <mat-progress-bar mode="determinate" [value]="r.accuracyPercent" [color]="gaugeColor(r.accuracyPercent)"></mat-progress-bar>
+          </div>
+        </div>
+
+        @if (r.riskFlags.length) {
+          <mat-chip-set class="flags" aria-label="Risk flags">
+            @for (flag of r.riskFlags; track flag.code) {
+              <mat-chip [class]="tierClass(flag.severity)" [matTooltip]="flag.message">
+                <mat-icon matChipAvatar>flag</mat-icon>
+                {{ flag.code.replaceAll('_', ' ') }}
+              </mat-chip>
+            }
+          </mat-chip-set>
+          <ul class="flag-messages">
+            @for (flag of r.riskFlags; track flag.code) {
+              <li>{{ flag.message }}</li>
+            }
+          </ul>
+        }
+      </mat-card>
+
+      <div class="grid">
+        <mat-card appearance="outlined">
+          <mat-card-header>
+            <mat-card-title>Suggested MCCs</mat-card-title>
+            <mat-card-subtitle>Weighted combination of all evidence sources</mat-card-subtitle>
+          </mat-card-header>
+          <mat-card-content>
+            @if (r.suggestedMccs.length === 0) {
+              <p class="muted">No suggestions — the site could not be analysed.</p>
+            }
+            @for (s of r.suggestedMccs; track s.mcc) {
+              <div class="suggestion" [class.declared]="s.mcc === r.declaredMcc">
+                <div class="suggestion-head">
+                  <span class="suggestion-code">{{ s.mcc }}</span>
+                  <span class="suggestion-desc">{{ s.description }}</span>
+                  @if (s.mcc === r.declaredMcc) { <span class="badge">declared</span> }
+                  <span class="suggestion-score">{{ s.score | percent:'1.0-0' }}</span>
+                </div>
+                <mat-progress-bar mode="determinate" [value]="s.score * 100"></mat-progress-bar>
+              </div>
+            }
+          </mat-card-content>
+        </mat-card>
+
+        <mat-card appearance="outlined">
+          <mat-card-header>
+            <mat-card-title>Pages analysed</mat-card-title>
+            <mat-card-subtitle>{{ r.pagesAnalyzed.length }} page(s) fetched from {{ r.websiteUrl }}</mat-card-subtitle>
+          </mat-card-header>
+          <mat-card-content>
+            @if (r.pagesAnalyzed.length === 0) {
+              <p class="muted">The website did not return any HTML content.</p>
+            }
+            <ul class="pages">
+              @for (p of r.pagesAnalyzed; track p) {
+                <li><a [href]="p" target="_blank" rel="noopener">{{ p }}</a></li>
+              }
+            </ul>
+          </mat-card-content>
+        </mat-card>
+      </div>
+
+      <mat-card appearance="outlined">
+        <mat-card-header>
+          <mat-card-title>Evidence by source</mat-card-title>
+          <mat-card-subtitle>Each provider votes independently; failures are reported, not hidden</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <mat-accordion multi>
+            @for (e of r.evidence; track e.provider) {
+              <mat-expansion-panel [expanded]="e.succeeded && e.candidates.length > 0">
+                <mat-expansion-panel-header>
+                  <mat-panel-title>
+                    <mat-icon [class.ok]="e.succeeded" [class.fail]="!e.succeeded">{{ e.succeeded ? 'check_circle' : 'cancel' }}</mat-icon>
+                    {{ e.provider }}
+                  </mat-panel-title>
+                  <mat-panel-description>
+                    @if (!e.succeeded) { {{ e.error }} }
+                    @else if (e.candidates.length) { Top: {{ e.candidates[0].mcc }} {{ e.candidates[0].description }} }
+                    @else { No signal }
+                  </mat-panel-description>
+                </mat-expansion-panel-header>
+
+                @if (e.candidates.length) {
+                  <table class="candidates">
+                    @for (c of e.candidates; track c.mcc) {
+                      <tr [class.declared]="c.mcc === r.declaredMcc">
+                        <td class="code">{{ c.mcc }}</td>
+                        <td>{{ c.description }}</td>
+                        <td class="score">{{ c.score | percent:'1.0-0' }}</td>
+                      </tr>
+                    }
+                  </table>
+                }
+                @if (e.highlights.length) {
+                  <ul class="highlights">
+                    @for (h of e.highlights; track h) { <li>{{ h }}</li> }
+                  </ul>
+                }
+              </mat-expansion-panel>
+            }
+          </mat-accordion>
+        </mat-card-content>
+      </mat-card>
+    </section>
+  }
+
+  @if (history().length) {
+    <mat-card appearance="outlined" class="history">
+      <mat-card-header>
+        <mat-card-title>Validation history</mat-card-title>
+        <mat-card-subtitle>This session · click a row to reload</mat-card-subtitle>
+      </mat-card-header>
+      <table mat-table [dataSource]="history()">
+        <ng-container matColumnDef="at">
+          <th mat-header-cell *matHeaderCellDef>Time</th>
+          <td mat-cell *matCellDef="let h">{{ h.at | date:'HH:mm:ss' }}</td>
+        </ng-container>
+        <ng-container matColumnDef="mcc">
+          <th mat-header-cell *matHeaderCellDef>MCC</th>
+          <td mat-cell *matCellDef="let h">{{ h.request.mcc }}</td>
+        </ng-container>
+        <ng-container matColumnDef="website">
+          <th mat-header-cell *matHeaderCellDef>Website</th>
+          <td mat-cell *matCellDef="let h">{{ h.request.websiteUrl }}</td>
+        </ng-container>
+        <ng-container matColumnDef="verdict">
+          <th mat-header-cell *matHeaderCellDef>Verdict</th>
+          <td mat-cell *matCellDef="let h"><span class="verdict-pill" [class]="verdictClass(h.result.verdict)">{{ h.result.verdict }}</span></td>
+        </ng-container>
+        <ng-container matColumnDef="accuracy">
+          <th mat-header-cell *matHeaderCellDef>Accuracy</th>
+          <td mat-cell *matCellDef="let h">{{ h.result.accuracyPercent | number:'1.0-0' }}%</td>
+        </ng-container>
+        <ng-container matColumnDef="suggested">
+          <th mat-header-cell *matHeaderCellDef>Top suggestion</th>
+          <td mat-cell *matCellDef="let h">
+            @if (h.result.suggestedMccs[0]; as s) { {{ s.mcc }} {{ s.description }} } @else { — }
+          </td>
+        </ng-container>
+        <tr mat-header-row *matHeaderRowDef="historyColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: historyColumns" (click)="reload(row)" class="clickable"></tr>
+      </table>
+    </mat-card>
+  }
+</main>
