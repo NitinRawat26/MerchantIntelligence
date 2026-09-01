@@ -57,6 +57,25 @@ public sealed class DecisionPredictorTests
     }
 
     [Fact]
+    public void Existing_relationship_outweighs_high_risk_mcc()
+    {
+        var withoutRelationship = Predictor.Value.Predict(new MerchantApplication
+        {
+            MerchantCategoryCode = 7995, AnnualVolume = 3_000_000, AverageTicket = 600, HighestTicket = 8_000,
+            MatchFound = false, ExistingRelationship = false
+        });
+        var withRelationship = Predictor.Value.Predict(new MerchantApplication
+        {
+            MerchantCategoryCode = 7995, AnnualVolume = 3_000_000, AverageTicket = 600, HighestTicket = 8_000,
+            MatchFound = false, ExistingRelationship = true
+        });
+
+        Assert.NotEqual(Decision.Approved, withoutRelationship.Decision);
+        Assert.Equal(Decision.Approved, withRelationship.Decision);
+        Assert.True(withRelationship.Probabilities[Decision.Approved] > withoutRelationship.Probabilities[Decision.Approved] + 0.5);
+    }
+
+    [Fact]
     public void Save_and_load_round_trips()
     {
         var ml = new MLContext(seed: 42);

@@ -66,7 +66,9 @@ public static class SyntheticDataGenerator
         // MATCH (terminated merchant file) hit is close to a hard decline.
         if (app.MatchFound) risk += 0.45;
 
-        if (app.ExistingRelationship) risk -= 0.20;
+        // A known, in-good-standing relationship is the strongest mitigating signal:
+        // it outweighs a high-risk MCC and any single volume/ticket flag on its own.
+        if (app.ExistingRelationship) risk -= 0.40;
 
         if (app.AnnualVolume > 10_000_000) risk += 0.15;
         else if (app.AnnualVolume > 2_000_000) risk += 0.07;
