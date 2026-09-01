@@ -19,7 +19,7 @@
       <form [formGroup]="form" (ngSubmit)="submit()" class="form">
         <mat-form-field appearance="outline" class="mcc-field">
           <mat-label>Declared MCC</mat-label>
-          <input matInput formControlName="mcc" [matAutocomplete]="auto" placeholder="e.g. 5812" maxlength="4" inputmode="numeric">
+          <input matInput formControlName="mcc" [matAutocomplete]="auto" placeholder="e.g. 5812 or 'restaurant'">
           <mat-icon matSuffix>category</mat-icon>
           <mat-autocomplete #auto="matAutocomplete" [displayWith]="displayMcc">
             @for (item of filteredCatalog(); track item.mcc) {
