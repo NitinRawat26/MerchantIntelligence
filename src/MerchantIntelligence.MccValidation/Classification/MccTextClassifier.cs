@@ -74,7 +74,7 @@ public sealed class MccTextClassifier
 
         return ml.Transforms.Conversion.MapValueToKey(LabelColumn, nameof(MccTrainingRecord.Mcc))
             .Append(ml.Transforms.Text.FeaturizeText(FeaturesColumn, textOptions, nameof(MccTrainingRecord.Text)))
-            .Append(ml.MulticlassClassification.Trainers.SdcaMaximumEntropy(LabelColumn, FeaturesColumn, l2Regularization: 0.01f, maximumNumberOfIterations: 60))
+            .Append(ml.MulticlassClassification.Trainers.SdcaMaximumEntropy(LabelColumn, FeaturesColumn, l2Regularization: 1e-5f, l1Regularization: 0f, maximumNumberOfIterations: 200))
             .Append(ml.Transforms.Conversion.MapKeyToValue("PredictedLabel"));
     }
 

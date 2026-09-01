@@ -76,16 +76,17 @@ public sealed class EvidenceAggregator
             flags.Add(new RiskFlag("HIGH_RISK_MCC", $"Declared MCC {declaredMcc} ({declared.Description}) is a high-risk category.", RiskTier.High));
 
         var top = suggested.FirstOrDefault();
-        if (top is not null && top.Mcc != declaredMcc)
-        {
-            var topEntry = _catalog.Find(top.Mcc);
-            if (topEntry?.RiskTier == RiskTier.High && declared?.RiskTier != RiskTier.High)
-                flags.Add(new RiskFlag("HIDDEN_HIGH_RISK",
-                    $"Evidence suggests high-risk MCC {top.Mcc} ({top.Description}) while a lower-risk MCC was declared.", RiskTier.High));
-            else if (verdict == MccVerdict.Inconsistent)
-                flags.Add(new RiskFlag("MCC_MISMATCH",
-                    $"Evidence points to MCC {top.Mcc} ({top.Description}) rather than {declaredMcc}.", RiskTier.Medium));
-        }
+        var hiddenHighRisk = declared?.RiskTier == RiskTier.High
+            ? null
+            : suggested.FirstOrDefault(s => s.Mcc != declaredMcc && s.Score >= 0.25 && _catalog.Find(s.Mcc)?.RiskTier == RiskTier.High);
+
+        if (hiddenHighRisk is not null)
+            flags.Add(new RiskFlag("HIDDEN_HIGH_RISK",
+                $"Evidence suggests high-risk MCC {hiddenHighRisk.Mcc} ({hiddenHighRisk.Description}) while a lower-risk MCC was declared.", RiskTier.High));
+
+        if (top is not null && top.Mcc != declaredMcc && top.Mcc != hiddenHighRisk?.Mcc && verdict == MccVerdict.Inconsistent)
+            flags.Add(new RiskFlag("MCC_MISMATCH",
+                $"Evidence points to MCC {top.Mcc} ({top.Description}) rather than {declaredMcc}.", RiskTier.Medium));
 
         var failed = results.Where(r => !r.Evidence.Succeeded).Select(r => r.Provider.Name).ToList();
         if (failed.Count > 0)
