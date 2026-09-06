@@ -17,7 +17,7 @@ public sealed class ExplainRequest : CreditDecisionRequest
 public sealed class TermsRequest : CreditDecisionRequest
 {
     [Range(0, 365)] public int? DeliveryDays { get; set; }
-    [Range(0, 1)] public double CardNotPresentShare { get; set; } = 1.0;
+    [Range(0.0, 1.0)] public double CardNotPresentShare { get; set; } = 1.0;
     public bool? KybHighRisk { get; set; }
     [Range(0, 100)] public int? WebsiteComplianceScore { get; set; }
     [Range(0, 100)] public int? VolumePlausibilityScore { get; set; }

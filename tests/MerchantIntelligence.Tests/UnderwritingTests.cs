@@ -75,6 +75,17 @@ public sealed class DecisionExplainerTests
         Assert.False(string.IsNullOrWhiteSpace(e.Narrative));
     }
 
+    [Theory]
+    [InlineData(Decision.Declined)]
+    [InlineData(Decision.Cancelled)]
+    public void Reason_codes_stay_in_approval_direction_for_any_explained_class(Decision explained)
+    {
+        var e = Explainer.Explain(Risky, explained);
+        Assert.Contains(e.ReasonCodes, r => r.Code == "MATCH_LISTED");
+        Assert.DoesNotContain(e.ReasonCodes, r => r.Code == "NO_MATCH_RECORD");
+        Assert.Equal(explained, e.ExplainedClass);
+    }
+
     [Fact]
     public void Explained_class_defaults_to_predicted_decision()
     {

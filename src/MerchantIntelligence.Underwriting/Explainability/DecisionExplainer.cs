@@ -69,11 +69,37 @@ public sealed class DecisionExplainer
         var target = explainClass ?? actual.Decision;
         var n = Features.Length;
 
-        // Cache every coalition's target-class probability.
-        var coalitionValue = new double[1 << n];
-        for (var mask = 0; mask < coalitionValue.Length; mask++)
-            coalitionValue[mask] = Probability(Compose(application, mask), target);
+        // Cache every coalition's prediction once; Shapley values are then derived for the explained
+        // class (reported) and for Approved (drives the approval-direction reason codes).
+        var coalitionResult = new DecisionResult[1 << n];
+        for (var mask = 0; mask < coalitionResult.Length; mask++)
+            coalitionResult[mask] = _predictor.Predict(Compose(application, mask));
 
+        var coalitionValue = coalitionResult.Select(r => r.Probabilities.GetValueOrDefault(target)).ToArray();
+        var shapley = Shapley(coalitionValue);
+        var approvalShapley = target == Decision.Approved
+            ? shapley
+            : Shapley(coalitionResult.Select(r => r.Probabilities.GetValueOrDefault(Decision.Approved)).ToArray());
+
+        var contributions = Features.Select((f, i) => new FeatureContribution(
+                f,
+                Format(application, i),
+                Format(_baseline, i),
+                Math.Round(shapley[i], 4),
+                shapley[i] > 0.005 ? "Increases" : shapley[i] < -0.005 ? "Decreases" : "Neutral"))
+            .OrderByDescending(c => Math.Abs(c.Contribution))
+            .ToList();
+
+        var reasonCodes = BuildReasonCodes(application, approvalShapley);
+        var narrative = BuildNarrative(actual, target, coalitionValue[0], coalitionValue[^1], contributions);
+
+        return new DecisionExplanation(actual.Decision, actual.Confidence, target,
+            Math.Round(coalitionValue[0], 4), Math.Round(coalitionValue[^1], 4), contributions, reasonCodes, narrative);
+    }
+
+    private static double[] Shapley(double[] coalitionValue)
+    {
+        var n = Features.Length;
         var shapley = new double[n];
         for (var i = 0; i < n; i++)
         {
@@ -85,25 +111,8 @@ public sealed class DecisionExplainer
                 shapley[i] += weight * (coalitionValue[mask | (1 << i)] - coalitionValue[mask]);
             }
         }
-
-        var contributions = Features.Select((f, i) => new FeatureContribution(
-                f,
-                Format(application, i),
-                Format(_baseline, i),
-                Math.Round(shapley[i], 4),
-                shapley[i] > 0.005 ? "Increases" : shapley[i] < -0.005 ? "Decreases" : "Neutral"))
-            .OrderByDescending(c => Math.Abs(c.Contribution))
-            .ToList();
-
-        var reasonCodes = BuildReasonCodes(application, contributions, target);
-        var narrative = BuildNarrative(actual, target, coalitionValue[0], coalitionValue[^1], contributions);
-
-        return new DecisionExplanation(actual.Decision, actual.Confidence, target,
-            Math.Round(coalitionValue[0], 4), Math.Round(coalitionValue[^1], 4), contributions, reasonCodes, narrative);
+        return shapley;
     }
-
-    private double Probability(MerchantApplication app, Decision target) =>
-        _predictor.Predict(app).Probabilities.GetValueOrDefault(target);
 
     private MerchantApplication Compose(MerchantApplication x, int mask) => new()
     {
@@ -130,13 +139,16 @@ public sealed class DecisionExplainer
     /// adverse codes for features that pushed away from approval, supportive codes for those that helped.
     /// Strongest adverse drivers come first (adverse-action notice convention).
     /// </summary>
-    private static List<ReasonCode> BuildReasonCodes(MerchantApplication app, IReadOnlyList<FeatureContribution> contributions, Decision target)
+    private static List<ReasonCode> BuildReasonCodes(MerchantApplication app, double[] approvalShapley)
     {
-        var sign = target == Decision.Approved ? 1 : -1;
         var codes = new List<ReasonCode>();
-        foreach (var c in contributions.Where(c => Math.Abs(c.Contribution) > 0.02).OrderBy(c => sign * c.Contribution).Take(4))
+        var ranked = Features.Select((f, i) => (Feature: f, Contribution: approvalShapley[i]))
+            .Where(c => Math.Abs(c.Contribution) > 0.02)
+            .OrderBy(c => c.Contribution)
+            .Take(4);
+        foreach (var c in ranked)
         {
-            var adverse = sign * c.Contribution < 0;
+            var adverse = c.Contribution < 0;
             var (code, text) = c.Feature switch
             {
                 nameof(MerchantApplication.MerchantCategoryCode) => adverse

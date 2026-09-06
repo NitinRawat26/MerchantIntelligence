@@ -77,6 +77,21 @@ No external services are used; industry benchmarks are embedded (`Resources/indu
 
 Scanned / image-only PDFs are not OCR'd; the parser returns a warning instead of guessing.
 
+### Platform (`/api/platform`)
+
+Ties the tools together into one decision, a policy layer, an analyst queue and model governance.
+State lives in a local SQLite file (`Platform:DatabasePath`, default `data/platform.db`; `:memory:` for tests).
+
+| Area | Endpoints | What it does |
+|------|-----------|--------------|
+| Unified risk score | `POST score` | Combines credit model, KYB, sanctions/PEP/adverse media, prohibited-business verdict, website compliance, volume plausibility and pricing band into one 0–1000 score, tier, recommended action and reason codes. Sections not supplied are reported as `coverageGaps`; sanctions, prohibited business and MATCH are hard stops. Evaluates the active rule set and can open a case in the same call |
+| Rules engine | `GET rules`, `POST rules/validate`, `POST rules/publish`, `GET rules/history`, `GET rules/{v}`, `POST rules/rollback/{v}`, `POST rules/evaluate` | JSON policy rules (`all` / `any` / `not` trees; `eq neq gt gte lt lte contains notcontains in exists`) with Approve / Refer / Decline outcomes, most severe wins. Versioned, audited, roll-backable; an embedded default set ships with the suite |
+| Case management | `POST cases`, `GET cases`, `GET cases/stats`, `GET cases/{id}`, `…/assign`, `…/status`, `…/notes`, `…/decide`, `…/audit` | Review queue with priorities, assignment, notes and terminal decisions. A decision that contradicts the rules outcome is an override and needs a reason. Every mutation is audited and raises a webhook |
+| Audit trail | `GET audit`, `GET audit/verify` | Append-only, SHA-256 hash-chained event log; `verify` walks the chain and reports the first tampered sequence number |
+| Webhooks | `POST/GET webhooks`, `DELETE webhooks/{id}`, `GET webhooks/deliveries`, `GET webhooks/events` | HTTPS subscribers for `case.*`, `rules.published`, `model.promoted`, `model.drift_alert`. Payloads are signed (`X-MI-Signature: sha256=HMAC(secret, body)`), retried with back-off, and every attempt is persisted |
+| Model ops | `GET models`, `GET models/decisions`, `POST models/decisions/{id}/outcome`, `GET models/drift`, `GET models/compare`, `POST models/retrain`, `POST models/promote` | Every prediction is logged (champion + shadow challenger). Record realised outcomes, get PSI drift per feature and on the prediction mix, compare champion vs challenger accuracy, retrain on labelled decisions topped up with synthetic rows, and promote without a restart |
+| MATCH boundary | `POST match/inquiry` | Mastercard MATCH requires acquirer credentials, so by default this returns `availability: NotConfigured` / `found: null` (unknown, never "clear"). Point `Match:Endpoint` at a MATCH-compatible service or `Match:LocalListPath` at your own terminated-merchant CSV to get real hits |
+
 ## Project layout
 
 ```
@@ -87,7 +102,8 @@ src/
   MerchantIntelligence.MccValidation.DataPipeline/# Console app: downloads EDGAR data, trains models/mcc-classifier.zip
   MerchantIntelligence.Kyb/                       # Registry verification, sanctions screening, website compliance, prohibited-business taxonomy
   MerchantIntelligence.Underwriting/              # Decision explainability, reserve/pricing recommender, volume plausibility, statement parsing
-  MerchantIntelligence.Api/                       # ASP.NET Core Web API (both tools)
+  MerchantIntelligence.Platform/                  # Unified score, rules engine, cases + audit (SQLite), webhooks, model ops, MATCH boundary
+  MerchantIntelligence.Api/                       # ASP.NET Core Web API (all tools)
 web/
   mcc-validator/                                  # Angular UI for MCC validation
 tests/
