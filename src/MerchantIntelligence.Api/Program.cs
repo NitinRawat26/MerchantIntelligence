@@ -7,6 +7,10 @@ using MerchantIntelligence.MccValidation.Classification;
 using MerchantIntelligence.MccValidation.Taxonomy;
 using MerchantIntelligence.MccValidation.Validation;
 using MerchantIntelligence.MccValidation.Web;
+using MerchantIntelligence.Underwriting.Benchmarks;
+using MerchantIntelligence.Underwriting.Explainability;
+using MerchantIntelligence.Underwriting.Plausibility;
+using MerchantIntelligence.Underwriting.Pricing;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -62,6 +66,11 @@ var kybOptions = builder.Configuration.GetSection("Kyb").Get<KybOptions>() ?? ne
 var sanctionsOptions = builder.Configuration.GetSection("Sanctions").Get<SanctionsOptions>() ?? new SanctionsOptions();
 sanctionsOptions.CacheDirectory = ResolvePath(sanctionsOptions.CacheDirectory);
 builder.Services.AddMerchantKyb(kybOptions, sanctionsOptions);
+
+builder.Services.AddSingleton(IndustryBenchmarks.Default);
+builder.Services.AddSingleton(sp => new DecisionExplainer(sp.GetRequiredService<IDecisionPredictor>()));
+builder.Services.AddSingleton<ReservePricingRecommender>();
+builder.Services.AddSingleton<VolumePlausibilityAnalyzer>();
 
 var app = builder.Build();
 

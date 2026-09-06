@@ -79,8 +79,11 @@ public sealed class SanctionsScreeningService
             if (hits.Count > 0)
             {
                 var top = hits[0];
-                var severity = top.Score >= 0.95 ? RiskTier.High : RiskTier.Medium;
-                flags.Add(new KybScreeningFlag(top.Score >= 0.95 ? "SANCTIONS_MATCH" : "SANCTIONS_POSSIBLE_MATCH",
+                // A corroborating identifier (birth year / nationality) turns a strong fuzzy name match into a confirmed one.
+                var corroborated = top.Reasons.Any(r => r.Contains("matches listing", StringComparison.OrdinalIgnoreCase));
+                var confirmed = top.Score >= 0.95 || (top.Score >= 0.9 && corroborated);
+                var severity = confirmed ? RiskTier.High : RiskTier.Medium;
+                flags.Add(new KybScreeningFlag(confirmed ? "SANCTIONS_MATCH" : "SANCTIONS_POSSIBLE_MATCH",
                     $"{subject.Name}: {hits.Count} potential hit(s); best '{top.MatchedName}' on {top.Entity.ListName} ({string.Join(", ", top.Entity.Programs.Take(3))}) score {top.Score:P0}.",
                     severity));
                 if (hits.Any(h => h.Entity.ListName.Contains("peps", StringComparison.OrdinalIgnoreCase) || h.Entity.Programs.Any(p => p.Contains("PEP", StringComparison.OrdinalIgnoreCase))))
