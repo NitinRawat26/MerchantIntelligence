@@ -70,15 +70,18 @@ public sealed class ProhibitedBusinessDetector
         var text = ((websiteText ?? string.Empty) + " " + (businessDescription ?? string.Empty)).ToLowerInvariant();
         var description = (businessDescription ?? string.Empty).ToLowerInvariant();
         var matches = new List<CategoryMatch>();
+        var wordCount = Math.Max(1, text.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length);
 
         foreach (var (category, patterns) in _compiled)
         {
             var matched = new List<string>();
             double score = 0;
+            var hits = 0;
             for (var i = 0; i < patterns.Length; i++)
             {
                 var count = patterns[i].Matches(text).Count;
                 if (count == 0) continue;
+                hits += count;
                 var keyword = category.Keywords[i];
                 matched.Add(keyword);
                 // Specific multi-word phrases are stronger evidence; the self-declared description is strongest.
@@ -89,6 +92,9 @@ public sealed class ProhibitedBusinessDetector
             var mccHit = declaredMcc is int mcc && category.Mccs.Contains(mcc);
             if (matched.Count == 0) continue;
             if (mccHit) score *= 1.5;
+            // Keyword density: two hits in a seven-word description are far stronger than two hits in a 2,000-word site.
+            var density = (double)hits / wordCount;
+            score *= 1 + Math.Min(1.0, 10 * density);
 
             // Distinct keyword breadth matters more than repetition of one term.
             var normalised = Math.Min(1.0, (score * (0.5 + 0.5 * Math.Min(matched.Count, 4) / 4.0)) / 4.0);
