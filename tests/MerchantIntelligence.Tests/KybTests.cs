@@ -20,6 +20,7 @@ public sealed class NameMatcherTests
     [InlineData("Blue Ocean Bakery", "Northwind Logistics GmbH", 0.5)]
     [InlineData("Viktor Bout", "Viktor Ignatov", 0.8)]
     [InlineData("Jane Ordinary Smith", "Samantha Jane Power", 0.8)]
+    [InlineData("Apple Inc.", "Oriental Apple Company Pte Ltd", 0.85)]
     public void Unrelated_names_score_low(string a, string b, double max) =>
         Assert.True(NameMatcher.Similarity(a, b) < max, $"{a} vs {b} = {NameMatcher.Similarity(a, b)}");
 
@@ -118,6 +119,14 @@ public sealed class ProhibitedBusinessDetectorTests
             "Buy replica Rolex watches and knock-off Louis Vuitton handbags. Counterfeit designer bags at wholesale prices.");
         Assert.Equal(BusinessPolicy.Prohibited, result.Verdict);
         Assert.Contains(result.Matches, m => m.Category.Code == "COUNTERFEIT_IP");
+    }
+
+    [Fact]
+    public void Short_description_with_dense_keywords_is_flagged()
+    {
+        var result = ProhibitedBusinessDetector.Default.Analyze("Buy CBD gummies and THC vape cartridges");
+        Assert.NotEqual(BusinessPolicy.Acceptable, result.Verdict);
+        Assert.Contains(result.Flags, f => f.Code.EndsWith("CBD_CANNABIS", StringComparison.Ordinal));
     }
 
     [Fact]

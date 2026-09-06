@@ -85,8 +85,10 @@ public static class NameMatcher
         var shorter = Math.Min(a.Count, b.Count);
         var longer = Math.Max(a.Count, b.Count);
         var coverage = (double)matched / shorter;
-        var lengthPenalty = 1 - 0.1 * Math.Min(3, longer - shorter);
-        return coverage * lengthPenalty;
+        var lengthPenalty = 1 - 0.15 * Math.Min(3, longer - shorter);
+        // One shared token inside a longer name ("Apple" vs "Oriental Apple Company") is weak evidence.
+        var singleTokenCap = matched == 1 && longer >= 2 ? 0.7 : 1.0;
+        return Math.Min(singleTokenCap, coverage * lengthPenalty);
     }
 
     private static bool TokensEquivalent(string x, string y)
