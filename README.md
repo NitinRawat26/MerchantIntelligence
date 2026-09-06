@@ -41,6 +41,27 @@ and an aggregator combines them into an explainable verdict:
 
 An Angular 18 + Material front end lives in `web/mcc-validator`.
 
+### KYB & Compliance (`/api/kyb`)
+
+Pre-boarding checks built entirely on free / public data sources. Everything works with no
+API keys; OpenCorporates and UK Companies House are enabled automatically if a key is
+configured (`Kyb:OpenCorporatesApiToken`, `Kyb:CompaniesHouseApiKey`).
+
+| Endpoint | What it does | Sources |
+|----------|--------------|---------|
+| `POST verify-business` | Matches the declared legal name / address / registration number against corporate registries; flags `NEW_ENTITY`, `NAME_MISMATCH`, `REGISTERED_ADDRESS_MISMATCH`, `INACTIVE_ENTITY`, `VIRTUAL_OFFICE_ADDRESS`, `ENTITY_NOT_FOUND` | GLEIF LEI, SEC EDGAR, US Census geocoder, (OpenCorporates, Companies House) |
+| `POST screen` | Fuzzy sanctions / PEP screening of the business and its beneficial owners (aliases, DOB, nationality aware) plus adverse-media search | OpenSanctions consolidated list (OFAC, EU, UN, UK HMT, …), OFAC SDN, UN Security Council, GDELT news |
+| `GET screen/lists` | Status / row counts of the loaded sanctions lists | |
+| `POST website-compliance` | Card-brand website requirements: TLS, privacy / terms / refund / delivery policies, contact details, currency, payment marks, checkout, legal-name disclosure, placeholder detection, domain age & expiry, prohibited content → score 0-100 and grade A-F | Site crawl, RDAP |
+| `POST prohibited-business` | Classifies text / a business description against 23 prohibited, restricted and high-risk categories (CBD, crypto, adult, firearms, nutraceuticals, MLM, gambling, …) with MCC awareness | `Resources/restricted-categories.json` |
+| `POST report` | Runs all of the above for one applicant and returns a combined risk tier and flag list | |
+
+Sanctions lists are downloaded on first use into `Sanctions:CacheDirectory` (default
+`data/sanctions`) and refreshed every `Sanctions:RefreshInterval` (24h). Set
+`Sanctions:IncludePeps=true` to also load the (large) OpenSanctions PEP dataset. OpenSanctions
+bulk data is CC BY-NC 4.0 – commercial use requires a licence from them; the OFAC and UN
+lists are public domain.
+
 ## Project layout
 
 ```
@@ -49,6 +70,7 @@ src/
   MerchantIntelligence.CreditDecision.Trainer/    # Console app: trains and saves models/credit-decision.zip
   MerchantIntelligence.MccValidation/             # MCC catalog, SIC→MCC crosswalk, EDGAR client, scraper, classifier, providers
   MerchantIntelligence.MccValidation.DataPipeline/# Console app: downloads EDGAR data, trains models/mcc-classifier.zip
+  MerchantIntelligence.Kyb/                       # Registry verification, sanctions screening, website compliance, prohibited-business taxonomy
   MerchantIntelligence.Api/                       # ASP.NET Core Web API (both tools)
 web/
   mcc-validator/                                  # Angular UI for MCC validation
@@ -117,6 +139,21 @@ The response includes `verdict`, `accuracyPercent`, `suggestedMccs`, `riskFlags`
 evidence from every provider (including any that failed). Paths are configurable via
 `MccValidation:ModelPath` and `MccValidation:FilerIndexPath`; if the classifier model is
 missing the API still runs with the remaining providers.
+
+### Run a KYB report
+
+```bash
+curl -X POST http://localhost:5292/api/kyb/report \
+  -H 'content-type: application/json' \
+  -d '{
+    "business": { "legalName": "Apple Inc.", "addressLine": "One Apple Park Way", "city": "Cupertino",
+                  "region": "CA", "postalCode": "95014", "country": "US", "websiteUrl": "https://www.apple.com" },
+    "owners": [ { "fullName": "Tim Cook", "role": "CEO", "ownershipPercent": 0.01 } ],
+    "declaredMcc": 5732
+  }'
+```
+
+The first call downloads ~100 MB of sanctions data (30-60 s); subsequent calls are fast.
 
 ### MCC validator UI
 

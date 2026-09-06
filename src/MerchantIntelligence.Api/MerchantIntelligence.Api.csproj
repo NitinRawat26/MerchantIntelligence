@@ -19,6 +19,7 @@
   <ItemGroup>
     <ProjectReference Include="..\MerchantIntelligence.CreditDecision\MerchantIntelligence.CreditDecision.csproj" />
     <ProjectReference Include="..\MerchantIntelligence.MccValidation\MerchantIntelligence.MccValidation.csproj" />
+    <ProjectReference Include="..\MerchantIntelligence.Kyb\MerchantIntelligence.Kyb.csproj" />
   </ItemGroup>
 
 </Project>
