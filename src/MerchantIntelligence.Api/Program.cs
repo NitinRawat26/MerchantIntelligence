@@ -1,5 +1,8 @@
 using System.Text.Json.Serialization;
 using MerchantIntelligence.CreditDecision;
+using MerchantIntelligence.Kyb;
+using MerchantIntelligence.Kyb.Registry;
+using MerchantIntelligence.Kyb.Sanctions;
 using MerchantIntelligence.MccValidation.Classification;
 using MerchantIntelligence.MccValidation.Taxonomy;
 using MerchantIntelligence.MccValidation.Validation;
@@ -54,6 +57,11 @@ if (File.Exists(mccModelPath))
     builder.Services.AddSingleton(_ => MccTextClassifier.Load(mccModelPath));
     builder.Services.AddSingleton<IMccEvidenceProvider, TextClassifierProvider>();
 }
+
+var kybOptions = builder.Configuration.GetSection("Kyb").Get<KybOptions>() ?? new KybOptions();
+var sanctionsOptions = builder.Configuration.GetSection("Sanctions").Get<SanctionsOptions>() ?? new SanctionsOptions();
+sanctionsOptions.CacheDirectory = ResolvePath(sanctionsOptions.CacheDirectory);
+builder.Services.AddMerchantKyb(kybOptions, sanctionsOptions);
 
 var app = builder.Build();
 
