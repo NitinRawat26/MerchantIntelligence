@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="PdfPig" Version="0.1.10" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MerchantIntelligence.CreditDecision\MerchantIntelligence.CreditDecision.csproj" />
+    <ProjectReference Include="..\MerchantIntelligence.MccValidation\MerchantIntelligence.MccValidation.csproj" />
+    <ProjectReference Include="..\MerchantIntelligence.Kyb\MerchantIntelligence.Kyb.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\industry-benchmarks.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="MerchantIntelligence.Tests" />
+  </ItemGroup>
+
+</Project>

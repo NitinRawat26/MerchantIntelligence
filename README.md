@@ -62,6 +62,21 @@ Sanctions lists are downloaded on first use into `Sanctions:CacheDirectory` (def
 bulk data is CC BY-NC 4.0 – commercial use requires a licence from them; the OFAC and UN
 lists are public domain.
 
+### Underwriting (`/api/underwriting`)
+
+Turns the credit model output plus the KYB signals into concrete terms an analyst can act on.
+No external services are used; industry benchmarks are embedded (`Resources/industry-benchmarks.json`).
+
+| Endpoint | What it does |
+|----------|--------------|
+| `POST explain` | Exact Shapley attribution of the credit decision over the six model features against a typical-merchant baseline, plus adverse-action reason codes (`HIGH_RISK_MCC`, `MATCH_LISTED`, `TICKET_SPREAD`, …) and a narrative |
+| `POST recommend-terms` | Risk band A–E, rolling / capped / upfront reserve (%, days, cap, steady-state balance), interchange-plus markup, fees, settlement delay and volume caps, with the factors that drove them. Accepts optional KYB risk, website-compliance and plausibility scores, delivery days, CNP share, subscriptions / free trials |
+| `POST volume-plausibility` | Checks declared annual volume / ticket sizes against industry ticket ranges, revenue-per-employee, tenure, prior-year revenue, bank-statement card deposits and catalogue size; flags e.g. `STARTUP_WITH_LARGE_VOLUME`, `DECLARED_FAR_ABOVE_STATEMENTS`, `ROUND_NUMBER_DECLARATION` |
+| `POST bank-statement` (multipart `file`) / `POST bank-statement/csv` | Parses CSV or text-based PDF bank statements → monthly inflows / outflows, card-processor settlements (Stripe, Square, PayPal, Adyen, …) and implied annual card volume, NSF / overdrafts, returned items, loan payments, payroll, owner draws, negative-balance days, volatility and seasonality |
+| `POST financial-statement` (multipart `file`) / `POST financial-statement/text` | Parses P&L / balance-sheet line items from CSV, text or PDF → gross & net margin, interest coverage, current ratio, leverage; flags `LOSS_MAKING`, `WEAK_DEBT_COVERAGE`, `ILLIQUID`, `NEGATIVE_EQUITY`, `CARD_VOLUME_EXCEEDS_REVENUE` |
+
+Scanned / image-only PDFs are not OCR'd; the parser returns a warning instead of guessing.
+
 ## Project layout
 
 ```
@@ -71,6 +86,7 @@ src/
   MerchantIntelligence.MccValidation/             # MCC catalog, SIC→MCC crosswalk, EDGAR client, scraper, classifier, providers
   MerchantIntelligence.MccValidation.DataPipeline/# Console app: downloads EDGAR data, trains models/mcc-classifier.zip
   MerchantIntelligence.Kyb/                       # Registry verification, sanctions screening, website compliance, prohibited-business taxonomy
+  MerchantIntelligence.Underwriting/              # Decision explainability, reserve/pricing recommender, volume plausibility, statement parsing
   MerchantIntelligence.Api/                       # ASP.NET Core Web API (both tools)
 web/
   mcc-validator/                                  # Angular UI for MCC validation

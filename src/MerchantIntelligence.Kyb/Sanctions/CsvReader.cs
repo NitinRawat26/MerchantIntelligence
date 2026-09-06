@@ -5,7 +5,9 @@ namespace MerchantIntelligence.Kyb.Sanctions;
 /// <summary>Minimal RFC 4180 reader (quoted fields, embedded commas/newlines, doubled quotes).</summary>
 public static class CsvReader
 {
-    public static IEnumerable<string[]> Read(TextReader reader)
+    public static IEnumerable<string[]> Read(TextReader reader) => Read(reader, ',');
+
+    public static IEnumerable<string[]> Read(TextReader reader, char delimiter)
     {
         var field = new StringBuilder();
         var row = new List<string>();
@@ -28,7 +30,7 @@ public static class CsvReader
             switch (c)
             {
                 case '"': inQuotes = true; break;
-                case ',': row.Add(field.ToString()); field.Clear(); break;
+                case var d when d == delimiter: row.Add(field.ToString()); field.Clear(); break;
                 case '\r': break;
                 case '\n':
                     row.Add(field.ToString()); field.Clear();

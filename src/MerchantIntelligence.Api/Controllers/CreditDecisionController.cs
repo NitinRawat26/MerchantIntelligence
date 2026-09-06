@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace MerchantIntelligence.Api.Controllers;
 
-public sealed class CreditDecisionRequest
+public class CreditDecisionRequest
 {
     [Range(1, 9999)] public int MerchantCategoryCode { get; set; }
     [Range(0, double.MaxValue)] public decimal AnnualVolume { get; set; }
