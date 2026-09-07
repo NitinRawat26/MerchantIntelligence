@@ -187,6 +187,8 @@ export class ModelsComponent {
       error: e => this.message.set({ ok: false, text: describeError(e) })
     });
   }
-  metrics(m: Record<string, number> | null | undefined): string { return m ? Object.entries(m).map(([k, v]) => `${k}=${Number(v).toFixed(3)}`).join('  ') : '—'; }
+  metrics(m: Record<string, unknown> | null | undefined): string {
+    return m ? Object.entries(m).filter(([, v]) => typeof v === 'number').map(([k, v]) => `${k}=${(v as number).toFixed(3)}`).join('  ') : '—';
+  }
   min100(v: number): number { return Math.min(100, v); }
 }
