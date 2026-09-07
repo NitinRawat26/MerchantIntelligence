@@ -18,31 +18,29 @@
       <form [formGroup]="form" (ngSubmit)="submit()">
         <h3><mat-icon>business</mat-icon> Business identity</h3>
         <div class="grid-4">
-          <mat-form-field appearance="outline"><mat-label>Legal name</mat-label><input matInput formControlName="legalName" required></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>Trading name / DBA</mat-label><input matInput formControlName="tradingName"></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>Registration / LEI</mat-label><input matInput formControlName="registrationNumber"></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>Tax ID</mat-label><input matInput formControlName="taxId"></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>Address</mat-label><input matInput formControlName="addressLine"></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>City</mat-label><input matInput formControlName="city"></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>Region / State</mat-label><input matInput formControlName="region"></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>Postal code</mat-label><input matInput formControlName="postalCode"></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>Country (ISO-2)</mat-label><input matInput formControlName="country" maxlength="2"></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>Website</mat-label><input matInput formControlName="websiteUrl" placeholder="https://"><mat-hint>Drives website compliance, prohibited-content and MCC checks</mat-hint></mat-form-field>
-          <mat-form-field appearance="outline" class="wide"><mat-label>Business description</mat-label><textarea matInput rows="2" formControlName="businessDescription"></textarea></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Legal name</mat-label><input matInput formControlName="legalName" required><mat-icon matSuffix class="hint" [matTooltip]="hint('legalName')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Trading name / DBA</mat-label><input matInput formControlName="tradingName"><mat-icon matSuffix class="hint" [matTooltip]="hint('tradingName')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Registration / LEI</mat-label><input matInput formControlName="registrationNumber"><mat-icon matSuffix class="hint" [matTooltip]="hint('registrationNumber')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Tax ID</mat-label><input matInput formControlName="taxId"><mat-icon matSuffix class="hint" [matTooltip]="hint('taxId')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Address</mat-label><input matInput formControlName="addressLine"><mat-icon matSuffix class="hint" [matTooltip]="hint('addressLine')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>City</mat-label><input matInput formControlName="city"><mat-icon matSuffix class="hint" [matTooltip]="hint('city')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Region / State</mat-label><input matInput formControlName="region"><mat-icon matSuffix class="hint" [matTooltip]="hint('region')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Postal code</mat-label><input matInput formControlName="postalCode"><mat-icon matSuffix class="hint" [matTooltip]="hint('postalCode')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Country (ISO-2)</mat-label><input matInput formControlName="country" maxlength="2"><mat-icon matSuffix class="hint" [matTooltip]="hint('country')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Website</mat-label><input matInput formControlName="websiteUrl" placeholder="https://"><mat-hint>Drives website compliance, prohibited-content and MCC checks</mat-hint><mat-icon matSuffix class="hint" [matTooltip]="hint('websiteUrl')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+          <mat-form-field appearance="outline" class="wide"><mat-label>Business description</mat-label><textarea matInput rows="2" formControlName="businessDescription"></textarea><mat-icon matSuffix class="hint" [matTooltip]="hint('businessDescription')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
         </div>
 
         <h3><mat-icon>groups</mat-icon> Beneficial owners &amp; principals <button mat-button type="button" (click)="addOwner()"><mat-icon>add</mat-icon> Add</button></h3>
         <div formArrayName="owners">
           @for (o of owners.controls; track o; let i = $index) {
-            <div class="grid-4 owner" [formGroupName]="i">
-              <mat-form-field appearance="outline"><mat-label>Full name</mat-label><input matInput formControlName="fullName"></mat-form-field>
-              <mat-form-field appearance="outline"><mat-label>Date of birth</mat-label><input matInput type="date" formControlName="dateOfBirth"></mat-form-field>
-              <mat-form-field appearance="outline"><mat-label>Nationality</mat-label><input matInput formControlName="nationality"></mat-form-field>
-              <div class="row">
-                <mat-form-field appearance="outline"><mat-label>Role</mat-label><input matInput formControlName="role"></mat-form-field>
-                <mat-form-field appearance="outline" class="pct"><mat-label>%</mat-label><input matInput type="number" formControlName="ownershipPercent"></mat-form-field>
-                <button mat-icon-button type="button" (click)="removeOwner(i)" aria-label="Remove owner"><mat-icon>close</mat-icon></button>
-              </div>
+            <div class="owner" [formGroupName]="i">
+              <mat-form-field appearance="outline"><mat-label>Full name</mat-label><input matInput formControlName="fullName"><mat-icon matSuffix class="hint" [matTooltip]="hint('ownerFullName')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+              <mat-form-field appearance="outline"><mat-label>Date of birth</mat-label><input matInput type="date" formControlName="dateOfBirth"><mat-icon matSuffix class="hint" [matTooltip]="hint('ownerDateOfBirth')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+              <mat-form-field appearance="outline"><mat-label>Nationality</mat-label><input matInput formControlName="nationality"><mat-icon matSuffix class="hint" [matTooltip]="hint('ownerNationality')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+              <mat-form-field appearance="outline"><mat-label>Role</mat-label><input matInput formControlName="role"><mat-icon matSuffix class="hint" [matTooltip]="hint('ownerRole')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+              <mat-form-field appearance="outline" class="pct"><mat-label>%</mat-label><input matInput type="number" formControlName="ownershipPercent"><mat-icon matSuffix class="hint" [matTooltip]="hint('ownershipPercent')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+              <button mat-icon-button type="button" (click)="removeOwner(i)" aria-label="Remove owner"><mat-icon>close</mat-icon></button>
             </div>
           }
           @if (!owners.length) { <p class="muted">No owners declared — ownership screening will be limited to the business entity.</p> }
@@ -50,32 +48,33 @@
 
         <h3><mat-icon>payments</mat-icon> Processing profile</h3>
         <div class="grid-4">
-          <mat-form-field appearance="outline"><mat-label>Declared MCC</mat-label><input matInput type="number" formControlName="merchantCategoryCode" required></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>Annual card volume</mat-label><input matInput type="number" formControlName="annualVolume" required><span matTextPrefix>$&nbsp;</span></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>Average ticket</mat-label><input matInput type="number" formControlName="averageTicket" required><span matTextPrefix>$&nbsp;</span></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>Highest ticket</mat-label><input matInput type="number" formControlName="highestTicket" required><span matTextPrefix>$&nbsp;</span></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>Delivery days</mat-label><input matInput type="number" formControlName="deliveryDays" placeholder="industry default"><mat-hint>Days between charge and fulfilment</mat-hint></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>Card-not-present share (0–1)</mat-label><input matInput type="number" step="0.05" min="0" max="1" formControlName="cardNotPresentShare"></mat-form-field>
-          <mat-checkbox class="cb" formControlName="offersSubscriptions">Subscriptions / recurring billing</mat-checkbox>
-          <mat-checkbox class="cb" formControlName="offersFreeTrials">Free trials / negative option</mat-checkbox>
-          <mat-checkbox class="cb" formControlName="existingRelationship">Existing relationship with acquirer</mat-checkbox>
+          <mat-form-field appearance="outline"><mat-label>Declared MCC</mat-label><input matInput type="number" formControlName="merchantCategoryCode" required><mat-icon matSuffix class="hint" [matTooltip]="hint('merchantCategoryCode')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Annual card volume</mat-label><input matInput type="number" formControlName="annualVolume" required><span matTextPrefix>$&nbsp;</span><mat-icon matSuffix class="hint" [matTooltip]="hint('annualVolume')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Average ticket</mat-label><input matInput type="number" formControlName="averageTicket" required><span matTextPrefix>$&nbsp;</span><mat-icon matSuffix class="hint" [matTooltip]="hint('averageTicket')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Highest ticket</mat-label><input matInput type="number" formControlName="highestTicket" required><span matTextPrefix>$&nbsp;</span><mat-icon matSuffix class="hint" [matTooltip]="hint('highestTicket')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Delivery days</mat-label><input matInput type="number" formControlName="deliveryDays" placeholder="industry default"><mat-hint>Days between charge and fulfilment</mat-hint><mat-icon matSuffix class="hint" [matTooltip]="hint('deliveryDays')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Card-not-present share (0–1)</mat-label><input matInput type="number" step="0.05" min="0" max="1" formControlName="cardNotPresentShare"><mat-icon matSuffix class="hint" [matTooltip]="hint('cardNotPresentShare')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+          <mat-checkbox class="cb" formControlName="offersSubscriptions">Subscriptions / recurring billing <mat-icon class="hint inline" [matTooltip]="hint('offersSubscriptions')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-checkbox>
+          <mat-checkbox class="cb" formControlName="offersFreeTrials">Free trials / negative option <mat-icon class="hint inline" [matTooltip]="hint('offersFreeTrials')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-checkbox>
+          <mat-checkbox class="cb" formControlName="existingRelationship">Existing relationship with acquirer <mat-icon class="hint inline" [matTooltip]="hint('existingRelationship')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-checkbox>
         </div>
 
         <h3><mat-icon>storefront</mat-icon> Size &amp; footprint <span class="muted">(volume plausibility)</span></h3>
         <div class="grid-4">
-          <mat-form-field appearance="outline"><mat-label>Employees</mat-label><input matInput type="number" formControlName="employeeCount"></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>Years in business</mat-label><input matInput type="number" step="0.5" formControlName="yearsInBusiness"></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>Prior-year revenue</mat-label><input matInput type="number" formControlName="priorYearRevenue"><span matTextPrefix>$&nbsp;</span><mat-hint>Taken from the P&amp;L when blank</mat-hint></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>Website product count</mat-label><input matInput type="number" formControlName="websiteProductCount"></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Employees</mat-label><input matInput type="number" formControlName="employeeCount"><mat-icon matSuffix class="hint" [matTooltip]="hint('employeeCount')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Years in business</mat-label><input matInput type="number" step="0.5" formControlName="yearsInBusiness"><mat-icon matSuffix class="hint" [matTooltip]="hint('yearsInBusiness')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Prior-year revenue</mat-label><input matInput type="number" formControlName="priorYearRevenue"><span matTextPrefix>$&nbsp;</span><mat-hint>Taken from the P&amp;L when blank</mat-hint><mat-icon matSuffix class="hint" [matTooltip]="hint('priorYearRevenue')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Website product count</mat-label><input matInput type="number" formControlName="websiteProductCount"><mat-icon matSuffix class="hint" [matTooltip]="hint('websiteProductCount')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
           <mat-form-field appearance="outline"><mat-label>Physical location</mat-label>
             <mat-select formControlName="hasPhysicalLocation"><mat-option value="">Unknown</mat-option><mat-option value="true">Yes</mat-option><mat-option value="false">No — online only</mat-option></mat-select>
+            <mat-icon matSuffix class="hint" [matTooltip]="hint('hasPhysicalLocation')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon>
           </mat-form-field>
         </div>
 
         <h3><mat-icon>description</mat-icon> Financial documents <span class="muted">(optional)</span></h3>
         <div class="two-col">
           <div>
-            <h4>Bank statement</h4>
+            <h4>Bank statement <mat-icon class="hint inline" [matTooltip]="hint('bankStatement')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></h4>
             <div class="row file-row">
               <button mat-stroked-button type="button" (click)="bankInput.click()"><mat-icon>upload_file</mat-icon> Upload CSV / PDF</button>
               <input #bankInput type="file" hidden accept=".csv,.txt,.pdf" (change)="onFile('bank', $event)">
@@ -86,7 +85,7 @@
             }
           </div>
           <div>
-            <h4>P&amp;L / balance sheet</h4>
+            <h4>P&amp;L / balance sheet <mat-icon class="hint inline" [matTooltip]="hint('financialStatement')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></h4>
             <div class="row file-row">
               <button mat-stroked-button type="button" (click)="finInput.click()"><mat-icon>upload_file</mat-icon> Upload CSV / TXT / PDF</button>
               <input #finInput type="file" hidden accept=".csv,.txt,.pdf" (change)="onFile('financial', $event)">
@@ -100,9 +99,9 @@
 
         <h3><mat-icon>badge</mat-icon> Case</h3>
         <div class="grid-4">
-          <mat-form-field appearance="outline"><mat-label>Analyst</mat-label><input matInput formControlName="actor" required></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>External reference</mat-label><input matInput formControlName="externalRef" placeholder="CRM / application ID"></mat-form-field>
-          <mat-checkbox class="cb" formControlName="createCase">Open a case with the result (audit trail)</mat-checkbox>
+          <mat-form-field appearance="outline"><mat-label>Analyst</mat-label><input matInput formControlName="actor" required><mat-icon matSuffix class="hint" [matTooltip]="hint('actor')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>External reference</mat-label><input matInput formControlName="externalRef" placeholder="CRM / application ID"><mat-icon matSuffix class="hint" [matTooltip]="hint('externalRef')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+          <mat-checkbox class="cb" formControlName="createCase">Open a case with the result (audit trail) <mat-icon class="hint inline" [matTooltip]="hint('createCase')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-checkbox>
         </div>
 
         <div class="actions">
