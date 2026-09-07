@@ -208,7 +208,7 @@ public sealed class AssessmentService
             verification?.EntityAgeMonths,
             !listsLoaded ? null : screening!.Flags.Any(f => f.Code == "SANCTIONS_MATCH"),
             !listsLoaded ? null : screening!.Flags.Any(f => f.Code == "PEP_MATCH"),
-            !listsLoaded ? null : screening!.Flags.Any(f => f.Code == "ADVERSE_MEDIA"),
+            !listsLoaded || !MediaChecked(screening!) ? null : screening!.Flags.Any(f => f.Code == "ADVERSE_MEDIA"),
             prohibited?.Verdict, website?.Score, plausibility?.PlausibilityScore, terms?.RiskBand,
             match?.Availability == MatchAvailability.Available ? match.Found : null, signals);
         UnifiedRiskScore? score = null;
@@ -377,6 +377,9 @@ public sealed class AssessmentService
     /// <summary>Screening against zero loaded lists is not a clear result; treat it as not run.</summary>
     private static bool ListsLoaded(ScreeningReport s) => s.Lists.Any(l => l.Error is null && l.EntityCount > 0);
 
+    /// <summary>Adverse media counts as checked only if every subject's lookup succeeded (or none was attempted).</summary>
+    private static bool MediaChecked(ScreeningReport s) => s.Subjects.All(x => x.AdverseMedia is null || x.AdverseMedia.Succeeded);
+
     private static RiskTier? KybRisk(BusinessVerificationResult? v, ScreeningReport? s, WebsiteComplianceResult? w)
     {
         if (v is not null && !RegistriesReachable(v)) v = null;
@@ -413,7 +416,7 @@ public sealed class AssessmentService
         var summary = rules.Outcome switch
         {
             RuleOutcome.Decline => $"Decline. Policy rule {rules.DecidingRule} fired on a score of {score.Score}/1000 ({score.Tier}).",
-            RuleOutcome.Approve => $"Approve. Score {score.Score}/1000 ({score.Tier}) with {score.CoveragePercent:F0}% check coverage and no blocking findings; rule {rules.DecidingRule} applies.",
+            RuleOutcome.Approve => $"Approve. Score {score.Score}/1000 ({score.Tier}) with {score.CoveragePercent:F0}% score-signal coverage and no blocking findings; rule {rules.DecidingRule} applies.",
             _ => $"Refer for manual review. Score {score.Score}/1000 ({score.Tier}); rule {rules.DecidingRule} requires an analyst decision."
         };
         if (failed > 0) summary += $" {failed} check(s) could not be completed and are counted as coverage gaps.";
@@ -469,12 +472,17 @@ public sealed class AssessmentService
                 ? $"All {s.Subjects.Count} subject(s) clear against {s.Lists.Count(l => l.Error is null)} loaded list(s) ({string.Join(", ", s.Lists.Where(l => l.Error is null).Select(l => l.ListName))})."
                 : string.Join(" ", hits.Select(h => $"{h.Subject.Name}: {h.Hits.Count} hit(s) – {string.Join("; ", h.Hits.Take(2).Select(x => $"{x.Entity.Name} [{x.Entity.ListName}] {x.Score:P0}"))}."));
             var mediaNote = s.Subjects.Select(x => x.AdverseMedia).Where(x => x is not null).ToList();
+            var mediaChecked = MediaChecked(s);
             if (mediaNote.Count > 0)
-                detail += mediaNote.All(x => x!.Succeeded)
+                detail += mediaChecked
                     ? $" Adverse media: {mediaNote.Sum(x => x!.NegativeCount)} negative of {mediaNote.Sum(x => x!.ArticleCount)} article(s)."
-                    : $" Adverse media lookup incomplete ({mediaNote.First(x => !x!.Succeeded)!.Error}).";
-            outcomes.Add(new("Sanctions / PEP / media", sanctions ? "SANCTIONS MATCH" : pep ? "PEP match" : media ? "Adverse media" : hits.Count > 0 ? "Possible match" : "Clear", detail, s.OverallRisk, true));
-            narrative.Add($"Screening: {(sanctions ? "a confirmed sanctions match was found – this is a hard stop." : hits.Count > 0 ? "possible matches need analyst disposition." : "no sanctions, PEP or adverse-media findings.")} {detail}");
+                    : $" Adverse media NOT checked ({mediaNote.First(x => !x!.Succeeded)!.Error}) – media result is unknown, not clear.";
+            var result = sanctions ? "SANCTIONS MATCH" : pep ? "PEP match" : media ? "Adverse media" : hits.Count > 0 ? "Possible match"
+                : mediaChecked ? "Clear" : "Lists clear · media unavailable";
+            var severity = !mediaChecked && s.OverallRisk == RiskTier.Low ? RiskTier.Medium : s.OverallRisk;
+            outcomes.Add(new("Sanctions / PEP / media", result, detail, severity, mediaChecked || hits.Count > 0));
+            narrative.Add($"Screening: {(sanctions ? "a confirmed sanctions match was found – this is a hard stop." : hits.Count > 0 ? "possible matches need analyst disposition." : mediaChecked ? "no sanctions, PEP or adverse-media findings." : "no sanctions or PEP list hits, but adverse media could not be checked so the media dimension remains a coverage gap.")} {detail}");
+            if (!mediaChecked) next.Add("Re-run adverse-media screening (GDELT lookup failed or was rate-limited) before final approval.");
             if (hits.Count > 0 && !sanctions) next.Add("Disposition each possible sanctions match (confirm or discount with date of birth / nationality evidence).");
             if (pep) next.Add("Apply enhanced due diligence: source of wealth and senior approval for the politically exposed person.");
         }
@@ -602,7 +610,7 @@ public sealed class AssessmentService
             .GroupBy(x => x.Code).Select(g => g.First())
             .OrderByDescending(x => x.Severity).ToList();
 
-        var headline = $"{decision.Outcome.ToUpperInvariant()} — {intake.Business.LegalName}: score {decision.Score}/1000 ({decision.Tier}), {decision.CoveragePercent:F0}% of checks covered, " +
+        var headline = $"{decision.Outcome.ToUpperInvariant()} — {intake.Business.LegalName}: score {decision.Score}/1000 ({decision.Tier}), {outcomes.Count(o => o.Covered)} of {outcomes.Count} checks covered ({decision.CoveragePercent:F0}% score-signal coverage), " +
                        $"{findings.Count(x => x.Severity == RiskTier.High)} high / {findings.Count(x => x.Severity == RiskTier.Medium)} medium finding(s).";
 
         var coverageGaps = outcomes.Where(o => !o.Covered).Select(o => $"{o.Check}: {o.Result} – {o.Detail}")

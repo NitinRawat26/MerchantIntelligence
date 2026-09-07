@@ -152,7 +152,8 @@
           <div class="headline">
             <span class="pill decision" [class]="outcomeClass(r.decision.outcome)">{{ r.decision.outcome.toUpperCase() }}</span>
             <span class="pill neutral">{{ r.decision.tier }} tier</span>
-            <span class="pill neutral">Coverage {{ r.decision.coveragePercent | number:'1.0-0' }}%</span>
+            <span class="pill neutral">Score signals {{ r.decision.coveragePercent | number:'1.0-0' }}%</span>
+            <span class="pill" [class.warn]="coveredChecks(r) < r.explainability.checkOutcomes.length" [class.neutral]="coveredChecks(r) === r.explainability.checkOutcomes.length">Checks {{ coveredChecks(r) }}/{{ r.explainability.checkOutcomes.length }} covered</span>
             <span class="pill neutral">Rules v{{ r.decision.ruleSetVersion }} · {{ r.explainability.decidingRule }}</span>
             @if (r.case; as c) { <a class="pill neutral" [routerLink]="['/cases', c.id]">Case {{ c.id }} · {{ c.status }}</a> }
           </div>

@@ -227,6 +227,7 @@ export class AssessmentComponent {
   severityClass(sev: string, covered = true): string { return covered ? `text-${sev.toLowerCase()}` : 'text-gap'; }
   outcomeCardClass(outcome: string): string { return outcomeClass(outcome); }
   abs(n: number): number { return Math.abs(n); }
+  coveredChecks(r: AssessmentResult): number { return r.explainability.checkOutcomes.filter(o => o.covered).length; }
   reasonFlags(r: AssessmentResult): Flag[] { return r.explainability.reasonCodes.map(c => ({ code: c.code, message: `${c.description} [${c.source}]`, severity: c.severity })); }
   findingFlags(r: AssessmentResult): Flag[] { return r.explainability.findings.map(f => ({ code: f.code, message: `${f.message} [${f.source}]`, severity: f.severity })); }
   statementEntries(s: Record<string, number | null | undefined>): { key: string; value: number }[] {
