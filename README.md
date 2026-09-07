@@ -106,6 +106,54 @@ One intake, every check, one decision. Collects the business, owners, website, M
 
 Each step is isolated: a failing step is recorded as a coverage gap, never as clear. If every public registry fails, or no sanctions list could be downloaded, the result is reported as *Unavailable* and excluded from the unified score rather than being read as verified/clear. MATCH stays `NotConfigured` without credentials.
 
+The complete functional specification — every intake field, each of the 13 steps (inputs, processing, outputs, how it feeds the score), decision derivation, coverage semantics, the explainability report, the PDF memo, presets and a field-to-check matrix — is in **[docs/full-assessment.md](docs/full-assessment.md)**.
+
+#### Functional flow
+
+```mermaid
+flowchart TD
+    A(["Analyst opens /assess"]) --> B["Intake form<br/>business · owners · website · MCC · volumes<br/>size &amp; footprint · statements · case options"]
+    B -->|POST /api/assessment/run/stream| C{{Orchestrator}}
+
+    subgraph KYB [Pre-boarding KYB]
+        S1[1 Identity verification<br/>GLEIF · EDGAR · Census]
+        S2["2 Sanctions / PEP / media<br/>OpenSanctions · OFAC · UN · GDELT"]
+        S3["3 Website compliance<br/>crawl · RDAP"]
+        S4["4 Prohibited / restricted"]
+        S5[5 MCC validation]
+        S6["6 MATCH / TMF<br/>NotConfigured → unknown"]
+    end
+    subgraph UW [Underwriting]
+        S7[7 Bank statement]
+        S8["8 P&amp;L / balance sheet"]
+        S9[9 Volume plausibility]
+        S10["10 Credit model + Shapley"]
+        S11["11 Reserve &amp; pricing"]
+    end
+    subgraph PLAT [Platform]
+        S12["12 Unified score 0–1000<br/>+ policy rules"]
+        S13[13 Case + audit]
+    end
+
+    C --> S1 --> S2 --> S3 --> S4 --> S5 --> S6 --> S7 --> S8 --> S9 --> S10 --> S11 --> S12 --> S13
+    S3 -. content .-> S4
+    S3 -. score .-> S11
+    S7 -. card deposits .-> S9
+    S8 -. revenue .-> S9
+    S9 -. score .-> S11
+    S6 -. matchFound .-> S10
+    KYB -. KYB risk tier .-> S11
+    KYB & UW -. signals & coverage .-> S12
+
+    S13 --> D["Decision: Approve / Refer / Decline<br/>score · tier · deciding rule · coverage"]
+    D --> E["Explainability<br/>findings · reason codes · components · gaps · hard stops · next steps"]
+    D --> F[("SQLite: assessments · cases · audit chain")]
+    E --> G[PDF memo]
+    E --> H["/assess result tabs"]
+```
+
+Solid arrows are execution order; dotted arrows are results fed forward into later steps. See [docs/full-assessment.md §2](docs/full-assessment.md#2-high-level-flow) for the annotated version.
+
 ```bash
 curl -s localhost:5292/api/assessment/run -H 'Content-Type: application/json' -d '{
   "business":{"legalName":"Shopify Inc.","country":"CA","websiteUrl":"https://www.shopify.com"},
