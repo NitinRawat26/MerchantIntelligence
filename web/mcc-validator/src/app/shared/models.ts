@@ -125,13 +125,13 @@ export interface AuditVerification { valid: boolean; eventsChecked: number; firs
 export interface WebhookSubscription { id: string; url: string; events: string[]; enabled: boolean; createdAt: string; }
 export interface WebhookDelivery { id: number; webhookId: string; event: string; attempts: number; statusCode?: number | null; error?: string | null; delivered: boolean; createdAt: string; lastAttemptAt?: string | null; }
 
-export interface RegisteredModel { version: string; path: string; role: 'Champion' | 'Challenger' | 'Retired'; metrics?: Record<string, number> | null; trainingRows?: number | null; registeredAt: string; }
+export interface RegisteredModel { version: string; path: string; role: 'Champion' | 'Challenger' | 'Retired'; metrics?: Record<string, unknown> | null; trainingRows?: number | null; registeredAt: string; }
 export interface ModelsResponse { champion: string; challenger?: string | null; registry: RegisteredModel[]; }
 export interface LoggedDecision { id: number; caseId?: string | null; modelVersion: string; application: CreditDecisionRequest; predicted: Decision; confidence: number; challengerPredicted?: Decision | null; actual?: Decision | null; scoredAt: string; }
 export interface DriftReport { referenceRows: number; recentRows: number; since?: string | null; features: { feature: string; psi: number; status: string; referenceShare: number[]; recentShare: number[] }[]; predictionDriftPsi: number; overallStatus: string; alerts: string[]; }
 export interface ModelPerformance { version: string; scored: number; withOutcome: number; accuracy?: number | null; approvalPrecision?: number | null; declineRecall?: number | null; confusion: Record<string, number>; }
 export interface ChampionChallengerReport { champion: ModelPerformance; challenger?: ModelPerformance | null; disagreements: number; recommendation: string; }
-export interface RetrainResult { version: string; path: string; metrics: Record<string, number>; labelledRows: number; syntheticRows: number; registeredAsChallenger: boolean; }
+export interface RetrainResult { version: string; path: string; metrics: Record<string, unknown>; labelledRows: number; syntheticRows: number; registeredAsChallenger: boolean; }
 
 export interface MatchInquiryRequest { legalName: string; doingBusinessAs?: string; taxId?: string; country?: string; addressLine?: string; city?: string; region?: string; postalCode?: string; principals: { firstName: string; lastName: string; dateOfBirth?: string; nationalId?: string }[]; }
 export interface MatchResult { availability: 'NotConfigured' | 'Available' | 'Error'; found?: boolean | null; hits: { matchedOn: string; reasonCode: string; reasonDescription: string; terminationDate?: string; acquirer?: string }[]; provider: string; message?: string | null; }
