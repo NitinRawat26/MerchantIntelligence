@@ -181,4 +181,5 @@ export type AssessmentEvent =
   | { type: 'steps'; steps: AssessmentStepDescriptor[] }
   | { type: 'step'; step: AssessmentStep }
   | { type: 'result'; result: AssessmentResult }
-  | { type: 'error'; error: string };
+  | { type: 'error'; error: string }
+  | { type: 'heartbeat'; at: string };
