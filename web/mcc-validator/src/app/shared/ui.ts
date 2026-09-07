@@ -44,8 +44,8 @@ export function outcomeClass(v: string | null | undefined): string {
     }
   `,
   styles: [`
-    .flag-messages { margin: 8px 0 0; padding-left: 20px; color: #444; font-size: 14px; }
-    .muted { color: #777; margin: 0; }
+    .flag-messages { margin: 10px 0 0; padding-left: 20px; color: var(--mi-text-2); font-size: 13.5px; line-height: 1.6; strong { color: var(--mi-text); font-weight: 600; } }
+    .muted { color: var(--mi-text-3); margin: 0; font-size: 13px; }
   `]
 })
 export class FlagsComponent {
@@ -67,9 +67,9 @@ export class FlagsComponent {
     </div>
   `,
   styles: [`
-    .gauge { min-width: 180px; }
-    .gauge-value { font-size: 40px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; span { font-size: 18px; color: #666; margin-left: 2px; } }
-    .gauge-label { color: #666; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; margin: 4px 0 8px; }
+    .gauge { min-width: 180px; padding: 16px 18px; border-radius: var(--mi-radius-sm); background: var(--mi-surface-2); border: 1px solid var(--mi-border); }
+    .gauge-value { font-size: 42px; font-weight: 700; line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; span { font-size: 18px; color: var(--mi-text-2); margin-left: 2px; font-weight: 500; } }
+    .gauge-label { color: var(--mi-text-2); font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; margin: 6px 0 10px; }
   `]
 })
 export class GaugeComponent {
@@ -92,7 +92,7 @@ export class GaugeComponent {
     </mat-expansion-panel>
   `,
   styles: [`
-    pre { font-size: 12px; line-height: 1.4; max-height: 420px; overflow: auto; background: #fafafa; padding: 12px; border-radius: 6px; margin: 0; }
+    pre { font-family: var(--mi-mono); font-size: 12px; line-height: 1.5; max-height: 420px; overflow: auto; background: #0f172a; color: #e2e8f0; padding: 14px 16px; border-radius: var(--mi-radius-sm); margin: 0; }
   `]
 })
 export class JsonViewComponent {
@@ -115,9 +115,9 @@ export class JsonViewComponent {
     }
   `,
   styles: [`
-    .status { display: flex; flex-direction: column; gap: 8px; padding: 12px 16px; border-radius: 8px; background: #fff; border: 1px solid #e0e0e0; }
-    .status.error { flex-direction: row; align-items: center; color: #b3261e; border-color: #b3261e; }
-    .status.loading span { color: #555; font-size: 14px; }
+    .status { display: flex; flex-direction: column; gap: 10px; padding: 14px 18px; border-radius: var(--mi-radius-sm); background: var(--mi-surface); border: 1px solid var(--mi-border); box-shadow: var(--mi-shadow); }
+    .status.error { flex-direction: row; align-items: center; gap: 10px; color: var(--mi-bad); background: var(--mi-bad-soft); border-color: rgba(185, 28, 28, 0.25); font-weight: 500; }
+    .status.loading span { color: var(--mi-text-2); font-size: 13.5px; }
   `]
 })
 export class StatusComponent {
