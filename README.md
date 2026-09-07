@@ -3,6 +3,8 @@
 
 A suite of tools for merchant acquiring pre-checks and credit checks, built in C# / .NET 8.
 
+#### Working [Merchant Intel](https://merchant-intelligence-3gtq.onrender.com/assess)
+
 #### Functional flow
 
 ```mermaid
