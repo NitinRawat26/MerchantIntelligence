@@ -90,6 +90,14 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
 
+var spaRoot = Path.Combine(app.Environment.WebRootPath ?? Path.Combine(AppContext.BaseDirectory, "wwwroot"), "index.html");
+if (File.Exists(spaRoot))
+{
+    app.UseDefaultFiles();
+    app.UseStaticFiles();
+    app.MapFallbackToFile("{*path:regex(^(?!api/|swagger).*$):nonfile}", "index.html");
+}
+
 if (!File.Exists(mccModelPath))
 {
     app.Logger.LogWarning("MCC classifier not found at {Path}; running without the ML text classifier provider.", mccModelPath);
