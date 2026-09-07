@@ -1,7 +1,9 @@
 import { Routes } from '@angular/router';
 
 export const routes: Routes = [
-  { path: '', pathMatch: 'full', redirectTo: 'score' },
+  { path: '', pathMatch: 'full', redirectTo: 'assess' },
+  { path: 'assess', title: 'Full Assessment', loadComponent: () => import('./features/assessment/assessment.component').then(m => m.AssessmentComponent) },
+  { path: 'assess/:id', title: 'Assessment', loadComponent: () => import('./features/assessment/assessment.component').then(m => m.AssessmentComponent) },
   { path: 'score', title: 'Risk Score', loadComponent: () => import('./features/platform/score.component').then(m => m.ScoreComponent) },
   { path: 'kyb', title: 'KYB', loadComponent: () => import('./features/kyb/kyb.component').then(m => m.KybComponent) },
   { path: 'underwriting', title: 'Underwriting', loadComponent: () => import('./features/underwriting/underwriting.component').then(m => m.UnderwritingComponent) },
@@ -13,5 +15,5 @@ export const routes: Routes = [
   { path: 'models', title: 'Model Ops', loadComponent: () => import('./features/platform/models.component').then(m => m.ModelsComponent) },
   { path: 'match', title: 'MATCH', loadComponent: () => import('./features/platform/match.component').then(m => m.MatchComponent) },
   { path: 'webhooks', title: 'Webhooks', loadComponent: () => import('./features/platform/webhooks.component').then(m => m.WebhooksComponent) },
-  { path: '**', redirectTo: 'score' }
+  { path: '**', redirectTo: 'assess' }
 ];

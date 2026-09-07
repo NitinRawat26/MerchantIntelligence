@@ -6,7 +6,8 @@ import {
   AuditEvent, AuditVerification, CaseNote, CaseQueueStats, CaseStatus, CashFlowAnalysis, ChampionChallengerReport, DecisionExplanation,
   DriftReport, ExplainRequest, FinancialStatementAnalysis, FullKybRequest, KybReport, LoggedDecision, MatchInquiryRequest, MatchResult,
   MerchantCase, ModelsResponse, RegisteredModel, RetrainResult, RuleSet, RuleSetVersion, RulesEvaluation, TermsRecommendation, TermsRequest,
-  UnifiedScoreRequest, UnifiedScoreResponse, VolumePlausibilityRequest, VolumePlausibilityResult, WebhookDelivery, WebhookSubscription, Decision, CasePriority, RuleOutcome
+  UnifiedScoreRequest, UnifiedScoreResponse, VolumePlausibilityRequest, VolumePlausibilityResult, WebhookDelivery, WebhookSubscription, Decision, CasePriority, RuleOutcome,
+  AssessmentEvent, AssessmentListItem, AssessmentRequest, AssessmentResult, AssessmentStepDescriptor
 } from './models';
 
 /** Flattens ASP.NET ProblemDetails / validation errors and our `{ error }` bodies into one line. */
@@ -101,4 +102,68 @@ export class SuiteApiService {
   matchInquiry(req: MatchInquiryRequest): Observable<MatchResult> { return this.http.post<MatchResult>(`${this.base}/platform/match/inquiry`, req); }
 
   private form(file: File): FormData { const f = new FormData(); f.append('file', file, file.name); return f; }
+
+  // Full assessment
+  assessmentSteps(): Observable<AssessmentStepDescriptor[]> { return this.http.get<AssessmentStepDescriptor[]>(`${this.base}/assessment/steps`); }
+  assessments(limit = 50): Observable<AssessmentListItem[]> { return this.http.get<AssessmentListItem[]>(`${this.base}/assessment`, { params: new HttpParams().set('limit', limit) }); }
+  assessment(id: string): Observable<AssessmentResult> { return this.http.get<AssessmentResult>(`${this.base}/assessment/${encodeURIComponent(id)}`); }
+  assessmentPdfUrl(id: string): string { return `${this.base}/assessment/${encodeURIComponent(id)}/pdf`; }
+
+  /**
+   * Runs the full assessment and emits one event per check as the server streams NDJSON progress, ending with the
+   * complete result. Uses fetch because HttpClient buffers the whole response.
+   */
+  runAssessment(req: AssessmentRequest, files: { bankStatement?: File | null; financialStatement?: File | null } = {}): Observable<AssessmentEvent> {
+    return new Observable<AssessmentEvent>(subscriber => {
+      const controller = new AbortController();
+      let body: BodyInit;
+      const headers: Record<string, string> = { Accept: 'application/x-ndjson' };
+      if (files.bankStatement || files.financialStatement) {
+        const form = new FormData();
+        form.append('request', JSON.stringify(req));
+        if (files.bankStatement) form.append('bankStatement', files.bankStatement, files.bankStatement.name);
+        if (files.financialStatement) form.append('financialStatement', files.financialStatement, files.financialStatement.name);
+        body = form;
+      } else {
+        body = JSON.stringify(req);
+        headers['Content-Type'] = 'application/json';
+      }
+
+      (async () => {
+        const res = await fetch(`${this.base}/assessment/run/stream`, { method: 'POST', body, headers, signal: controller.signal });
+        if (!res.ok || !res.body) {
+          const text = await res.text();
+          let message = `${res.status} ${res.statusText}`;
+          try {
+            const parsed = JSON.parse(text);
+            if (parsed?.errors) message = Object.values(parsed.errors as Record<string, string[]>).flat().join(' ');
+            else if (parsed?.detail) message = parsed.detail;
+            else if (parsed?.title) message = parsed.title;
+          } catch { if (text) message = text; }
+          throw new Error(message);
+        }
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        for (;;) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          let nl: number;
+          while ((nl = buffer.indexOf('\n')) >= 0) {
+            const line = buffer.slice(0, nl).trim();
+            buffer = buffer.slice(nl + 1);
+            if (line) subscriber.next(JSON.parse(line) as AssessmentEvent);
+          }
+        }
+        if (buffer.trim()) subscriber.next(JSON.parse(buffer) as AssessmentEvent);
+        subscriber.complete();
+      })().catch(err => {
+        if (controller.signal.aborted) return;
+        subscriber.error(err instanceof Error ? err : new Error(String(err)));
+      });
+
+      return () => controller.abort();
+    });
+  }
 }

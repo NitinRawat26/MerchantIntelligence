@@ -135,3 +135,50 @@ export interface RetrainResult { version: string; path: string; metrics: Record<
 
 export interface MatchInquiryRequest { legalName: string; doingBusinessAs?: string; taxId?: string; country?: string; addressLine?: string; city?: string; region?: string; postalCode?: string; principals: { firstName: string; lastName: string; dateOfBirth?: string; nationalId?: string }[]; }
 export interface MatchResult { availability: 'NotConfigured' | 'Available' | 'Error'; found?: boolean | null; hits: { matchedOn: string; reasonCode: string; reasonDescription: string; terminationDate?: string; acquirer?: string }[]; provider: string; message?: string | null; }
+
+// ---- Full assessment -----------------------------------------------------------
+
+export interface AssessmentRequest {
+  business: BusinessIdentityRequest; owners: BeneficialOwnerRequest[]; businessDescription?: string;
+  merchantCategoryCode: number; annualVolume: number; averageTicket: number; highestTicket: number; existingRelationship: boolean;
+  deliveryDays?: number | null; cardNotPresentShare: number; offersSubscriptions: boolean; offersFreeTrials: boolean;
+  employeeCount?: number | null; yearsInBusiness?: number | null; priorYearRevenue?: number | null; websiteProductCount?: number | null; hasPhysicalLocation?: boolean | null;
+  bankStatementCsv?: string | null; financialStatementText?: string | null; externalRef?: string | null; actor: string; createCase: boolean;
+}
+export type StepStatus = 'Pending' | 'Running' | 'Succeeded' | 'Failed' | 'Skipped';
+export interface AssessmentStepDescriptor { id: string; name: string; }
+export interface AssessmentStep { id: string; name: string; status: StepStatus; summary: string; durationMs: number; error?: string | null; }
+export interface CheckOutcome { check: string; result: string; detail: string; severity: RiskTier; covered: boolean; }
+export interface ExplanationItem { section: string; code: string; message: string; severity: RiskTier; source: string; }
+export interface AssessmentExplainability {
+  headline: string; narrative: string[]; checkOutcomes: CheckOutcome[]; findings: ExplanationItem[];
+  scoreComponents: UnifiedRiskScore['components']; reasonCodes: UnifiedRiskScore['reasonCodes']; creditContributions: DecisionExplanation['contributions'];
+  matchedRules: RulesEvaluation['matchedRules']; decidingRule?: string | null; coverageGaps: string[]; hardStops: string[]; analystNextSteps: string[];
+}
+export interface AssessmentDecision { outcome: RuleOutcome; score: number; tier: string; coveragePercent: number; ruleSetVersion: string; summary: string; }
+export interface AssessmentIntakeSummary {
+  business: BusinessIdentityRequest & { fullAddress?: string }; owners: BeneficialOwnerRequest[]; businessDescription?: string | null; merchantCategoryCode: number;
+  annualVolume: number; averageTicket: number; highestTicket: number; existingRelationship: boolean; deliveryDays?: number | null; cardNotPresentShare: number;
+  offersSubscriptions: boolean; offersFreeTrials: boolean; employeeCount?: number | null; yearsInBusiness?: number | null; priorYearRevenue?: number | null;
+  websiteProductCount?: number | null; hasPhysicalLocation?: boolean | null; bankStatementSource?: string | null; financialStatementSource?: string | null; externalRef?: string | null; actor: string;
+}
+export interface MccValidationSummary {
+  declaredMcc: number; declaredDescription: string; declaredRiskTier: RiskTier; websiteUrl: string; verdict: 'Consistent' | 'Questionable' | 'Inconsistent' | 'Insufficient';
+  accuracyPercent: number; suggestedMccs: { mcc: number; description: string; score: number; riskTier: RiskTier; matchedKeywords?: string[] }[];
+  riskFlags: Flag[]; evidence: { provider: string; succeeded: boolean; error?: string | null; [k: string]: unknown }[]; pagesAnalyzed: string[];
+}
+export interface AssessmentResult {
+  id: string; startedAt: string; completedAt: string; intake: AssessmentIntakeSummary; steps: AssessmentStep[];
+  decision: AssessmentDecision; explainability: AssessmentExplainability;
+  verification?: BusinessVerificationResult | null; screening?: ScreeningReport | null; websiteCompliance?: WebsiteComplianceResult | null;
+  prohibitedBusiness?: ProhibitedBusinessResult | null; mccValidation?: MccValidationSummary | null; match?: MatchResult | null;
+  bankStatement?: CashFlowAnalysis | null; financialStatement?: FinancialStatementAnalysis | null; volumePlausibility?: VolumePlausibilityResult | null;
+  creditDecision?: DecisionResult | null; creditExplanation?: DecisionExplanation | null; terms?: TermsRecommendation | null;
+  unifiedScore?: UnifiedRiskScore | null; rules?: RulesEvaluation | null; case?: MerchantCase | null; decisionLogId?: number | null;
+}
+export interface AssessmentListItem { id: string; merchantName: string; outcome: RuleOutcome; score: number; tier: string; coveragePercent: number; caseId?: string | null; completedAt: string; }
+export type AssessmentEvent =
+  | { type: 'steps'; steps: AssessmentStepDescriptor[] }
+  | { type: 'step'; step: AssessmentStep }
+  | { type: 'result'; result: AssessmentResult }
+  | { type: 'error'; error: string };

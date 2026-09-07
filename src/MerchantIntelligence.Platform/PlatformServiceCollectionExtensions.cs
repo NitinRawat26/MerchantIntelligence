@@ -1,4 +1,5 @@
 using MerchantIntelligence.CreditDecision;
+using MerchantIntelligence.Platform.Assessment;
 using MerchantIntelligence.Platform.Cases;
 using MerchantIntelligence.Platform.Integrations;
 using MerchantIntelligence.Platform.ModelOps;
@@ -38,6 +39,7 @@ public static class PlatformServiceCollectionExtensions
             sp.GetRequiredService<WebhookDispatcher>(), options, bootstrapPredictor(sp), bootstrapModelPath));
         services.AddSingleton<IDecisionPredictor>(sp => sp.GetRequiredService<ModelRegistry>());
         services.AddSingleton<ModelOpsService>();
+        services.AddSingleton<AssessmentService>();
 
         services.AddHttpClient(HttpMatchProvider.HttpClientName, c => c.Timeout = TimeSpan.FromSeconds(15));
         if (!string.IsNullOrWhiteSpace(matchOptions.Endpoint))

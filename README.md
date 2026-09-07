@@ -92,6 +92,29 @@ State lives in a local SQLite file (`Platform:DatabasePath`, default `data/platf
 | Model ops | `GET models`, `GET models/decisions`, `POST models/decisions/{id}/outcome`, `GET models/drift`, `GET models/compare`, `POST models/retrain`, `POST models/promote` | Every prediction is logged (champion + shadow challenger). Record realised outcomes, get PSI drift per feature and on the prediction mix, compare champion vs challenger accuracy, retrain on labelled decisions topped up with synthetic rows, and promote without a restart |
 | MATCH boundary | `POST match/inquiry` | Mastercard MATCH requires acquirer credentials, so by default this returns `availability: NotConfigured` / `found: null` (unknown, never "clear"). Point `Match:Endpoint` at a MATCH-compatible service or `Match:LocalListPath` at your own terminated-merchant CSV to get real hits |
 
+### Full assessment (`/api/assessment`, UI `/assess`)
+
+One intake, every check, one decision. Collects the business, owners, website, MCC, declared volumes and optional statements once, then runs the checks in order — verification → screening → website → prohibited/restricted → MCC → MATCH → bank statement → P&L → volume plausibility → credit model + explainability → terms → unified score + rules → case — and returns a persisted result with a detailed explainability report and a PDF.
+
+| Endpoint | What it does |
+|----------|--------------|
+| `GET steps` | Ordered step catalogue (id + display name) |
+| `POST run` | Runs everything, returns the `AssessmentResult`. Body is JSON, or `multipart/form-data` with a `request` JSON part plus optional `bankStatement` (CSV/PDF) and `financialStatement` (text/PDF) files |
+| `POST run/stream` | Same input; responds with newline-delimited JSON: `{"type":"steps"}` once, `{"type":"step"}` per status change (Pending/Running/Succeeded/Failed/Skipped), then `{"type":"result"}` |
+| `GET`, `GET {id}` | History and stored results |
+| `GET {id}/pdf` | Full underwriting report (decision, intake, check outcomes, score components, reason codes, model contributions, rules, narrative, findings, terms, analyst actions, execution log, source limitations) |
+
+Each step is isolated: a failing step is recorded as a coverage gap, never as clear. If every public registry fails, or no sanctions list could be downloaded, the result is reported as *Unavailable* and excluded from the unified score rather than being read as verified/clear. MATCH stays `NotConfigured` without credentials.
+
+```bash
+curl -s localhost:5292/api/assessment/run -H 'Content-Type: application/json' -d '{
+  "business":{"legalName":"Shopify Inc.","country":"CA","websiteUrl":"https://www.shopify.com"},
+  "owners":[{"fullName":"Tobias Lutke"}],
+  "businessDescription":"E-commerce platform","merchantCategoryCode":5734,
+  "annualVolume":1000000,"averageTicket":50,"highestTicket":500}' | jq .decision
+curl -s localhost:5292/api/assessment/ASMT-.../pdf -o report.pdf
+```
+
 ## Project layout
 
 ```
@@ -219,6 +242,7 @@ call the .NET API through the `/api` dev proxy (`proxy.conf.json` → `http://lo
 
 | Route | Page |
 |-------|------|
+| `/assess`, `/assess/:id` | Full assessment (default page): one intake form (business, owners, website, MCC, volumes, statements/uploads), live step-by-step run, decision card, tabbed explainability report (identity & screening, website/MCC/business type, financials & plausibility, terms, run log), PDF download and recent-assessment history |
 | `/score` | Unified risk score: enter credit application + upstream KYB/screening/website/plausibility signals, see score, tier, coverage gaps, hard stops, reason codes, matched rules; optionally open a case |
 | `/kyb` | KYB & screening: business identity, beneficial owners, registry sources, sanctions/PEP/adverse media, website compliance checks, prohibited-business verdict |
 | `/underwriting` | Explainability (Shapley bars + reason codes), reserve & pricing terms, volume plausibility, bank-statement CSV/PDF and P&L analysis |
