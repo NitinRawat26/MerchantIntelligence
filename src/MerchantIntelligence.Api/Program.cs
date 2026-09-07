@@ -95,7 +95,7 @@ if (File.Exists(spaRoot))
 {
     app.UseDefaultFiles();
     app.UseStaticFiles();
-    app.MapFallbackToFile("{*path:regex(^(?!api/|swagger).*$)}", "index.html");
+    app.MapFallbackToFile("{*path:regex(^(?!api/|swagger).*$):nonfile}", "index.html");
 }
 
 if (!File.Exists(mccModelPath))
