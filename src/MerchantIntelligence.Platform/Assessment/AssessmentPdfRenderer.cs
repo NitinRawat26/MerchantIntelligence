@@ -71,7 +71,7 @@ public static class AssessmentPdfRenderer
                         ("Analyst", r.Intake.Actor),
                         ("Case", r.Case is null ? "not created" : $"{r.Case.Id} ({r.Case.Status}, {r.Case.Priority})"),
                         ("Rule set", $"v{r.Decision.RuleSetVersion}" + (r.Explainability.DecidingRule is { } d ? $" · deciding rule {d}" : "")),
-                        ("Coverage", $"{r.Decision.CoveragePercent:F0}% of checks produced a signal")
+                        ("Coverage", $"{r.Explainability.CheckOutcomes.Count(o => o.Covered)} of {r.Explainability.CheckOutcomes.Count} checks covered · {r.Decision.CoveragePercent:F0}% score-signal coverage")
                     });
 
                     KeyValues(col, "Merchant intake", new (string, string)[]
