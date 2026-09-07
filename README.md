@@ -305,6 +305,31 @@ call the .NET API through the `/api` dev proxy (`proxy.conf.json` → `http://lo
 
 Unit tests run headless with `CHROME_BIN=<chrome> npx ng test --watch=false --browsers=ChromeHeadless`.
 
+## Deploying (Docker / Render free tier)
+
+The `Dockerfile` builds the Angular app and the API into one image; the API serves the SPA from
+`wwwroot` (any non-`/api`, non-`/swagger` route falls back to `index.html`) and listens on `$PORT`
+(default 8080).
+
+```bash
+docker build -t merchant-intelligence .
+docker run --rm -p 8080:8080 merchant-intelligence   # http://localhost:8080  (UI, /swagger, /health)
+```
+
+`render.yaml` is a [Render Blueprint](https://render.com/docs/infrastructure-as-code): in the Render
+dashboard choose **New → Blueprint**, pick this repository, and Render creates a free Docker web
+service that redeploys on every push to `raw-zero`. Free-tier caveats:
+
+- the instance sleeps after ~15 minutes idle; the first request afterwards takes 30–60 s (cold start);
+- there is no persistent disk, so the SQLite platform DB (`Platform__DatabasePath`) and the sanctions
+  cache reset on each deploy/restart — attach a Render disk (paid) or point the platform store at an
+  external database for durable cases/audit;
+- 512 MB RAM; the image idles at ~50 MB and ~170 MB with the MCC classifier loaded.
+
+Configuration is via `Section__Key` environment variables (see `render.yaml` for the defaults), e.g.
+`Cors__AllowedOrigins__0` if the UI is hosted on another origin, `Kyb__OpenCorporatesApiToken`,
+`Kyb__CompaniesHouseApiKey`.
+
 ## Training data
 
 No real underwriting history is included. `SyntheticDataGenerator` produces labelled
