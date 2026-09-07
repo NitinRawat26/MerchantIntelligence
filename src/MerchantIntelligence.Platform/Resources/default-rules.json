@@ -1,0 +1,18 @@
+{
+  "version": "1.0",
+  "description": "Default onboarding policy. Rules are evaluated in priority order (lower first); the most severe matched outcome wins. Facts come from the unified risk score plus raw application fields.",
+  "defaultOutcome": "Refer",
+  "rules": [
+    { "id": "HARD_STOP_SANCTIONS", "priority": 1, "outcome": "Decline", "description": "Sanctions hit is never approvable", "when": { "fact": "hardStops", "op": "contains", "value": "SANCTIONS_MATCH" } },
+    { "id": "HARD_STOP_PROHIBITED", "priority": 1, "outcome": "Decline", "description": "Prohibited business type", "when": { "fact": "hardStops", "op": "contains", "value": "PROHIBITED_BUSINESS" } },
+    { "id": "HARD_STOP_MATCH", "priority": 1, "outcome": "Decline", "description": "MATCH-listed merchants are declined unless an analyst overrides", "when": { "fact": "matchFound", "op": "eq", "value": true } },
+    { "id": "LOW_SCORE_DECLINE", "priority": 10, "outcome": "Decline", "description": "Unified score below floor", "when": { "fact": "score", "op": "lt", "value": 250 } },
+    { "id": "HIGH_SEVERITY_REFER", "priority": 20, "outcome": "Refer", "description": "Any high-severity reason code needs an analyst", "when": { "fact": "highSeverityReasons", "op": "gt", "value": 0 } },
+    { "id": "LARGE_VOLUME_REFER", "priority": 20, "outcome": "Refer", "description": "Annual volume above auto-approve limit", "when": { "fact": "annualVolume", "op": "gt", "value": 5000000 } },
+    { "id": "HIGH_TICKET_REFER", "priority": 20, "outcome": "Refer", "description": "Highest ticket above auto-approve limit", "when": { "fact": "highestTicket", "op": "gt", "value": 10000 } },
+    { "id": "LOW_COVERAGE_REFER", "priority": 25, "outcome": "Refer", "description": "Too few checks completed to auto-decide", "when": { "fact": "coveragePercent", "op": "lt", "value": 60 } },
+    { "id": "PEP_EDD", "priority": 30, "outcome": "Refer", "description": "PEP requires enhanced due diligence sign-off", "when": { "fact": "reasonCodes", "op": "contains", "value": "PEP_MATCH" } },
+    { "id": "NEW_ENTITY_HIGH_VOLUME", "priority": 30, "outcome": "Refer", "description": "Entity under 12 months with volume over 1M", "when": { "all": [ { "fact": "reasonCodes", "op": "contains", "value": "NEW_ENTITY" }, { "fact": "annualVolume", "op": "gt", "value": 1000000 } ] } },
+    { "id": "AUTO_APPROVE", "priority": 100, "outcome": "Approve", "description": "Strong score, adequate coverage, no high-severity findings", "when": { "all": [ { "fact": "score", "op": "gte", "value": 650 }, { "fact": "coveragePercent", "op": "gte", "value": 60 }, { "fact": "highSeverityReasons", "op": "eq", "value": 0 } ] } }
+  ]
+}

@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\models\credit-decision.zip" Link="models\credit-decision.zip" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\models\credit-decision.zip')" />
+    <None Include="..\..\models\mcc-classifier.zip" Link="models\mcc-classifier.zip" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\models\mcc-classifier.zip')" />
+    <None Include="..\..\models\filer-domains.json" Link="models\filer-domains.json" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\models\filer-domains.json')" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MerchantIntelligence.CreditDecision\MerchantIntelligence.CreditDecision.csproj" />
+    <ProjectReference Include="..\MerchantIntelligence.MccValidation\MerchantIntelligence.MccValidation.csproj" />
+    <ProjectReference Include="..\MerchantIntelligence.Kyb\MerchantIntelligence.Kyb.csproj" />
+    <ProjectReference Include="..\MerchantIntelligence.Underwriting\MerchantIntelligence.Underwriting.csproj" />
+    <ProjectReference Include="..\MerchantIntelligence.Platform\MerchantIntelligence.Platform.csproj" />
+  </ItemGroup>
+
+</Project>

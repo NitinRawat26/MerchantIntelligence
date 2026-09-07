@@ -1,0 +1,186 @@
+[
+  {
+    "code": "CBD_CANNABIS",
+    "name": "CBD / cannabis / hemp products",
+    "policy": "Restricted",
+    "mccs": [5912, 5122, 5499, 5999],
+    "keywords": ["cbd", "cannabidiol", "hemp oil", "hemp-derived", "thc", "delta-8", "delta 8", "delta-9", "cannabis", "marijuana", "dispensary", "edibles", "pre-roll", "tincture", "full spectrum"],
+    "notes": "Legal status varies by state/country; card brands require registration and often a dedicated MCC."
+  },
+  {
+    "code": "CRYPTO",
+    "name": "Cryptocurrency exchange / wallet / NFT",
+    "policy": "Restricted",
+    "mccs": [6051, 6211],
+    "keywords": ["cryptocurrency", "crypto exchange", "bitcoin", "ethereum", "buy crypto", "nft", "defi", "stablecoin", "token sale", "ico", "altcoin", "mining rig", "wallet app"],
+    "notes": "Visa/Mastercard require MCC 6051 and quasi-cash treatment for crypto purchases."
+  },
+  {
+    "code": "ADULT",
+    "name": "Adult content and services",
+    "policy": "Prohibited",
+    "mccs": [5967, 7273, 7841],
+    "keywords": ["adult content", "xxx", "porn", "pornography", "escort", "webcam", "cam girls", "onlyfans", "18+", "sex toys", "adult toys", "strip club", "erotic", "nude"],
+    "notes": "Typically prohibited outside specialist high-risk acquirers; MCC 5967 requires registration."
+  },
+  {
+    "code": "FIREARMS",
+    "name": "Firearms, ammunition and weapons",
+    "policy": "Restricted",
+    "mccs": [5941, 5999],
+    "keywords": ["firearm", "firearms", "handgun", "pistol", "rifle", "shotgun", "ammunition", "ammo", "ar-15", "ar15", "glock", "silencer", "suppressor", "gun store", "ffl", "body armor", "tactical knives", "stun gun", "taser", "brass knuckles"],
+    "notes": "Requires FFL verification; many acquirers prohibit online sales."
+  },
+  {
+    "code": "NUTRACEUTICALS",
+    "name": "Nutraceuticals, supplements and free-trial offers",
+    "policy": "HighRisk",
+    "mccs": [5499, 5912, 5122, 5999],
+    "keywords": ["nutraceutical", "supplement", "supplements", "weight loss", "fat burner", "keto pills", "testosterone booster", "male enhancement", "anti-aging", "detox", "free trial", "risk free trial", "just pay shipping", "trial offer", "muscle builder", "nootropic", "skin cream trial"],
+    "notes": "Historically high chargeback ratios from negative-option billing."
+  },
+  {
+    "code": "MLM",
+    "name": "Multi-level marketing / pyramid schemes",
+    "policy": "HighRisk",
+    "mccs": [5963, 7399],
+    "keywords": ["multi-level marketing", "mlm", "network marketing", "downline", "upline", "join my team", "become a distributor", "residual income", "passive income opportunity", "recruit", "compensation plan", "binary plan", "matrix plan"],
+    "notes": "Card brands scrutinise recruitment-based compensation."
+  },
+  {
+    "code": "GAMBLING",
+    "name": "Gambling, betting, lotteries and skill games",
+    "policy": "Restricted",
+    "mccs": [7995, 7801, 7802, 7800],
+    "keywords": ["casino", "online casino", "sportsbook", "sports betting", "poker", "slots", "roulette", "blackjack", "lottery", "bingo", "wager", "betting odds", "fantasy sports", "sweepstakes", "jackpot", "daily fantasy"],
+    "notes": "Requires MCC 7995 and licensing in every operating jurisdiction."
+  },
+  {
+    "code": "TOBACCO_VAPE",
+    "name": "Tobacco, e-cigarettes and vaping",
+    "policy": "Restricted",
+    "mccs": [5993, 5194],
+    "keywords": ["tobacco", "cigarette", "cigarettes", "cigar", "cigars", "vape", "vaping", "e-cigarette", "e-liquid", "e-juice", "nicotine", "hookah", "shisha", "juul", "disposable vape", "nicotine pouch"],
+    "notes": "Age verification required; US PACT Act restricts online shipping."
+  },
+  {
+    "code": "ONLINE_PHARMACY",
+    "name": "Online pharmacy / prescription drugs",
+    "policy": "Restricted",
+    "mccs": [5912, 5122],
+    "keywords": ["online pharmacy", "prescription", "prescriptions", "buy viagra", "cialis", "no prescription", "without prescription", "generic drugs", "rx online", "ozempic", "semaglutide", "tramadol", "xanax", "adderall", "modafinil", "telehealth prescription"],
+    "notes": "Requires VIPPS / LegitScript or equivalent certification."
+  },
+  {
+    "code": "DEBT_COLLECTION",
+    "name": "Debt collection and credit repair",
+    "policy": "HighRisk",
+    "mccs": [7322, 7321, 6051],
+    "keywords": ["debt collection", "collection agency", "credit repair", "fix your credit", "remove negative items", "debt settlement", "debt relief", "debt consolidation", "credit counseling", "student loan forgiveness"],
+    "notes": "Regulated under FDCPA/CROA; high complaint volumes."
+  },
+  {
+    "code": "PAYDAY_LOANS",
+    "name": "Payday, short-term and high-interest lending",
+    "policy": "Prohibited",
+    "mccs": [6012, 6051, 6050],
+    "keywords": ["payday loan", "payday loans", "cash advance", "short-term loan", "title loan", "instant loan", "no credit check loan", "bad credit loan", "same day loan", "loan approval in minutes"],
+    "notes": "Prohibited by most acquirers; heavy regulatory scrutiny."
+  },
+  {
+    "code": "FOREX_BINARY",
+    "name": "Forex, binary options, CFDs and investment schemes",
+    "policy": "Prohibited",
+    "mccs": [6211, 6051],
+    "keywords": ["forex", "fx trading", "binary options", "cfd", "cfds", "leverage trading", "guaranteed returns", "trading signals", "copy trading", "managed account", "high yield investment", "hyip", "doubling your money"],
+    "notes": "Visa/Mastercard treat as high-brand-risk; many jurisdictions prohibit binary options."
+  },
+  {
+    "code": "TRAVEL_TIMESHARE",
+    "name": "Travel, timeshares and vacation clubs",
+    "policy": "HighRisk",
+    "mccs": [4722, 7012, 7011, 3000],
+    "keywords": ["timeshare", "vacation club", "travel club", "timeshare exit", "timeshare resale", "vacation package", "charter flights", "tour operator", "all-inclusive package", "future delivery"],
+    "notes": "Long delivery windows create credit exposure for the acquirer."
+  },
+  {
+    "code": "TELEMARKETING",
+    "name": "Telemarketing, inbound/outbound call sales",
+    "policy": "HighRisk",
+    "mccs": [5966, 5967, 5968, 5969, 4816],
+    "keywords": ["telemarketing", "call center sales", "outbound sales calls", "inbound telemarketing", "direct response", "infomercial", "as seen on tv", "continuity program", "subscription box", "recurring billing", "negative option"],
+    "notes": "MCC 5966/5967 require card brand registration."
+  },
+  {
+    "code": "PSYCHIC",
+    "name": "Psychic, astrology and fortune telling",
+    "policy": "HighRisk",
+    "mccs": [7999, 7299],
+    "keywords": ["psychic", "psychic reading", "tarot", "astrology", "horoscope reading", "fortune telling", "clairvoyant", "medium reading", "love spell", "spiritual healer"],
+    "notes": "High dispute rates; often prohibited."
+  },
+  {
+    "code": "ESSAY_MILLS",
+    "name": "Essay writing and academic cheating services",
+    "policy": "Prohibited",
+    "mccs": [8299, 7399],
+    "keywords": ["essay writing service", "write my essay", "buy essay", "dissertation writing", "homework help paid", "assignment writing", "take my online class", "exam taking service", "ghostwriting academic"],
+    "notes": "Illegal in several jurisdictions (UK, Australia, several US states)."
+  },
+  {
+    "code": "DRUG_PARAPHERNALIA",
+    "name": "Drug paraphernalia and legal highs",
+    "policy": "Prohibited",
+    "mccs": [5999, 5993],
+    "keywords": ["bong", "bongs", "dab rig", "grinder for herbs", "rolling papers", "kratom", "kava", "salvia", "spice", "k2", "research chemicals", "poppers", "nitrous", "whippets", "legal highs", "smoke shop", "head shop"],
+    "notes": "Kratom and research chemicals are prohibited by most card brands."
+  },
+  {
+    "code": "COUNTERFEIT_IP",
+    "name": "Counterfeit goods, replicas and IP infringement",
+    "policy": "Prohibited",
+    "mccs": [5699, 5948, 5944, 5945],
+    "keywords": ["replica", "replicas", "knock-off", "knockoff", "counterfeit", "aaa quality", "mirror quality", "1:1 quality", "super fake", "unbranded designer", "inspired by gucci", "fake id", "iptv subscription", "cracked software", "license keys cheap", "streaming unlimited channels"],
+    "notes": "Brand-protection programs (Visa GBPP, Mastercard BRAM) fine acquirers for IP infringement."
+  },
+  {
+    "code": "TECH_SUPPORT_SCAM",
+    "name": "Remote tech support and PC repair",
+    "policy": "HighRisk",
+    "mccs": [7372, 7379, 4816],
+    "keywords": ["remote tech support", "computer virus removal", "call now for support", "your computer is infected", "microsoft support number", "printer support number", "antivirus renewal", "toll free support", "pop-up support"],
+    "notes": "Frequent FTC enforcement target; Mastercard BRAM category."
+  },
+  {
+    "code": "DATING",
+    "name": "Online dating and companionship",
+    "policy": "HighRisk",
+    "mccs": [7273, 7299],
+    "keywords": ["dating site", "dating app", "find singles", "meet singles", "sugar daddy", "sugar baby", "mail order bride", "companionship", "matchmaking", "hookup"],
+    "notes": "MCC 7273 requires registration; high friendly-fraud rates."
+  },
+  {
+    "code": "GOVERNMENT_GRANTS_DOCS",
+    "name": "Government document, grant and visa 'assistance' resellers",
+    "policy": "Prohibited",
+    "mccs": [7399, 8999],
+    "keywords": ["esta application", "visa application service", "passport renewal service", "government grant", "free government money", "ein filing service", "driving licence renewal service", "social security card replacement", "green card lottery"],
+    "notes": "Frequently deceptive resale of free government services."
+  },
+  {
+    "code": "PRECIOUS_METALS",
+    "name": "Precious metals, coins and bullion",
+    "policy": "HighRisk",
+    "mccs": [5944, 5094, 5999],
+    "keywords": ["gold bullion", "silver bullion", "bullion", "gold coins", "silver bars", "precious metals ira", "rare coins", "numismatic", "krugerrand", "gold eagle"],
+    "notes": "High ticket, price-volatile, quasi-cash concerns."
+  },
+  {
+    "code": "FUNDRAISING_CROWDFUNDING",
+    "name": "Crowdfunding, donations and unregistered charities",
+    "policy": "HighRisk",
+    "mccs": [8398, 8641, 8661],
+    "keywords": ["crowdfunding", "gofundme", "donate now", "fundraiser", "charity donation", "501(c)(3)", "raise money for", "campaign goal", "backers", "pledge"],
+    "notes": "Verify charity registration (IRS Pub 78 / Charity Commission)."
+  }
+]

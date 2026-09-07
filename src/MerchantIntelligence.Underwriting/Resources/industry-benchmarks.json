@@ -1,0 +1,36 @@
+{
+  "_comment": "Approximate US SMB benchmarks by MCC catalog category. revenuePerEmployee in USD/yr (p10/p50/p90); ticket range in USD (p10/p90); typical chargeback rate as a fraction of transactions; deliveryDays = typical days between payment and fulfilment (drives credit exposure). Overrides by MCC take precedence.",
+  "categories": {
+    "Agricultural Services":  { "revenuePerEmployee": [60000, 150000, 400000],  "ticket": [20, 2500],  "chargebackRate": 0.002, "deliveryDays": 7 },
+    "Contracted Services":    { "revenuePerEmployee": [80000, 180000, 450000],  "ticket": [200, 15000], "chargebackRate": 0.004, "deliveryDays": 30 },
+    "Financial":              { "revenuePerEmployee": [100000, 350000, 1500000], "ticket": [50, 5000], "chargebackRate": 0.006, "deliveryDays": 1 },
+    "Government":             { "revenuePerEmployee": [40000, 100000, 250000],  "ticket": [10, 1000],  "chargebackRate": 0.001, "deliveryDays": 1 },
+    "Professional Services":  { "revenuePerEmployee": [60000, 140000, 350000],  "ticket": [50, 3000],  "chargebackRate": 0.003, "deliveryDays": 7 },
+    "Retail":                 { "revenuePerEmployee": [90000, 220000, 600000],  "ticket": [10, 400],   "chargebackRate": 0.005, "deliveryDays": 5 },
+    "Services":               { "revenuePerEmployee": [40000, 110000, 300000],  "ticket": [15, 500],   "chargebackRate": 0.006, "deliveryDays": 3 },
+    "Transportation":         { "revenuePerEmployee": [80000, 200000, 600000],  "ticket": [30, 2500],  "chargebackRate": 0.008, "deliveryDays": 45 },
+    "Utilities":              { "revenuePerEmployee": [200000, 600000, 2000000], "ticket": [40, 800],  "chargebackRate": 0.001, "deliveryDays": 1 },
+    "Wholesale":              { "revenuePerEmployee": [200000, 600000, 2500000], "ticket": [200, 25000], "chargebackRate": 0.002, "deliveryDays": 14 }
+  },
+  "mccOverrides": {
+    "4722": { "revenuePerEmployee": [150000, 500000, 2000000], "ticket": [300, 8000], "chargebackRate": 0.012, "deliveryDays": 90 },
+    "4511": { "revenuePerEmployee": [150000, 400000, 1200000], "ticket": [150, 3000], "chargebackRate": 0.010, "deliveryDays": 60 },
+    "5812": { "revenuePerEmployee": [40000, 75000, 150000],   "ticket": [12, 120],   "chargebackRate": 0.002, "deliveryDays": 0 },
+    "5814": { "revenuePerEmployee": [40000, 70000, 130000],   "ticket": [6, 40],     "chargebackRate": 0.002, "deliveryDays": 0 },
+    "5411": { "revenuePerEmployee": [120000, 250000, 500000], "ticket": [15, 150],   "chargebackRate": 0.001, "deliveryDays": 0 },
+    "5541": { "revenuePerEmployee": [300000, 900000, 2500000], "ticket": [20, 120],  "chargebackRate": 0.002, "deliveryDays": 0 },
+    "5732": { "revenuePerEmployee": [150000, 350000, 900000], "ticket": [80, 2500],  "chargebackRate": 0.009, "deliveryDays": 7 },
+    "5944": { "revenuePerEmployee": [150000, 350000, 900000], "ticket": [150, 8000], "chargebackRate": 0.007, "deliveryDays": 5 },
+    "5964": { "revenuePerEmployee": [150000, 400000, 1200000], "ticket": [25, 500],  "chargebackRate": 0.010, "deliveryDays": 10 },
+    "5967": { "revenuePerEmployee": [100000, 300000, 900000], "ticket": [20, 300],   "chargebackRate": 0.020, "deliveryDays": 1 },
+    "5968": { "revenuePerEmployee": [150000, 400000, 1200000], "ticket": [15, 200],  "chargebackRate": 0.012, "deliveryDays": 14 },
+    "5999": { "revenuePerEmployee": [80000, 200000, 550000],  "ticket": [15, 600],   "chargebackRate": 0.006, "deliveryDays": 7 },
+    "6051": { "revenuePerEmployee": [200000, 800000, 4000000], "ticket": [50, 10000], "chargebackRate": 0.015, "deliveryDays": 1 },
+    "7011": { "revenuePerEmployee": [50000, 120000, 300000],  "ticket": [90, 1500],  "chargebackRate": 0.005, "deliveryDays": 30 },
+    "7273": { "revenuePerEmployee": [80000, 250000, 900000],  "ticket": [20, 300],   "chargebackRate": 0.020, "deliveryDays": 1 },
+    "7372": { "revenuePerEmployee": [100000, 250000, 700000], "ticket": [20, 5000],  "chargebackRate": 0.006, "deliveryDays": 1 },
+    "7995": { "revenuePerEmployee": [200000, 700000, 3000000], "ticket": [20, 1000], "chargebackRate": 0.015, "deliveryDays": 1 },
+    "8299": { "revenuePerEmployee": [40000, 100000, 250000],  "ticket": [100, 5000], "chargebackRate": 0.008, "deliveryDays": 60 },
+    "8011": { "revenuePerEmployee": [80000, 180000, 400000],  "ticket": [50, 1500],  "chargebackRate": 0.002, "deliveryDays": 0 }
+  }
+}

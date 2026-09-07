@@ -1,0 +1,403 @@
+<div class="page">
+  @if (!result()) {
+  <mat-card appearance="outlined">
+    <mat-card-header>
+      <mat-icon mat-card-avatar>checklist_rtl</mat-icon>
+      <mat-card-title>Full merchant assessment</mat-card-title>
+      <mat-card-subtitle>One intake → every check runs in sequence (identity · sanctions/PEP/media · website · prohibited business · MCC · MATCH · statements · plausibility · credit model · terms · unified score · policy rules) → decision, full explainability and a PDF memo.</mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="presets">
+        <span class="muted">Presets:</span>
+        <button mat-stroked-button type="button" (click)="preset('approved')">Auto-approve (Starbucks)</button>
+        <button mat-stroked-button type="button" (click)="preset('clean')">Refer (Apple – MCC mismatch)</button>
+        <button mat-stroked-button type="button" (click)="preset('sanctioned')">Sanctions hit (Rosneft / Bout)</button>
+        <button mat-stroked-button type="button" (click)="preset('restricted')">Restricted (CBD + free trials)</button>
+      </div>
+
+      <form [formGroup]="form" (ngSubmit)="submit()">
+        <h3><mat-icon>business</mat-icon> Business identity</h3>
+        <div class="grid-4">
+          <mat-form-field appearance="outline"><mat-label>Legal name</mat-label><input matInput formControlName="legalName" required><mat-icon matSuffix class="hint" [matTooltip]="hint('legalName')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Trading name / DBA</mat-label><input matInput formControlName="tradingName"><mat-icon matSuffix class="hint" [matTooltip]="hint('tradingName')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Registration / LEI</mat-label><input matInput formControlName="registrationNumber"><mat-icon matSuffix class="hint" [matTooltip]="hint('registrationNumber')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Tax ID</mat-label><input matInput formControlName="taxId"><mat-icon matSuffix class="hint" [matTooltip]="hint('taxId')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Address</mat-label><input matInput formControlName="addressLine"><mat-icon matSuffix class="hint" [matTooltip]="hint('addressLine')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>City</mat-label><input matInput formControlName="city"><mat-icon matSuffix class="hint" [matTooltip]="hint('city')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Region / State</mat-label><input matInput formControlName="region"><mat-icon matSuffix class="hint" [matTooltip]="hint('region')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Postal code</mat-label><input matInput formControlName="postalCode"><mat-icon matSuffix class="hint" [matTooltip]="hint('postalCode')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Country (ISO-2)</mat-label><input matInput formControlName="country" maxlength="2"><mat-icon matSuffix class="hint" [matTooltip]="hint('country')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Website</mat-label><input matInput formControlName="websiteUrl" placeholder="https://"><mat-hint>Drives website compliance, prohibited-content and MCC checks</mat-hint><mat-icon matSuffix class="hint" [matTooltip]="hint('websiteUrl')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+          <mat-form-field appearance="outline" class="wide"><mat-label>Business description</mat-label><textarea matInput rows="2" formControlName="businessDescription"></textarea><mat-icon matSuffix class="hint" [matTooltip]="hint('businessDescription')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+        </div>
+
+        <h3><mat-icon>groups</mat-icon> Beneficial owners &amp; principals <button mat-button type="button" (click)="addOwner()"><mat-icon>add</mat-icon> Add</button></h3>
+        <div formArrayName="owners">
+          @for (o of owners.controls; track o; let i = $index) {
+            <div class="owner" [formGroupName]="i">
+              <mat-form-field appearance="outline"><mat-label>Full name</mat-label><input matInput formControlName="fullName"><mat-icon matSuffix class="hint" [matTooltip]="hint('ownerFullName')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+              <mat-form-field appearance="outline"><mat-label>Date of birth</mat-label><input matInput type="date" formControlName="dateOfBirth"><mat-icon matSuffix class="hint" [matTooltip]="hint('ownerDateOfBirth')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+              <mat-form-field appearance="outline"><mat-label>Nationality</mat-label><input matInput formControlName="nationality"><mat-icon matSuffix class="hint" [matTooltip]="hint('ownerNationality')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+              <mat-form-field appearance="outline"><mat-label>Role</mat-label><input matInput formControlName="role"><mat-icon matSuffix class="hint" [matTooltip]="hint('ownerRole')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+              <mat-form-field appearance="outline" class="pct"><mat-label>%</mat-label><input matInput type="number" formControlName="ownershipPercent"><mat-icon matSuffix class="hint" [matTooltip]="hint('ownershipPercent')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+              <button mat-icon-button type="button" (click)="removeOwner(i)" aria-label="Remove owner"><mat-icon>close</mat-icon></button>
+            </div>
+          }
+          @if (!owners.length) { <p class="muted">No owners declared — ownership screening will be limited to the business entity.</p> }
+        </div>
+
+        <h3><mat-icon>payments</mat-icon> Processing profile</h3>
+        <div class="grid-4">
+          <mat-form-field appearance="outline"><mat-label>Declared MCC</mat-label><input matInput type="number" formControlName="merchantCategoryCode" required><mat-icon matSuffix class="hint" [matTooltip]="hint('merchantCategoryCode')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Annual card volume</mat-label><input matInput type="number" formControlName="annualVolume" required><span matTextPrefix>$&nbsp;</span><mat-icon matSuffix class="hint" [matTooltip]="hint('annualVolume')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Average ticket</mat-label><input matInput type="number" formControlName="averageTicket" required><span matTextPrefix>$&nbsp;</span><mat-icon matSuffix class="hint" [matTooltip]="hint('averageTicket')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Highest ticket</mat-label><input matInput type="number" formControlName="highestTicket" required><span matTextPrefix>$&nbsp;</span><mat-icon matSuffix class="hint" [matTooltip]="hint('highestTicket')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Delivery days</mat-label><input matInput type="number" formControlName="deliveryDays" placeholder="industry default"><mat-hint>Days between charge and fulfilment</mat-hint><mat-icon matSuffix class="hint" [matTooltip]="hint('deliveryDays')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Card-not-present share (0–1)</mat-label><input matInput type="number" step="0.05" min="0" max="1" formControlName="cardNotPresentShare"><mat-icon matSuffix class="hint" [matTooltip]="hint('cardNotPresentShare')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+          <mat-checkbox class="cb" formControlName="offersSubscriptions">Subscriptions / recurring billing <mat-icon class="hint inline" [matTooltip]="hint('offersSubscriptions')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-checkbox>
+          <mat-checkbox class="cb" formControlName="offersFreeTrials">Free trials / negative option <mat-icon class="hint inline" [matTooltip]="hint('offersFreeTrials')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-checkbox>
+          <mat-checkbox class="cb" formControlName="existingRelationship">Existing relationship with acquirer <mat-icon class="hint inline" [matTooltip]="hint('existingRelationship')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-checkbox>
+        </div>
+
+        <h3><mat-icon>storefront</mat-icon> Size &amp; footprint <span class="muted">(volume plausibility)</span></h3>
+        <div class="grid-4">
+          <mat-form-field appearance="outline"><mat-label>Employees</mat-label><input matInput type="number" formControlName="employeeCount"><mat-icon matSuffix class="hint" [matTooltip]="hint('employeeCount')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Years in business</mat-label><input matInput type="number" step="0.5" formControlName="yearsInBusiness"><mat-icon matSuffix class="hint" [matTooltip]="hint('yearsInBusiness')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Prior-year revenue</mat-label><input matInput type="number" formControlName="priorYearRevenue"><span matTextPrefix>$&nbsp;</span><mat-hint>Taken from the P&amp;L when blank</mat-hint><mat-icon matSuffix class="hint" [matTooltip]="hint('priorYearRevenue')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Website product count</mat-label><input matInput type="number" formControlName="websiteProductCount"><mat-icon matSuffix class="hint" [matTooltip]="hint('websiteProductCount')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Physical location</mat-label>
+            <mat-select formControlName="hasPhysicalLocation"><mat-option value="">Unknown</mat-option><mat-option value="true">Yes</mat-option><mat-option value="false">No — online only</mat-option></mat-select>
+            <mat-icon matSuffix class="hint" [matTooltip]="hint('hasPhysicalLocation')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon>
+          </mat-form-field>
+        </div>
+
+        <h3><mat-icon>description</mat-icon> Financial documents <span class="muted">(optional)</span></h3>
+        <div class="two-col">
+          <div>
+            <h4>Bank statement <mat-icon class="hint inline" [matTooltip]="hint('bankStatement')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></h4>
+            <div class="row file-row">
+              <button mat-stroked-button type="button" (click)="bankInput.click()"><mat-icon>upload_file</mat-icon> Upload CSV / PDF</button>
+              <input #bankInput type="file" hidden accept=".csv,.txt,.pdf" (change)="onFile('bank', $event)">
+              @if (bankFile(); as f) { <span class="pill neutral">{{ f.name }} <button mat-icon-button type="button" (click)="clearFile('bank'); bankInput.value = ''" aria-label="Remove file"><mat-icon>close</mat-icon></button></span> }
+            </div>
+            @if (!bankFile()) {
+              <mat-form-field appearance="outline" class="full"><mat-label>…or paste CSV (date,description,amount[,balance])</mat-label><textarea matInput class="mono" rows="5" formControlName="bankStatementCsv"></textarea></mat-form-field>
+            }
+          </div>
+          <div>
+            <h4>P&amp;L / balance sheet <mat-icon class="hint inline" [matTooltip]="hint('financialStatement')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></h4>
+            <div class="row file-row">
+              <button mat-stroked-button type="button" (click)="finInput.click()"><mat-icon>upload_file</mat-icon> Upload CSV / TXT / PDF</button>
+              <input #finInput type="file" hidden accept=".csv,.txt,.pdf" (change)="onFile('financial', $event)">
+              @if (financialFile(); as f) { <span class="pill neutral">{{ f.name }} <button mat-icon-button type="button" (click)="clearFile('financial'); finInput.value = ''" aria-label="Remove file"><mat-icon>close</mat-icon></button></span> }
+            </div>
+            @if (!financialFile()) {
+              <mat-form-field appearance="outline" class="full"><mat-label>…or paste line items (label,amount)</mat-label><textarea matInput class="mono" rows="5" formControlName="financialStatementText" placeholder="Revenue,2500000&#10;Cost of goods sold,900000&#10;Net income,400000"></textarea></mat-form-field>
+            }
+          </div>
+        </div>
+
+        <h3><mat-icon>badge</mat-icon> Case</h3>
+        <div class="grid-4">
+          <mat-form-field appearance="outline"><mat-label>Analyst</mat-label><input matInput formControlName="actor" required><mat-icon matSuffix class="hint" [matTooltip]="hint('actor')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>External reference</mat-label><input matInput formControlName="externalRef" placeholder="CRM / application ID"><mat-icon matSuffix class="hint" [matTooltip]="hint('externalRef')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-form-field>
+          <mat-checkbox class="cb" formControlName="createCase">Open a case with the result (audit trail) <mat-icon class="hint inline" [matTooltip]="hint('createCase')" matTooltipClass="field-hint" matTooltipPosition="above">info_outline</mat-icon></mat-checkbox>
+        </div>
+
+        <div class="actions">
+          <button mat-flat-button color="primary" type="submit" [disabled]="form.invalid || running()"><mat-icon>play_arrow</mat-icon> Run full assessment</button>
+          @if (running()) { <button mat-button type="button" (click)="cancel()">Cancel</button> }
+          <span class="muted">Queries live public sources; typically 15–60 s.</span>
+        </div>
+      </form>
+    </mat-card-content>
+  </mat-card>
+  }
+
+  @if (running() || (hasSteps() && !result())) {
+    <mat-card appearance="outlined" class="progress-card">
+      <mat-card-content>
+        <div class="progress-head">
+          @if (running()) { <mat-spinner diameter="28"></mat-spinner> }
+          <div>
+            <strong>{{ running() ? (currentStep()?.name ?? 'Starting…') : 'Stopped' }}</strong>
+            <div class="muted">{{ progress() }}% · {{ stepList().length }} checks</div>
+          </div>
+        </div>
+        <ol class="step-list">
+          @for (s of stepList(); track s.id) {
+            <li [class]="'step ' + s.status.toLowerCase()">
+              <mat-icon [class.spin]="s.status === 'Running'">{{ stepIcon(s.status) }}</mat-icon>
+              <div>
+                <div class="step-name">{{ s.name }}</div>
+                @if (s.summary) { <div class="step-summary">{{ s.summary }} @if (s.error) { <span class="text-high">{{ s.error }}</span> }</div> }
+              </div>
+              @if (s.durationMs) { <span class="muted duration">{{ s.durationMs | number }} ms</span> }
+            </li>
+          }
+        </ol>
+      </mat-card-content>
+    </mat-card>
+  }
+
+  <mi-status [error]="error()"></mi-status>
+
+  @if (result(); as r) {
+    <div id="assessment-result"></div>
+    <mat-card appearance="outlined" class="result-card" [class]="outcomeCardClass(r.decision.outcome)">
+      <mat-card-content class="summary">
+        <mi-gauge [value]="r.decision.score" suffix="/1000" [percent]="r.decision.score / 10" label="Unified risk score"
+                  [color]="r.decision.outcome === 'Approve' ? 'primary' : r.decision.outcome === 'Decline' ? 'warn' : 'accent'"></mi-gauge>
+        <div class="summary-text">
+          <div class="headline">
+            <span class="pill decision" [class]="outcomeClass(r.decision.outcome)">{{ r.decision.outcome.toUpperCase() }}</span>
+            <span class="pill neutral">{{ r.decision.tier }} tier</span>
+            <span class="pill neutral">Score signals {{ r.decision.coveragePercent | number:'1.0-0' }}%</span>
+            <span class="pill" [class.warn]="coveredChecks(r) < r.explainability.checkOutcomes.length" [class.neutral]="coveredChecks(r) === r.explainability.checkOutcomes.length">Checks {{ coveredChecks(r) }}/{{ r.explainability.checkOutcomes.length }} covered</span>
+            <span class="pill neutral">Rules v{{ r.decision.ruleSetVersion }} · {{ r.explainability.decidingRule }}</span>
+            @if (r.case; as c) { <a class="pill neutral" [routerLink]="['/cases', c.id]">Case {{ c.id }} · {{ c.status }}</a> }
+          </div>
+          <p class="headline-text">{{ r.explainability.headline }}</p>
+          <p>{{ r.decision.summary }}</p>
+          @for (h of r.explainability.hardStops; track h) { <p class="hard-stop"><mat-icon>block</mat-icon> Hard stop: {{ h }}</p> }
+          <p class="muted">{{ r.intake.business.legalName }} · {{ r.id }} · completed {{ r.completedAt | date:'medium' }} by {{ r.intake.actor }}</p>
+          <div class="actions">
+            <a mat-flat-button color="primary" [href]="pdfUrl(r.id)" target="_blank" rel="noopener"><mat-icon>picture_as_pdf</mat-icon> Download PDF report</a>
+            <button mat-stroked-button type="button" (click)="newAssessment()"><mat-icon>add</mat-icon> New assessment</button>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card appearance="outlined">
+      <mat-card-content>
+        <mat-tab-group animationDuration="150ms">
+          <mat-tab label="Explainability">
+            <h3>Check outcomes</h3>
+            <table mat-table [dataSource]="r.explainability.checkOutcomes" class="full">
+              <ng-container matColumnDef="check"><th mat-header-cell *matHeaderCellDef>Check</th><td mat-cell *matCellDef="let o"><strong>{{ o.check }}</strong></td></ng-container>
+              <ng-container matColumnDef="result"><th mat-header-cell *matHeaderCellDef>Result</th><td mat-cell *matCellDef="let o">{{ o.result }}</td></ng-container>
+              <ng-container matColumnDef="detail"><th mat-header-cell *matHeaderCellDef>Detail</th><td mat-cell *matCellDef="let o" class="detail">{{ o.detail }}</td></ng-container>
+              <ng-container matColumnDef="severity"><th mat-header-cell *matHeaderCellDef>Severity</th><td mat-cell *matCellDef="let o"><span [class]="severityClass(o.severity, o.covered)">{{ o.covered ? o.severity : 'gap' }}</span></td></ng-container>
+              <tr mat-header-row *matHeaderRowDef="checkColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: checkColumns" [class.uncovered]="!row.covered"></tr>
+            </table>
+
+            <h3>Score composition</h3>
+            <table mat-table [dataSource]="r.explainability.scoreComponents" class="full">
+              <ng-container matColumnDef="name"><th mat-header-cell *matHeaderCellDef>Component</th><td mat-cell *matCellDef="let c">{{ c.name }}</td></ng-container>
+              <ng-container matColumnDef="weight"><th mat-header-cell *matHeaderCellDef>Weight</th><td mat-cell *matCellDef="let c">{{ c.weight | percent }}</td></ng-container>
+              <ng-container matColumnDef="score"><th mat-header-cell *matHeaderCellDef>Score</th><td mat-cell *matCellDef="let c">{{ c.covered ? (c.score | number:'1.0-0') + '/100' : '—' }}</td></ng-container>
+              <ng-container matColumnDef="weighted"><th mat-header-cell *matHeaderCellDef>Weighted</th><td mat-cell *matCellDef="let c">{{ c.covered ? (c.weighted | number:'1.1-1') : 'gap' }}</td></ng-container>
+              <ng-container matColumnDef="detail"><th mat-header-cell *matHeaderCellDef>Detail</th><td mat-cell *matCellDef="let c" class="detail">{{ c.detail }}</td></ng-container>
+              <tr mat-header-row *matHeaderRowDef="componentColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: componentColumns" [class.uncovered]="!row.covered"></tr>
+            </table>
+            @if (r.explainability.coverageGaps.length) { <p class="text-medium"><strong>Coverage gaps:</strong> {{ r.explainability.coverageGaps.join(', ') }}</p> }
+
+            <h3>Reason codes</h3>
+            <mi-flags [flags]="reasonFlags(r)" emptyText="No reason codes raised."></mi-flags>
+
+            <h3>Policy rules</h3>
+            <ul class="rule-list">
+              @for (m of r.explainability.matchedRules; track m.id) {
+                <li><span class="pill small" [class]="outcomeClass(m.outcome)">{{ m.outcome }}</span> <code>{{ m.id }}</code> <span class="muted">p{{ m.priority }}</span> <span>{{ m.description }}</span>
+                  @if (m.id === r.explainability.decidingRule) { <mat-icon class="text-medium" matTooltip="Deciding rule">gavel</mat-icon> }</li>
+              }
+              @if (!r.explainability.matchedRules.length) { <li class="muted">No rules matched — default outcome applied.</li> }
+            </ul>
+
+            @if (r.explainability.creditContributions.length) {
+              <h3>Credit model contributions</h3>
+              <table mat-table [dataSource]="r.explainability.creditContributions" class="full">
+                <ng-container matColumnDef="feature"><th mat-header-cell *matHeaderCellDef>Feature</th><td mat-cell *matCellDef="let c">{{ c.feature }}</td></ng-container>
+                <ng-container matColumnDef="value"><th mat-header-cell *matHeaderCellDef>Value</th><td mat-cell *matCellDef="let c">{{ c.value }}</td></ng-container>
+                <ng-container matColumnDef="baseline"><th mat-header-cell *matHeaderCellDef>Baseline</th><td mat-cell *matCellDef="let c" class="detail">{{ c.baselineValue }}</td></ng-container>
+                <ng-container matColumnDef="contribution"><th mat-header-cell *matHeaderCellDef>Contribution</th><td mat-cell *matCellDef="let c">
+                  <div class="bar-cell"><div class="bar"><span [class]="c.contribution >= 0 ? 'pos' : 'neg'" [style.width.%]="abs(c.contribution) * 100 * 2"></span></div><span [class]="c.contribution >= 0 ? 'text-low' : 'text-high'">{{ c.contribution >= 0 ? '+' : '' }}{{ c.contribution | percent:'1.1-1' }}</span></div></td></ng-container>
+                <ng-container matColumnDef="direction"><th mat-header-cell *matHeaderCellDef>Direction</th><td mat-cell *matCellDef="let c" class="detail">{{ c.direction }}</td></ng-container>
+                <tr mat-header-row *matHeaderRowDef="contributionColumns"></tr>
+                <tr mat-row *matRowDef="let row; columns: contributionColumns"></tr>
+              </table>
+              @if (r.creditExplanation; as ce) { <p class="muted">{{ ce.narrative }}</p> }
+            }
+
+            <h3>Detailed narrative</h3>
+            @for (p of r.explainability.narrative; track $index) { <p class="narrative">{{ p }}</p> }
+
+            @if (r.explainability.analystNextSteps.length) {
+              <h3>Recommended analyst actions</h3>
+              <ul class="next-steps">@for (s of r.explainability.analystNextSteps; track s) { <li>{{ s }}</li> }</ul>
+            }
+
+            <h3>All findings ({{ r.explainability.findings.length }})</h3>
+            <mi-flags [flags]="findingFlags(r)" emptyText="No findings."></mi-flags>
+          </mat-tab>
+
+          <mat-tab label="Identity & screening">
+            @if (r.verification; as v) {
+              <h3>Business verification <span class="pill small" [class]="v.status === 'Verified' ? 'good' : v.status === 'PartialMatch' ? 'warn' : 'bad'">{{ v.status }} · {{ v.confidencePercent | number:'1.0-0' }}%</span></h3>
+              @if (v.bestMatch; as bm) {
+                <dl class="kv">
+                  <dt>Registry record</dt><dd>{{ bm.record.legalName }} <span class="muted">via {{ bm.record.source }}</span></dd>
+                  <dt>Match scores</dt><dd>name {{ bm.nameScore | percent }} · address {{ bm.addressScore | percent }} · overall {{ bm.overallScore | percent }}</dd>
+                  @if (v.entityAgeMonths != null) { <dt>Entity age</dt><dd>{{ v.entityAgeMonths }} months</dd> }
+                  @if (v.address; as a) { <dt>Address</dt><dd>{{ a.verified ? 'verified' : 'not verified' }} <span class="muted">via {{ a.provider }}</span></dd> }
+                </dl>
+              } @else { <p class="muted">No registry record matched.</p> }
+              <p class="muted">Sources: @for (s of v.sources; track s.source) { <span class="pill small" [class]="s.succeeded ? 'neutral' : 'bad'" [matTooltip]="s.error ?? ''">{{ s.source }} ({{ s.matches.length }})</span> }</p>
+              <mi-flags [flags]="v.flags" emptyText="No verification flags."></mi-flags>
+            } @else { <p class="muted">Business verification did not run.</p> }
+
+            @if (r.screening; as s) {
+              <h3>Sanctions / PEP / adverse media <span class="pill small" [class]="s.overallRisk === 'Low' ? 'good' : s.overallRisk === 'Medium' ? 'warn' : 'bad'">{{ s.overallRisk }}</span></h3>
+              @for (sub of s.subjects; track sub.subject.name) {
+                <mat-expansion-panel [expanded]="sub.potentialMatch">
+                  <mat-expansion-panel-header>
+                    <mat-panel-title><mat-icon [class]="sub.potentialMatch ? 'text-high' : 'text-low'">{{ sub.potentialMatch ? 'warning' : 'check_circle' }}</mat-icon>&nbsp;{{ sub.subject.name }} <span class="muted">&nbsp;· {{ sub.subject.role }}</span></mat-panel-title>
+                    <mat-panel-description>{{ sub.hits.length }} hit(s)@if (sub.adverseMedia; as am) { · media {{ am.negativeCount }}/{{ am.articleCount }} negative@if (!am.succeeded) { (lookup failed) } }</mat-panel-description>
+                  </mat-expansion-panel-header>
+                  @for (h of sub.hits; track h.entity.id) {
+                    <div class="hit"><strong>{{ h.entity.name }}</strong> <span class="pill small bad">{{ h.entity.listName }}</span> <span class="muted">{{ h.entity.type }} · {{ h.score | percent }} · {{ h.entity.programs.join(', ') }}</span>
+                      <div class="muted">{{ h.reasons.join('; ') }}</div></div>
+                  }
+                  @if (sub.adverseMedia?.articles?.length) {
+                    <h4>Adverse media</h4>
+                    <ul class="articles">@for (a of sub.adverseMedia!.articles; track a.url) { <li><a [href]="a.url" target="_blank" rel="noopener">{{ a.title }}</a> <span class="muted">{{ a.source }} · {{ a.tone }}</span></li> }</ul>
+                  }
+                  <mi-flags [flags]="sub.flags" emptyText="No screening flags."></mi-flags>
+                </mat-expansion-panel>
+              }
+              <p class="muted">Lists: @for (l of s.lists; track l.listName) { <span class="pill small" [class]="l.error ? 'bad' : 'neutral'" [matTooltip]="l.error ?? ''">{{ l.listName }} ({{ l.entityCount | number }})</span> }</p>
+            } @else { <p class="muted">Screening did not run.</p> }
+
+            <h3>MATCH / terminated merchant</h3>
+            @if (r.match; as m) {
+              <p><span class="pill" [class]="outcomeClass(m.availability)">{{ m.availability }}</span> @if (m.found != null) { <span class="pill" [class]="m.found ? 'bad' : 'good'">{{ m.found ? 'FOUND' : 'No record' }}</span> } <span class="muted">{{ m.provider }} · {{ m.message }}</span></p>
+              @for (h of m.hits; track $index) { <p><strong>{{ h.reasonCode }}</strong> {{ h.reasonDescription }} <span class="muted">matched on {{ h.matchedOn }}</span></p> }
+            } @else { <p class="muted">MATCH inquiry did not run.</p> }
+          </mat-tab>
+
+          <mat-tab label="Website, MCC & business type">
+            @if (r.websiteCompliance; as w) {
+              <h3>Website compliance <span class="pill small" [class]="w.score >= 80 ? 'good' : w.score >= 60 ? 'warn' : 'bad'">Grade {{ w.grade }} · {{ w.score }}/100</span></h3>
+              <p class="muted">{{ w.websiteUrl }} · {{ w.reachable ? 'reachable' : 'unreachable' }} · {{ w.pagesAnalyzed.length }} page(s)@if (w.domain?.registered) { · domain registered {{ w.domain!.registered | date:'mediumDate' }} }</p>
+              <table mat-table [dataSource]="w.checks" class="full">
+                <ng-container matColumnDef="status"><th mat-header-cell *matHeaderCellDef>Status</th><td mat-cell *matCellDef="let c"><span class="pill small" [class]="outcomeClass(c.status)">{{ c.status }}</span></td></ng-container>
+                <ng-container matColumnDef="title"><th mat-header-cell *matHeaderCellDef>Check</th><td mat-cell *matCellDef="let c">{{ c.title }} <span class="muted">({{ c.severity }})</span></td></ng-container>
+                <ng-container matColumnDef="detail"><th mat-header-cell *matHeaderCellDef>Detail</th><td mat-cell *matCellDef="let c" class="detail">{{ c.detail }}</td></ng-container>
+                <tr mat-header-row *matHeaderRowDef="complianceColumns"></tr>
+                <tr mat-row *matRowDef="let row; columns: complianceColumns"></tr>
+              </table>
+            } @else { <p class="muted">Website compliance did not run (no website or scan failed).</p> }
+
+            @if (r.prohibitedBusiness; as p) {
+              <h3>Prohibited / restricted business <span class="pill small" [class]="p.verdict === 'Acceptable' ? 'good' : p.verdict === 'HighRisk' ? 'warn' : 'bad'">{{ p.verdict }}</span></h3>
+              @for (m of p.matches; track m.category.code) {
+                <p><strong>{{ m.category.name }}</strong> <span class="pill small" [class]="m.category.policy === 'Acceptable' ? 'good' : m.category.policy === 'HighRisk' ? 'warn' : 'bad'">{{ m.category.policy }}</span> <span class="muted">score {{ m.score | number:'1.2-2' }} · keywords: {{ m.matchedKeywords.join(', ') }}@if (m.declaredMccInCategory) { · declared MCC in category }</span></p>
+              }
+              @if (!p.matches.length) { <p class="muted">No restricted category detected.</p> }
+              <mi-flags [flags]="p.flags" emptyText=""></mi-flags>
+            }
+
+            @if (r.mccValidation; as m) {
+              <h3>MCC validation <span class="pill small" [class]="m.verdict === 'Consistent' ? 'good' : m.verdict === 'Inconsistent' ? 'bad' : 'warn'">{{ m.verdict }} · {{ m.accuracyPercent | number:'1.0-0' }}%</span></h3>
+              <p>Declared <strong>{{ m.declaredMcc }}</strong> {{ m.declaredDescription }} <span class="pill small" [class]="tierClass(m.declaredRiskTier)">{{ m.declaredRiskTier }} risk</span></p>
+              @if (m.suggestedMccs.length) {
+                <h4>Evidence suggests</h4>
+                <ul class="rule-list">@for (s of m.suggestedMccs; track s.mcc) { <li><code>{{ s.mcc }}</code> {{ s.description }} <span class="muted">{{ s.score | percent }}</span></li> }</ul>
+              }
+              <p class="muted">Providers: @for (e of m.evidence; track e.provider) { <span class="pill small" [class]="e.succeeded ? 'neutral' : 'bad'" [matTooltip]="e.error ?? ''">{{ e.provider }}</span> }</p>
+              <mi-flags [flags]="m.riskFlags" emptyText="No MCC risk flags."></mi-flags>
+            } @else { <p class="muted">MCC validation did not run (needs a website).</p> }
+          </mat-tab>
+
+          <mat-tab label="Financials & plausibility">
+            @if (r.volumePlausibility; as pl) {
+              <h3>Volume plausibility <span class="pill small" [class]="pl.plausibilityScore >= 70 ? 'good' : pl.plausibilityScore >= 40 ? 'warn' : 'bad'">{{ pl.plausibilityScore }}/100 · {{ pl.verdict }}</span></h3>
+              <dl class="kv">@for (m of pl.metrics; track m.name) { <dt>{{ m.name }}</dt><dd>{{ m.value }} <span class="muted">vs {{ m.benchmark }} — {{ m.assessment }}</span></dd> }</dl>
+              <mi-flags [flags]="pl.flags" emptyText="No plausibility flags."></mi-flags>
+              <p class="muted">{{ pl.benchmarkSource }}</p>
+            }
+
+            @if (r.bankStatement; as b) {
+              <h3>Bank statement cash flow</h3>
+              <div class="stat-row">
+                <div class="stat"><div class="stat-value">{{ b.monthsCovered }}</div><div class="stat-label">months</div></div>
+                <div class="stat"><div class="stat-value">{{ b.averageMonthlyInflows | number:'1.0-0' }}</div><div class="stat-label">avg monthly inflows</div></div>
+                <div class="stat"><div class="stat-value">{{ b.averageMonthlyCardDeposits | number:'1.0-0' }}</div><div class="stat-label">avg card deposits</div></div>
+                <div class="stat"><div class="stat-value">{{ b.impliedAnnualCardVolume | number:'1.0-0' }}</div><div class="stat-label">implied annual card vol.</div></div>
+                <div class="stat"><div class="stat-value" [class.text-high]="b.nsfOrOverdraftCount > 0">{{ b.nsfOrOverdraftCount }}</div><div class="stat-label">NSF / overdraft</div></div>
+                <div class="stat"><div class="stat-value">{{ b.inflowVolatility | number:'1.2-2' }}</div><div class="stat-label">inflow volatility</div></div>
+              </div>
+              @if (b.detectedProcessors.length) { <p class="muted">Processors detected: {{ b.detectedProcessors.join(', ') }}</p> }
+              <mi-flags [flags]="b.flags" emptyText="No cash-flow flags."></mi-flags>
+              @for (w of b.warnings; track w) { <p class="text-medium">{{ w }}</p> }
+            } @else { <p class="muted">No bank statement analysed.</p> }
+
+            @if (r.financialStatement; as f) {
+              <h3>P&amp;L / balance sheet</h3>
+              <dl class="kv">@for (e of statementEntries(f.statement); track e.key) { <dt>{{ e.key }}</dt><dd>{{ e.value | number:'1.0-0' }}</dd> }</dl>
+              <h4>Ratios</h4>
+              <dl class="kv">@for (ra of f.ratios; track ra.name) { <dt>{{ ra.name }}</dt><dd>{{ ra.value != null ? (ra.value | number:'1.2-2') : 'n/a' }} <span class="muted">vs {{ ra.benchmark }} — {{ ra.assessment }}</span></dd> }</dl>
+              <mi-flags [flags]="f.flags" emptyText="No financial flags."></mi-flags>
+              @for (w of f.warnings; track w) { <p class="text-medium">{{ w }}</p> }
+            } @else { <p class="muted">No P&amp;L / balance sheet analysed.</p> }
+          </mat-tab>
+
+          <mat-tab label="Terms">
+            @if (r.terms; as t) {
+              <div class="summary">
+                <mi-gauge [value]="t.riskBand" [percent]="t.riskScore * 100" label="Risk band" [color]="t.riskBand === 'A' || t.riskBand === 'B' ? 'primary' : t.riskBand === 'C' ? 'accent' : 'warn'"></mi-gauge>
+                <dl class="kv">
+                  <dt>Reserve</dt><dd>{{ t.reserve.type }} · {{ t.reserve.rollingPercent | number:'1.1-1' }}% for {{ t.reserve.rollingDays }} days @if (t.reserve.capAmount) { · cap {{ t.reserve.capAmount | number:'1.0-0' }} } @if (t.reserve.upfrontAmount) { · upfront {{ t.reserve.upfrontAmount | number:'1.0-0' }} }</dd>
+                  <dt>Pricing</dt><dd>IC+ {{ t.pricing.interchangePlusMarkupBps | number:'1.0-0' }} bps · {{ t.pricing.perTransactionFee | number:'1.2-2' }}/txn · {{ t.pricing.monthlyFee | number:'1.0-0' }}/month · chargeback fee {{ t.pricing.chargebackFee | number:'1.0-0' }}</dd>
+                  <dt>Settlement</dt><dd>T+{{ t.pricing.settlementDelayDays }}</dd>
+                  <dt>Caps</dt><dd>monthly {{ t.pricing.monthlyVolumeCap | number:'1.0-0' }} · single txn {{ t.pricing.singleTransactionCap | number:'1.0-0' }}</dd>
+                  <dt>Estimated exposure</dt><dd>{{ t.estimatedExposure | number:'1.0-0' }}</dd>
+                </dl>
+              </div>
+              <h4>Pricing factors</h4>
+              <ul class="rule-list">@for (f of t.factors; track f.code) { <li><code>{{ f.code }}</code> {{ f.description }} <span class="pill small neutral">{{ f.effect }}</span></li> }</ul>
+              <p class="muted">{{ t.benchmarkSource }}</p>
+            } @else { <p class="muted">Terms recommendation did not run.</p> }
+          </mat-tab>
+
+          <mat-tab label="Run log & raw">
+            <table mat-table [dataSource]="r.steps" class="full">
+              <ng-container matColumnDef="status"><th mat-header-cell *matHeaderCellDef>Status</th><td mat-cell *matCellDef="let s"><span class="pill small" [class]="s.status === 'Succeeded' ? 'good' : s.status === 'Failed' ? 'bad' : 'neutral'">{{ s.status }}</span></td></ng-container>
+              <ng-container matColumnDef="name"><th mat-header-cell *matHeaderCellDef>Check</th><td mat-cell *matCellDef="let s">{{ s.name }}</td></ng-container>
+              <ng-container matColumnDef="summary"><th mat-header-cell *matHeaderCellDef>Summary</th><td mat-cell *matCellDef="let s" class="detail">{{ s.summary }} @if (s.error) { <span class="text-high">{{ s.error }}</span> }</td></ng-container>
+              <ng-container matColumnDef="duration"><th mat-header-cell *matHeaderCellDef>Duration</th><td mat-cell *matCellDef="let s">{{ s.durationMs | number }} ms</td></ng-container>
+              <tr mat-header-row *matHeaderRowDef="stepColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: stepColumns"></tr>
+            </table>
+            <p class="muted">Started {{ r.startedAt | date:'medium' }} · completed {{ r.completedAt | date:'medium' }}@if (r.decisionLogId) { · decision log #{{ r.decisionLogId }} }</p>
+            <mi-json [data]="r" title="Full assessment JSON"></mi-json>
+          </mat-tab>
+        </mat-tab-group>
+      </mat-card-content>
+    </mat-card>
+  }
+
+  @if (!running()) {
+    <mat-card appearance="outlined">
+      <mat-card-header><mat-icon mat-card-avatar>history</mat-icon><mat-card-title>Recent assessments</mat-card-title></mat-card-header>
+      <mat-card-content>
+        @if (history().length) {
+          <ul class="history">
+            @for (h of history(); track h.id) {
+              <li class="clickable" [routerLink]="['/assess', h.id]">
+                <span class="pill small" [class]="outcomeClass(h.outcome)">{{ h.outcome }}</span>
+                <strong>{{ h.merchantName }}</strong>
+                <span class="muted">{{ h.score }}/1000 · {{ h.tier }} · {{ h.coveragePercent | number:'1.0-0' }}% score signals</span>
+                <span class="muted when">{{ h.completedAt | date:'short' }}</span>
+                <a mat-icon-button [href]="pdfUrl(h.id)" target="_blank" rel="noopener" (click)="$event.stopPropagation()" aria-label="Download PDF" matTooltip="Download PDF"><mat-icon>picture_as_pdf</mat-icon></a>
+              </li>
+            }
+          </ul>
+        } @else { <p class="empty">{{ loadingHistory() ? 'Loading…' : 'No assessments yet.' }}</p> }
+      </mat-card-content>
+    </mat-card>
+  }
+</div>
