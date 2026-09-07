@@ -111,11 +111,18 @@ export class SuiteApiService {
 
   /**
    * Runs the full assessment and emits one event per check as the server streams NDJSON progress, ending with the
-   * complete result. Uses fetch because HttpClient buffers the whole response.
+   * complete result. Uses fetch because HttpClient buffers the whole response. If the server stops sending for
+   * `idleTimeoutMs` (e.g. the API died behind the dev proxy) the run is aborted with an error instead of spinning.
    */
-  runAssessment(req: AssessmentRequest, files: { bankStatement?: File | null; financialStatement?: File | null } = {}): Observable<AssessmentEvent> {
+  runAssessment(req: AssessmentRequest, files: { bankStatement?: File | null; financialStatement?: File | null } = {}, idleTimeoutMs = 120_000): Observable<AssessmentEvent> {
     return new Observable<AssessmentEvent>(subscriber => {
       const controller = new AbortController();
+      let idleTimer: ReturnType<typeof setTimeout> | undefined;
+      let timedOut = false;
+      const armWatchdog = () => {
+        if (idleTimer) clearTimeout(idleTimer);
+        idleTimer = setTimeout(() => { timedOut = true; controller.abort(); }, idleTimeoutMs);
+      };
       let body: BodyInit;
       const headers: Record<string, string> = { Accept: 'application/x-ndjson' };
       if (files.bankStatement || files.financialStatement) {
@@ -130,6 +137,7 @@ export class SuiteApiService {
       }
 
       (async () => {
+        armWatchdog();
         const res = await fetch(`${this.base}/assessment/run/stream`, { method: 'POST', body, headers, signal: controller.signal });
         if (!res.ok || !res.body) {
           const text = await res.text();
@@ -145,25 +153,37 @@ export class SuiteApiService {
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
+        let finished = false;
+        const emit = (line: string) => {
+          const ev = JSON.parse(line) as AssessmentEvent;
+          if (ev.type === 'result' || ev.type === 'error') finished = true;
+          subscriber.next(ev);
+        };
         for (;;) {
           const { value, done } = await reader.read();
           if (done) break;
+          armWatchdog();
           buffer += decoder.decode(value, { stream: true });
           let nl: number;
           while ((nl = buffer.indexOf('\n')) >= 0) {
             const line = buffer.slice(0, nl).trim();
             buffer = buffer.slice(nl + 1);
-            if (line) subscriber.next(JSON.parse(line) as AssessmentEvent);
+            if (line) emit(line);
           }
         }
-        if (buffer.trim()) subscriber.next(JSON.parse(buffer) as AssessmentEvent);
+        if (buffer.trim()) emit(buffer.trim());
+        if (!finished) throw new Error('The API stopped responding before the assessment finished. Check that the API is running and try again.');
         subscriber.complete();
       })().catch(err => {
+        if (timedOut) {
+          subscriber.error(new Error(`No progress from the API for ${Math.round(idleTimeoutMs / 1000)}s – the run was aborted. Check that the API is running and try again.`));
+          return;
+        }
         if (controller.signal.aborted) return;
         subscriber.error(err instanceof Error ? err : new Error(String(err)));
-      });
+      }).finally(() => { if (idleTimer) clearTimeout(idleTimer); });
 
-      return () => controller.abort();
+      return () => { if (idleTimer) clearTimeout(idleTimer); controller.abort(); };
     });
   }
 }

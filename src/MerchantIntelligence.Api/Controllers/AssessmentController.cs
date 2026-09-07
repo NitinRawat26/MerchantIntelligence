@@ -111,14 +111,28 @@ public sealed class AssessmentController(AssessmentService assessments) : Contro
         }
 
         await Emit(new { type = "steps", steps = AssessmentService.StepCatalog.Select(s => new AssessmentStepDescriptor(s.Id, s.Name)) });
+        using var heartbeatCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        var heartbeat = Task.Run(async () =>
+        {
+            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(15));
+            try
+            {
+                while (await timer.WaitForNextTickAsync(heartbeatCts.Token))
+                    await Emit(new { type = "heartbeat", at = DateTimeOffset.UtcNow });
+            }
+            catch (OperationCanceledException) { }
+        });
+        async Task StopHeartbeat() { heartbeatCts.Cancel(); await heartbeat; }
         try
         {
             var result = await assessments.RunAsync(request!.ToIntake(), bank, fin, step => Emit(new { type = "step", step }), ct);
+            await StopHeartbeat();
             await Emit(new { type = "result", result });
         }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { await StopHeartbeat(); }
         catch (Exception ex)
         {
+            await StopHeartbeat();
             await Emit(new { type = "error", error = ex.Message });
         }
     }
