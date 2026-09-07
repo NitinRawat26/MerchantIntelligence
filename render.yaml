@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: merchant-intelligence
+    runtime: docker
+    plan: free
+    region: oregon
+    branch: raw-zero
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: Kyb__UserAgent
+        value: MerchantIntelligence KYB nitinrawat260887@gmail.com
+      - key: Sanctions__CacheDirectory
+        value: /app/data/sanctions
+      - key: Platform__DatabasePath
+        value: /app/data/platform.db
