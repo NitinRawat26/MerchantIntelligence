@@ -1,6 +1,222 @@
-/* You can add global styles to this file, and also import other style files */
+@use '@angular/material' as mat;
 
+// ---------------------------------------------------------------------------
+// Design tokens
+// ---------------------------------------------------------------------------
+:root {
+  --mi-bg: #f3f5f9;
+  --mi-surface: #ffffff;
+  --mi-surface-2: #f7f8fb;
+  --mi-border: #e4e8ef;
+  --mi-border-strong: #cfd6e1;
+  --mi-text: #0f172a;
+  --mi-text-2: #475569;
+  --mi-text-3: #94a3b8;
+  --mi-primary: #2f5bea;
+  --mi-primary-soft: #e8eeff;
+  --mi-primary-deep: #1e3fb8;
+  --mi-good: #15803d;
+  --mi-good-soft: #dcfce7;
+  --mi-warn: #c2410c;
+  --mi-warn-soft: #ffedd5;
+  --mi-bad: #b91c1c;
+  --mi-bad-soft: #fee2e2;
+  --mi-neutral: #334155;
+  --mi-neutral-soft: #e9edf3;
+  --mi-radius: 14px;
+  --mi-radius-sm: 10px;
+  --mi-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 6px 20px -8px rgba(15, 23, 42, 0.10);
+  --mi-shadow-hover: 0 2px 4px rgba(15, 23, 42, 0.05), 0 14px 32px -10px rgba(15, 23, 42, 0.16);
+  --mi-nav-bg: #0b1220;
+  --mi-nav-bg-2: #101a30;
+  --mi-nav-text: #aab4c8;
+  --mi-nav-active: #ffffff;
+  --mi-font: 'Inter', 'Roboto', 'Helvetica Neue', system-ui, sans-serif;
+  --mi-mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+}
+
+// ---------------------------------------------------------------------------
+// Material 3 theme
+// ---------------------------------------------------------------------------
+$theme: mat.define-theme((
+  color: (
+    theme-type: light,
+    primary: mat.$azure-palette,
+    tertiary: mat.$violet-palette,
+  ),
+  typography: (
+    brand-family: 'Inter',
+    plain-family: 'Inter',
+    bold-weight: 600,
+    medium-weight: 500,
+    regular-weight: 400,
+  ),
+  density: (scale: -1),
+));
+
+html {
+  @include mat.core();
+  @include mat.all-component-themes($theme);
+  @include mat.color-variants-backwards-compatibility($theme);
+
+  // Sharpen a few M3 defaults so the workbench feels crisp rather than pastel.
+  --mat-card-title-text-size: 17px;
+  --mat-card-title-text-weight: 600;
+  --mat-card-title-text-line-height: 24px;
+  --mat-card-title-text-tracking: -0.01em;
+  --mat-card-subtitle-text-size: 13px;
+  --mat-card-subtitle-text-weight: 400;
+  --mat-card-subtitle-text-line-height: 19px;
+  --mat-card-subtitle-text-color: var(--mi-text-2);
+  --mdc-outlined-card-container-color: var(--mi-surface);
+  --mdc-outlined-card-outline-color: var(--mi-border);
+  --mdc-outlined-card-container-shape: var(--mi-radius);
+  --mdc-elevated-card-container-shape: var(--mi-radius);
+  --mdc-outlined-text-field-container-shape: var(--mi-radius-sm);
+  --mdc-outlined-text-field-outline-color: var(--mi-border-strong);
+  --mdc-outlined-text-field-hover-outline-color: var(--mi-primary);
+  --mdc-outlined-text-field-focus-outline-color: var(--mi-primary);
+  --mdc-outlined-text-field-label-text-color: var(--mi-text-2);
+  --mdc-filled-button-container-shape: var(--mi-radius-sm);
+  --mdc-outlined-button-container-shape: var(--mi-radius-sm);
+  --mdc-text-button-container-shape: var(--mi-radius-sm);
+  --mdc-protected-button-container-shape: var(--mi-radius-sm);
+  --mdc-filled-button-container-color: var(--mi-primary);
+  --mdc-outlined-button-outline-color: var(--mi-border-strong);
+  --mdc-outlined-button-label-text-color: var(--mi-text);
+  --mdc-text-button-label-text-color: var(--mi-primary);
+  --mat-outlined-button-state-layer-color: var(--mi-primary);
+  --mat-expansion-container-shape: var(--mi-radius-sm);
+  --mat-expansion-container-background-color: var(--mi-surface);
+  --mat-tab-header-active-label-text-color: var(--mi-primary);
+  --mat-tab-header-active-focus-label-text-color: var(--mi-primary);
+  --mat-tab-header-active-hover-label-text-color: var(--mi-primary);
+  --mdc-tab-indicator-active-indicator-color: var(--mi-primary);
+  --mdc-tab-indicator-active-indicator-height: 3px;
+  --mdc-tab-indicator-active-indicator-shape: 3px;
+  --mat-table-background-color: transparent;
+  --mat-table-header-headline-color: var(--mi-text-2);
+  --mat-table-header-headline-size: 12px;
+  --mat-table-header-headline-weight: 600;
+  --mat-table-row-item-outline-color: var(--mi-border);
+  --mat-table-row-item-label-text-size: 13.5px;
+  --mdc-linear-progress-track-color: var(--mi-neutral-soft);
+  --mdc-linear-progress-active-indicator-color: var(--mi-primary);
+  --mdc-linear-progress-track-height: 8px;
+  --mdc-linear-progress-active-indicator-height: 8px;
+  --mdc-linear-progress-track-shape: 4px;
+  --mdc-chip-container-shape-radius: 8px;
+  --mdc-chip-elevated-container-color: var(--mi-neutral-soft);
+  --mdc-chip-label-text-color: var(--mi-neutral);
+  --mdc-chip-label-text-weight: 500;
+  --mat-sidenav-container-background-color: transparent;
+  --mat-sidenav-content-background-color: transparent;
+}
+
+.mat-mdc-progress-bar.mat-warn { --mdc-linear-progress-active-indicator-color: var(--mi-bad); }
+.mat-mdc-progress-bar.mat-accent { --mdc-linear-progress-active-indicator-color: var(--mi-warn); }
+
+// ---------------------------------------------------------------------------
+// Base
+// ---------------------------------------------------------------------------
+* { box-sizing: border-box; }
 html, body { height: 100%; }
-body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
+body {
+  margin: 0;
+  font-family: var(--mi-font);
+  color: var(--mi-text);
+  background: var(--mi-bg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+body.mat-typography { font-family: var(--mi-font); }
+a { color: var(--mi-primary); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code, pre, .mono { font-family: var(--mi-mono); }
 
-.field-hint .mdc-tooltip__surface { white-space: pre-line; max-width: 420px; text-align: left; line-height: 1.4; font-size: 12.5px; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: #c7cfdb; border-radius: 8px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: #a9b4c5; background-clip: padding-box; border: 2px solid transparent; }
+::-webkit-scrollbar-track { background: transparent; }
+
+// ---------------------------------------------------------------------------
+// Cards
+// ---------------------------------------------------------------------------
+.mat-mdc-card.mdc-card--outlined {
+  border: 1px solid var(--mi-border);
+  box-shadow: var(--mi-shadow);
+  transition: box-shadow 160ms ease, transform 160ms ease;
+}
+.mat-mdc-card-header { padding: 20px 22px 0; align-items: flex-start; }
+.mat-mdc-card-content { padding: 0 22px 22px; }
+.mat-mdc-card-content:first-child { padding-top: 22px; }
+.mat-mdc-card-header + .mat-mdc-card-content { padding-top: 12px; }
+.mat-mdc-card-title { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; color: var(--mi-text); }
+.mat-mdc-card-subtitle { color: var(--mi-text-2); font-size: 13px; line-height: 1.5; margin-top: 2px; }
+.mat-mdc-card-header .mat-mdc-card-header-text { margin: 0; }
+.mat-mdc-card-header .mat-mdc-card-avatar {
+  width: 40px; height: 40px; border-radius: 12px; margin: 0 14px 0 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, var(--mi-primary-soft), #f3e8ff);
+  color: var(--mi-primary);
+  font-size: 22px; line-height: 40px;
+}
+.mat-mdc-card-header .mat-mdc-card-avatar.mat-icon { line-height: 40px; }
+.mat-mdc-card-actions { padding: 8px 22px 16px; }
+
+// ---------------------------------------------------------------------------
+// Forms & buttons
+// ---------------------------------------------------------------------------
+.mat-mdc-form-field { font-size: 14px; }
+.mat-mdc-form-field-subscript-wrapper { font-size: 11.5px; }
+.mdc-text-field--outlined { background: var(--mi-surface); border-radius: var(--mi-radius-sm); }
+.mat-mdc-form-field-hint { color: var(--mi-text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.mat-mdc-form-field-hint-wrapper { overflow: hidden; }
+
+.mdc-button { font-weight: 600; letter-spacing: 0; }
+.mat-mdc-unelevated-button:not(:disabled) {
+  box-shadow: 0 1px 2px rgba(47, 91, 234, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+.mat-mdc-unelevated-button:not(:disabled):hover { filter: brightness(1.06); }
+.mat-mdc-outlined-button:not(:disabled) { background: var(--mi-surface); }
+.mat-mdc-outlined-button:not(:disabled):hover { border-color: var(--mi-primary); color: var(--mi-primary); }
+.mat-mdc-button .mat-icon, .mat-mdc-unelevated-button .mat-icon, .mat-mdc-outlined-button .mat-icon { margin-right: 6px; }
+
+// ---------------------------------------------------------------------------
+// Tables
+// ---------------------------------------------------------------------------
+.mat-mdc-table {
+  width: 100%;
+  border-radius: var(--mi-radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--mi-border);
+}
+.mat-mdc-header-row { background: var(--mi-surface-2); height: 44px; text-transform: uppercase; letter-spacing: 0.05em; }
+.mat-mdc-row { height: 48px; transition: background 120ms ease; }
+.mat-mdc-row:hover { background: #fafbfd; }
+.mat-mdc-row:last-child .mat-mdc-cell { border-bottom: none; }
+.mat-mdc-cell, .mat-mdc-header-cell { padding: 0 14px; }
+.mat-mdc-cell:first-child { white-space: nowrap; font-weight: 500; }
+.mat-mdc-cell.detail { overflow-wrap: anywhere; min-width: 160px; }
+
+// ---------------------------------------------------------------------------
+// Expansion, tabs, chips
+// ---------------------------------------------------------------------------
+.mat-expansion-panel { border: 1px solid var(--mi-border); box-shadow: none !important; border-radius: var(--mi-radius-sm) !important; }
+.mat-expansion-panel-header { font-weight: 500; }
+.mat-mdc-tab-group { --mat-tab-header-divider-color: var(--mi-border); }
+.mat-mdc-tab .mdc-tab__text-label { font-weight: 500; letter-spacing: 0; }
+.mat-mdc-chip { font-size: 12.5px; }
+
+// ---------------------------------------------------------------------------
+// Tooltips
+// ---------------------------------------------------------------------------
+.mat-mdc-tooltip .mdc-tooltip__surface { background: var(--mi-text); border-radius: 8px; padding: 8px 12px; font-size: 12.5px; }
+.field-hint .mdc-tooltip__surface { white-space: pre-line; max-width: 420px; text-align: left; line-height: 1.45; font-size: 12.5px; }
+
+// ---------------------------------------------------------------------------
+// Motion
+// ---------------------------------------------------------------------------
+@keyframes mi-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.page > * { animation: mi-rise 240ms ease both; }
+@media (prefers-reduced-motion: reduce) { .page > * { animation: none; } }
