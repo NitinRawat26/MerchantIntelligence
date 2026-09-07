@@ -391,7 +391,7 @@
               <li class="clickable" [routerLink]="['/assess', h.id]">
                 <span class="pill small" [class]="outcomeClass(h.outcome)">{{ h.outcome }}</span>
                 <strong>{{ h.merchantName }}</strong>
-                <span class="muted">{{ h.score }}/1000 · {{ h.tier }} · {{ h.coveragePercent | number:'1.0-0' }}% coverage</span>
+                <span class="muted">{{ h.score }}/1000 · {{ h.tier }} · {{ h.coveragePercent | number:'1.0-0' }}% score signals</span>
                 <span class="muted when">{{ h.completedAt | date:'short' }}</span>
                 <a mat-icon-button [href]="pdfUrl(h.id)" target="_blank" rel="noopener" (click)="$event.stopPropagation()" aria-label="Download PDF" matTooltip="Download PDF"><mat-icon>picture_as_pdf</mat-icon></a>
               </li>
