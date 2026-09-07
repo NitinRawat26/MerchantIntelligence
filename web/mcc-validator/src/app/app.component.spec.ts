@@ -18,14 +18,14 @@ describe('AppComponent', () => {
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
     const text = fixture.nativeElement.textContent as string;
-    for (const label of ['Unified risk score', 'KYB & screening', 'Underwriting', 'MCC validator', 'Case queue', 'Policy rules', 'Audit trail', 'Model ops', 'MATCH inquiry', 'Webhooks']) {
+    for (const label of ['Full assessment', 'Unified risk score', 'KYB & screening', 'Underwriting', 'MCC validator', 'Case queue', 'Policy rules', 'Audit trail', 'Model ops', 'MATCH inquiry', 'Webhooks']) {
       expect(text).toContain(label);
     }
   });
 
   it('exposes a route for every suite page', () => {
     const paths = routes.map(r => r.path);
-    for (const p of ['score', 'kyb', 'underwriting', 'mcc', 'cases', 'cases/:id', 'rules', 'audit', 'models', 'match', 'webhooks']) {
+    for (const p of ['assess', 'assess/:id', 'score', 'kyb', 'underwriting', 'mcc', 'cases', 'cases/:id', 'rules', 'audit', 'models', 'match', 'webhooks']) {
       expect(paths).toContain(p);
     }
   });

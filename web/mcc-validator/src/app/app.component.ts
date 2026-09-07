@@ -69,6 +69,7 @@ export class AppComponent {
 
   readonly groups: NavGroup[] = [
     { title: 'Decision', items: [
+      { path: '/assess', label: 'Full assessment', icon: 'checklist_rtl' },
       { path: '/score', label: 'Unified risk score', icon: 'speed' },
       { path: '/cases', label: 'Case queue', icon: 'inbox' },
       { path: '/rules', label: 'Policy rules', icon: 'rule' }
