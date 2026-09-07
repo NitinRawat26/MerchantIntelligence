@@ -20,6 +20,7 @@ import { Subscription } from 'rxjs';
 import { SuiteApiService, describeError } from '../../shared/suite-api.service';
 import { AssessmentListItem, AssessmentRequest, AssessmentResult, AssessmentStep, AssessmentStepDescriptor, Flag, StepStatus } from '../../shared/models';
 import { FlagsComponent, GaugeComponent, JsonViewComponent, StatusComponent, outcomeClass, tierClass } from '../../shared/ui';
+import { FIELD_HINTS } from './field-hints';
 
 type Preset = 'approved' | 'clean' | 'sanctioned' | 'restricted';
 
@@ -234,6 +235,8 @@ export class AssessmentComponent {
   severityClass(sev: string, covered = true): string { return covered ? `text-${sev.toLowerCase()}` : 'text-gap'; }
   outcomeCardClass(outcome: string): string { return outcomeClass(outcome); }
   abs(n: number): number { return Math.abs(n); }
+  hint(field: string): string { return FIELD_HINTS[field] ?? ''; }
+
   coveredChecks(r: AssessmentResult): number { return r.explainability.checkOutcomes.filter(o => o.covered).length; }
   reasonFlags(r: AssessmentResult): Flag[] { return r.explainability.reasonCodes.map(c => ({ code: c.code, message: `${c.description} [${c.source}]`, severity: c.severity })); }
   findingFlags(r: AssessmentResult): Flag[] { return r.explainability.findings.map(f => ({ code: f.code, message: `${f.message} [${f.source}]`, severity: f.severity })); }

@@ -58,6 +58,19 @@ describe('AssessmentComponent', () => {
     expect(fixture.componentInstance.form.valid).toBeTrue();
   });
 
+  it('gives every intake field a hover hint explaining how it is used in decisioning', () => {
+    const fixture = create();
+    const icons = fixture.nativeElement.querySelectorAll('mat-icon.hint') as NodeListOf<HTMLElement>;
+    expect(icons.length).toBeGreaterThanOrEqual(30);
+    const c = fixture.componentInstance;
+    for (const key of ['averageTicket', 'annualVolume', 'legalName', 'ownerDateOfBirth', 'bankStatement', 'createCase']) {
+      expect(c.hint(key).length).toBeGreaterThan(20);
+    }
+    expect(c.hint('averageTicket')).toContain('Credit model');
+    expect(c.hint('averageTicket')).toContain('Volume plausibility');
+    expect(c.hint('nope')).toBe('');
+  });
+
   it('streams step progress and renders the decision with a PDF link', () => {
     const fixture = create();
     const events: AssessmentEvent[] = [
