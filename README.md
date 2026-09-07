@@ -39,7 +39,7 @@ and an aggregator combines them into an explainable verdict:
 `suggestedMccs`, `riskFlags` (e.g. `HIDDEN_HIGH_RISK`, `MCC_MISMATCH`) and per-provider
 `evidence`. `GET /api/mcc-validation/catalog` lists the MCC catalog for autocomplete.
 
-An Angular 18 + Material front end lives in `web/mcc-validator`.
+The MCC validator is one page of the Angular workspace in `web/mcc-validator` (see [Web UI](#web-ui)).
 
 ### KYB & Compliance (`/api/kyb`)
 
@@ -105,7 +105,7 @@ src/
   MerchantIntelligence.Platform/                  # Unified score, rules engine, cases + audit (SQLite), webhooks, model ops, MATCH boundary
   MerchantIntelligence.Api/                       # ASP.NET Core Web API (all tools)
 web/
-  mcc-validator/                                  # Angular UI for MCC validation
+  mcc-validator/                                  # Angular 18 + Material UI for the whole suite
 tests/
   MerchantIntelligence.Tests/                     # xUnit unit + integration tests
 models/
@@ -211,6 +211,26 @@ dotnet run -c Release --project src/MerchantIntelligence.MccValidation.DataPipel
 
 The pipeline writes `data/edgar/training.jsonl` (one `{text, mcc, source}` per line) — append
 your own labelled merchant records to it before running `train` to improve coverage.
+
+## Web UI
+
+`web/mcc-validator` is an Angular 18 + Material single-page app with a page per capability. All pages
+call the .NET API through the `/api` dev proxy (`proxy.conf.json` → `http://localhost:5292`).
+
+| Route | Page |
+|-------|------|
+| `/score` | Unified risk score: enter credit application + upstream KYB/screening/website/plausibility signals, see score, tier, coverage gaps, hard stops, reason codes, matched rules; optionally open a case |
+| `/kyb` | KYB & screening: business identity, beneficial owners, registry sources, sanctions/PEP/adverse media, website compliance checks, prohibited-business verdict |
+| `/underwriting` | Explainability (Shapley bars + reason codes), reserve & pricing terms, volume plausibility, bank-statement CSV/PDF and P&L analysis |
+| `/mcc` | MCC validator (unchanged) |
+| `/cases`, `/cases/:id` | Analyst queue with stats/filters; case detail with assign, status, notes, decide (override reason enforced) and per-case audit trail |
+| `/rules` | Active rule-set JSON editor with validate / publish / evaluate against sample facts, version history and rollback |
+| `/audit` | Recent audit events and hash-chain verification |
+| `/models` | Model registry, champion/challenger comparison, drift report, decision log with outcome labelling, retrain/promote |
+| `/match` | MATCH inquiry; shows `NotConfigured` explicitly when no local list / endpoint is configured |
+| `/webhooks` | Register subscriptions (secret never echoed), list deliveries and attempts |
+
+Unit tests run headless with `CHROME_BIN=<chrome> npx ng test --watch=false --browsers=ChromeHeadless`.
 
 ## Training data
 

@@ -1,0 +1,210 @@
+<div class="page">
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>Credit application</mat-card-title>
+      <mat-card-subtitle>Shared inputs for explainability, terms and volume plausibility</mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-content>
+      <form [formGroup]="app" class="grid-4">
+        <mat-form-field appearance="outline"><mat-label>MCC</mat-label><input matInput type="number" formControlName="merchantCategoryCode"></mat-form-field>
+        <mat-form-field appearance="outline"><mat-label>Annual volume</mat-label><input matInput type="number" formControlName="annualVolume"></mat-form-field>
+        <mat-form-field appearance="outline"><mat-label>Average ticket</mat-label><input matInput type="number" formControlName="averageTicket"></mat-form-field>
+        <mat-form-field appearance="outline"><mat-label>Highest ticket</mat-label><input matInput type="number" formControlName="highestTicket"></mat-form-field>
+        <mat-checkbox formControlName="matchFound">MATCH record found</mat-checkbox>
+        <mat-checkbox formControlName="existingRelationship">Existing relationship</mat-checkbox>
+      </form>
+    </mat-card-content>
+  </mat-card>
+
+  <mat-tab-group>
+    <mat-tab label="Explain decision">
+      <div class="tab">
+        <div class="actions">
+          <mat-form-field appearance="outline"><mat-label>Explain class</mat-label>
+            <mat-select [formControl]="explainClass"><mat-option value="">Predicted class</mat-option>@for (d of decisions; track d) { <mat-option [value]="d">{{ d }}</mat-option> }</mat-select>
+          </mat-form-field>
+          <button mat-flat-button color="primary" (click)="doExplain()" [disabled]="app.invalid || explain().loading"><mat-icon>insights</mat-icon> Explain</button>
+        </div>
+        <mi-status [loading]="explain().loading" [error]="explain().error"></mi-status>
+        @if (explain().result; as r) {
+          <div class="summary">
+            <div><span class="label">Decision</span><span class="pill" [class]="outcomeClass(r.decision)">{{ r.decision }}</span></div>
+            <div><span class="label">Confidence</span>{{ r.confidence | percent:'1.0-1' }}</div>
+            <div><span class="label">Explained class</span>{{ r.explainedClass }}</div>
+            <div><span class="label">Baseline → predicted</span>{{ r.baselineProbability | percent:'1.0-1' }} → {{ r.predictedProbability | percent:'1.0-1' }}</div>
+          </div>
+          <p>{{ r.narrative }}</p>
+          <h4>Feature contributions (exact Shapley)</h4>
+          <div class="bar-list">
+            @for (c of r.contributions; track c.feature) {
+              <div class="bar-row">
+                <span class="bar-label" [matTooltip]="'baseline ' + c.baselineValue">{{ c.feature }} = {{ c.value }}</span>
+                <div class="bar-track">
+                  <div class="bar-fill" [class.neg]="c.contribution < 0" [style.width.%]="barWidth(c.contribution, r.contributions)"
+                       [style.margin-left.%]="c.contribution < 0 ? 50 - barWidth(c.contribution, r.contributions) : 50"></div>
+                </div>
+                <span class="bar-value" [class]="c.contribution >= 0 ? 'text-low' : 'text-high'">{{ c.contribution >= 0 ? '+' : '' }}{{ c.contribution | number:'1.3-3' }} <span class="muted">{{ c.direction }}</span></span>
+              </div>
+            }
+          </div>
+          <h4>Reason codes</h4>
+          <ul>@for (rc of r.reasonCodes; track rc.code) { <li><strong>{{ rc.code }}</strong> — {{ rc.description }} <span class="muted">(weight {{ rc.weight | number:'1.2-2' }})</span></li> }</ul>
+          <mi-json [data]="r" title="Raw explanation"></mi-json>
+        }
+      </div>
+    </mat-tab>
+
+    <mat-tab label="Reserve & pricing">
+      <div class="tab">
+        <form [formGroup]="terms" class="grid-4">
+          <mat-form-field appearance="outline"><mat-label>Delivery days</mat-label><input matInput type="number" formControlName="deliveryDays"></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Card-not-present share (0–1)</mat-label><input matInput type="number" step="0.05" formControlName="cardNotPresentShare"></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>KYB high risk</mat-label>
+            <mat-select formControlName="kybHighRisk"><mat-option value="">Unknown</mat-option><mat-option value="true">Yes</mat-option><mat-option value="false">No</mat-option></mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Website compliance score</mat-label><input matInput type="number" formControlName="websiteComplianceScore"></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Volume plausibility score</mat-label><input matInput type="number" formControlName="volumePlausibilityScore"></mat-form-field>
+          <mat-checkbox formControlName="offersSubscriptions">Subscriptions</mat-checkbox>
+          <mat-checkbox formControlName="offersFreeTrials">Free trials</mat-checkbox>
+        </form>
+        <div class="actions"><button mat-flat-button color="primary" (click)="doTerms()" [disabled]="app.invalid || terms.invalid || termsResult().loading"><mat-icon>price_check</mat-icon> Recommend terms</button></div>
+        <mi-status [loading]="termsResult().loading" [error]="termsResult().error"></mi-status>
+        @if (termsResult().result; as t) {
+          <div class="summary">
+            <div><span class="label">Risk band</span><span class="pill" [class]="'band-' + t.riskBand.toLowerCase()">{{ t.riskBand }}</span></div>
+            <div><span class="label">Risk score</span>{{ t.riskScore | percent:'1.0-0' }}</div>
+            <div><span class="label">Estimated exposure</span>{{ t.estimatedExposure | currency:'USD':'symbol':'1.0-0' }}</div>
+            <div><span class="label">Benchmark</span>{{ t.benchmarkSource }}</div>
+          </div>
+          <div class="two-col">
+            <mat-card appearance="outlined"><mat-card-header><mat-card-title>Reserve</mat-card-title></mat-card-header><mat-card-content>
+              <dl class="kv">
+                <dt>Type</dt><dd>{{ t.reserve.type }}</dd>
+                <dt>Rolling</dt><dd>{{ t.reserve.rollingPercent | number:'1.0-1' }}% for {{ t.reserve.rollingDays }} days</dd>
+                <dt>Cap</dt><dd>{{ t.reserve.capAmount ? (t.reserve.capAmount | currency:'USD':'symbol':'1.0-0') : 'uncapped' }}</dd>
+                <dt>Upfront</dt><dd>{{ t.reserve.upfrontAmount | currency:'USD':'symbol':'1.0-0' }}</dd>
+                <dt>Steady-state balance</dt><dd>{{ t.reserve.estimatedSteadyStateBalance | currency:'USD':'symbol':'1.0-0' }}</dd>
+              </dl></mat-card-content></mat-card>
+            <mat-card appearance="outlined"><mat-card-header><mat-card-title>Pricing</mat-card-title></mat-card-header><mat-card-content>
+              <dl class="kv">
+                <dt>Interchange-plus markup</dt><dd>{{ t.pricing.interchangePlusMarkupBps | number:'1.0-0' }} bps</dd>
+                <dt>Per transaction</dt><dd>{{ t.pricing.perTransactionFee | currency:'USD':'symbol':'1.2-2' }}</dd>
+                <dt>Monthly fee</dt><dd>{{ t.pricing.monthlyFee | currency:'USD':'symbol':'1.0-2' }}</dd>
+                <dt>Chargeback fee</dt><dd>{{ t.pricing.chargebackFee | currency:'USD':'symbol':'1.0-2' }}</dd>
+                <dt>Settlement delay</dt><dd>{{ t.pricing.settlementDelayDays }} days</dd>
+                <dt>Monthly volume cap</dt><dd>{{ t.pricing.monthlyVolumeCap | currency:'USD':'symbol':'1.0-0' }}</dd>
+                <dt>Single transaction cap</dt><dd>{{ t.pricing.singleTransactionCap | currency:'USD':'symbol':'1.0-0' }}</dd>
+              </dl></mat-card-content></mat-card>
+          </div>
+          <h4>Factors</h4>
+          <ul>@for (f of t.factors; track f.code) { <li><strong>{{ f.code }}</strong> — {{ f.description }} <span class="muted">{{ f.effect }}</span></li> }</ul>
+          <mi-json [data]="t" title="Raw recommendation"></mi-json>
+        }
+      </div>
+    </mat-tab>
+
+    <mat-tab label="Volume plausibility">
+      <div class="tab">
+        <form [formGroup]="plaus" class="grid-3">
+          <mat-form-field appearance="outline"><mat-label>Employees</mat-label><input matInput type="number" formControlName="employeeCount"></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Years in business</mat-label><input matInput type="number" formControlName="yearsInBusiness"></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Prior-year revenue</mat-label><input matInput type="number" formControlName="priorYearRevenue"></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Monthly card volume (statements)</mat-label><input matInput type="number" formControlName="monthlyCardVolumeFromStatements"></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Website product count</mat-label><input matInput type="number" formControlName="websiteProductCount"></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Physical location</mat-label>
+            <mat-select formControlName="hasPhysicalLocation"><mat-option value="">Unknown</mat-option><mat-option value="true">Yes</mat-option><mat-option value="false">No</mat-option></mat-select>
+          </mat-form-field>
+        </form>
+        <div class="actions"><button mat-flat-button color="primary" (click)="doPlausibility()" [disabled]="app.invalid || plausResult().loading"><mat-icon>fact_check</mat-icon> Check plausibility</button></div>
+        <mi-status [loading]="plausResult().loading" [error]="plausResult().error"></mi-status>
+        @if (plausResult().result; as p) {
+          <div class="two-col">
+            <mi-gauge [value]="p.plausibilityScore" [percent]="p.plausibilityScore" label="Plausibility" suffix="/100"></mi-gauge>
+            <div><span class="pill" [class]="p.plausibilityScore >= 70 ? 'good' : p.plausibilityScore >= 40 ? 'warn' : 'bad'">{{ p.verdict }}</span><p class="muted">{{ p.benchmarkSource }}</p></div>
+          </div>
+          <mi-flags [flags]="p.flags"></mi-flags>
+          <table mat-table [dataSource]="p.metrics" class="full">
+            <ng-container matColumnDef="name"><th mat-header-cell *matHeaderCellDef>Metric</th><td mat-cell *matCellDef="let m">{{ m.name }}</td></ng-container>
+            <ng-container matColumnDef="value"><th mat-header-cell *matHeaderCellDef>Value</th><td mat-cell *matCellDef="let m">{{ m.value }}</td></ng-container>
+            <ng-container matColumnDef="benchmark"><th mat-header-cell *matHeaderCellDef>Benchmark</th><td mat-cell *matCellDef="let m">{{ m.benchmark }}</td></ng-container>
+            <ng-container matColumnDef="assessment"><th mat-header-cell *matHeaderCellDef>Assessment</th><td mat-cell *matCellDef="let m">{{ m.assessment }}</td></ng-container>
+            <tr mat-header-row *matHeaderRowDef="metricColumns"></tr><tr mat-row *matRowDef="let row; columns: metricColumns"></tr>
+          </table>
+          <mi-json [data]="p" title="Raw result"></mi-json>
+        }
+      </div>
+    </mat-tab>
+
+    <mat-tab label="Bank statement">
+      <div class="tab">
+        <mat-form-field appearance="outline" class="full"><mat-label>Statement CSV (Date, Description, Amount[, Balance])</mat-label>
+          <textarea matInput rows="8" [formControl]="bankCsv"></textarea></mat-form-field>
+        <div class="actions">
+          <button mat-flat-button color="primary" (click)="doBankCsv()" [disabled]="!bankCsv.value || bank().loading"><mat-icon>account_balance</mat-icon> Analyse CSV</button>
+          <button mat-stroked-button (click)="bankFile.click()" [disabled]="bank().loading"><mat-icon>upload_file</mat-icon> Upload CSV / PDF</button>
+          <input #bankFile type="file" accept=".csv,.pdf,text/csv,application/pdf" hidden (change)="doBankFile($event)">
+        </div>
+        <mi-status [loading]="bank().loading" [error]="bank().error"></mi-status>
+        @if (bank().result; as b) {
+          <div class="summary">
+            <div><span class="label">Period</span>{{ b.periodStart }} → {{ b.periodEnd }} ({{ b.monthsCovered }} mo, {{ b.transactionCount }} txns)</div>
+            <div><span class="label">Avg monthly inflows</span>{{ b.averageMonthlyInflows | currency:'USD':'symbol':'1.0-0' }}</div>
+            <div><span class="label">Avg monthly net</span>{{ b.averageMonthlyNet | currency:'USD':'symbol':'1.0-0' }}</div>
+            <div><span class="label">Implied annual card volume</span>{{ b.impliedAnnualCardVolume | currency:'USD':'symbol':'1.0-0' }}</div>
+            <div><span class="label">NSF / overdrafts</span>{{ b.nsfOrOverdraftCount }} · {{ b.negativeBalanceDays }} negative days</div>
+            <div><span class="label">Min balance</span>{{ b.minimumBalance == null ? 'n/a' : (b.minimumBalance | currency:'USD':'symbol':'1.0-0') }}</div>
+            <div><span class="label">Volatility / seasonality</span>{{ b.inflowVolatility | number:'1.2-2' }} / {{ b.seasonalityIndex | number:'1.2-2' }}</div>
+            <div><span class="label">Processors</span>{{ b.detectedProcessors.join(', ') || 'none detected' }}</div>
+          </div>
+          <mi-flags [flags]="b.flags"></mi-flags>
+          @if (b.warnings.length) { <ul class="muted">@for (w of b.warnings; track w) { <li>{{ w }}</li> }</ul> }
+          <table mat-table [dataSource]="b.monthly" class="full">
+            <ng-container matColumnDef="month"><th mat-header-cell *matHeaderCellDef>Month</th><td mat-cell *matCellDef="let m">{{ m.month }}</td></ng-container>
+            <ng-container matColumnDef="inflows"><th mat-header-cell *matHeaderCellDef>Inflows</th><td mat-cell *matCellDef="let m">{{ m.inflows | currency:'USD':'symbol':'1.0-0' }}</td></ng-container>
+            <ng-container matColumnDef="outflows"><th mat-header-cell *matHeaderCellDef>Outflows</th><td mat-cell *matCellDef="let m">{{ m.outflows | currency:'USD':'symbol':'1.0-0' }}</td></ng-container>
+            <ng-container matColumnDef="net"><th mat-header-cell *matHeaderCellDef>Net</th><td mat-cell *matCellDef="let m" [class]="m.net >= 0 ? 'text-low' : 'text-high'">{{ m.net | currency:'USD':'symbol':'1.0-0' }}</td></ng-container>
+            <ng-container matColumnDef="card"><th mat-header-cell *matHeaderCellDef>Card deposits</th><td mat-cell *matCellDef="let m">{{ m.cardProcessorDeposits | currency:'USD':'symbol':'1.0-0' }}</td></ng-container>
+            <ng-container matColumnDef="balance"><th mat-header-cell *matHeaderCellDef>Ending balance</th><td mat-cell *matCellDef="let m">{{ m.endingBalance == null ? '—' : (m.endingBalance | currency:'USD':'symbol':'1.0-0') }}</td></ng-container>
+            <tr mat-header-row *matHeaderRowDef="monthColumns"></tr><tr mat-row *matRowDef="let row; columns: monthColumns"></tr>
+          </table>
+          <mi-json [data]="b" title="Raw analysis"></mi-json>
+        }
+      </div>
+    </mat-tab>
+
+    <mat-tab label="P&L / balance sheet">
+      <div class="tab">
+        <mat-form-field appearance="outline" class="full"><mat-label>Statement lines ("label,amount" per line or free text)</mat-label>
+          <textarea matInput rows="8" [formControl]="pnlText"></textarea></mat-form-field>
+        <div class="actions">
+          <mat-form-field appearance="outline"><mat-label>Declared annual card volume</mat-label><input matInput type="number" [formControl]="declaredVolume"></mat-form-field>
+          <button mat-flat-button color="primary" (click)="doPnlText()" [disabled]="!pnlText.value || pnl().loading"><mat-icon>request_quote</mat-icon> Analyse text</button>
+          <button mat-stroked-button (click)="pnlFile.click()" [disabled]="pnl().loading"><mat-icon>upload_file</mat-icon> Upload CSV / TXT / PDF</button>
+          <input #pnlFile type="file" accept=".csv,.txt,.pdf" hidden (change)="doPnlFile($event)">
+        </div>
+        <mi-status [loading]="pnl().loading" [error]="pnl().error"></mi-status>
+        @if (pnl().result; as f) {
+          <mi-flags [flags]="f.flags"></mi-flags>
+          @if (f.warnings.length) { <ul class="muted">@for (w of f.warnings; track w) { <li>{{ w }}</li> }</ul> }
+          <div class="two-col">
+            <div>
+              <h4>Extracted lines</h4>
+              <dl class="kv">@for (l of statementLines(f.statement); track l.label) { <dt>{{ l.label }}</dt><dd>{{ l.value | currency:'USD':'symbol':'1.0-0' }}</dd> }</dl>
+            </div>
+            <div>
+              <h4>Ratios</h4>
+              <table mat-table [dataSource]="f.ratios" class="full">
+                <ng-container matColumnDef="name"><th mat-header-cell *matHeaderCellDef>Ratio</th><td mat-cell *matCellDef="let m">{{ m.name }}</td></ng-container>
+                <ng-container matColumnDef="value"><th mat-header-cell *matHeaderCellDef>Value</th><td mat-cell *matCellDef="let m">{{ m.value == null ? 'n/a' : (m.value | number:'1.2-2') }}</td></ng-container>
+                <ng-container matColumnDef="benchmark"><th mat-header-cell *matHeaderCellDef>Benchmark</th><td mat-cell *matCellDef="let m">{{ m.benchmark }}</td></ng-container>
+                <ng-container matColumnDef="assessment"><th mat-header-cell *matHeaderCellDef>Assessment</th><td mat-cell *matCellDef="let m">{{ m.assessment }}</td></ng-container>
+                <tr mat-header-row *matHeaderRowDef="metricColumns"></tr><tr mat-row *matRowDef="let row; columns: metricColumns"></tr>
+              </table>
+            </div>
+          </div>
+          <mi-json [data]="f" title="Raw analysis"></mi-json>
+        }
+      </div>
+    </mat-tab>
+  </mat-tab-group>
+</div>
