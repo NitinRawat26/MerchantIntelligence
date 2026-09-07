@@ -21,6 +21,7 @@
     <ProjectReference Include="..\MerchantIntelligence.MccValidation\MerchantIntelligence.MccValidation.csproj" />
     <ProjectReference Include="..\MerchantIntelligence.Kyb\MerchantIntelligence.Kyb.csproj" />
     <ProjectReference Include="..\MerchantIntelligence.Underwriting\MerchantIntelligence.Underwriting.csproj" />
+    <ProjectReference Include="..\MerchantIntelligence.Platform\MerchantIntelligence.Platform.csproj" />
   </ItemGroup>
 
 </Project>

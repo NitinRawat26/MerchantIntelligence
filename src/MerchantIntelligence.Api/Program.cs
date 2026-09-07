@@ -7,6 +7,9 @@ using MerchantIntelligence.MccValidation.Classification;
 using MerchantIntelligence.MccValidation.Taxonomy;
 using MerchantIntelligence.MccValidation.Validation;
 using MerchantIntelligence.MccValidation.Web;
+using MerchantIntelligence.Platform;
+using MerchantIntelligence.Platform.Integrations;
+using MerchantIntelligence.Platform.Storage;
 using MerchantIntelligence.Underwriting.Benchmarks;
 using MerchantIntelligence.Underwriting.Explainability;
 using MerchantIntelligence.Underwriting.Plausibility;
@@ -19,20 +22,17 @@ builder.Services.AddControllers()
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-var modelPath = builder.Configuration["CreditDecision:ModelPath"] ?? "models/credit-decision.zip";
-builder.Services.AddSingleton<IDecisionPredictor>(sp =>
+var modelPath = ResolvePath(builder.Configuration["CreditDecision:ModelPath"] ?? "models/credit-decision.zip");
+IDecisionPredictor LoadBootstrapModel(IServiceProvider sp)
 {
-    var resolved = Path.IsPathRooted(modelPath)
-        ? modelPath
-        : Path.Combine(AppContext.BaseDirectory, modelPath);
-    if (!File.Exists(resolved))
+    if (!File.Exists(modelPath))
     {
         throw new FileNotFoundException(
-            $"Credit decision model not found at '{resolved}'. Run the Trainer project or set CreditDecision:ModelPath.");
+            $"Credit decision model not found at '{modelPath}'. Run the Trainer project or set CreditDecision:ModelPath.");
     }
-    sp.GetRequiredService<ILogger<Program>>().LogInformation("Loading credit decision model from {Path}", resolved);
-    return DecisionPredictor.Load(resolved);
-});
+    sp.GetRequiredService<ILogger<Program>>().LogInformation("Loading credit decision model from {Path}", modelPath);
+    return DecisionPredictor.Load(modelPath);
+}
 
 builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
     .WithOrigins(builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? new[] { "http://localhost:4200" })
@@ -71,6 +71,13 @@ builder.Services.AddSingleton(IndustryBenchmarks.Default);
 builder.Services.AddSingleton(sp => new DecisionExplainer(sp.GetRequiredService<IDecisionPredictor>()));
 builder.Services.AddSingleton<ReservePricingRecommender>();
 builder.Services.AddSingleton<VolumePlausibilityAnalyzer>();
+
+var platformOptions = builder.Configuration.GetSection("Platform").Get<PlatformOptions>() ?? new PlatformOptions();
+platformOptions.DatabasePath = platformOptions.DatabasePath == ":memory:" ? platformOptions.DatabasePath : ResolvePath(platformOptions.DatabasePath);
+platformOptions.ModelsDirectory = ResolvePath(platformOptions.ModelsDirectory);
+var matchOptions = builder.Configuration.GetSection("Match").Get<MatchOptions>() ?? new MatchOptions();
+if (matchOptions.LocalListPath is not null) matchOptions.LocalListPath = ResolvePath(matchOptions.LocalListPath);
+builder.Services.AddMerchantPlatform(platformOptions, matchOptions, LoadBootstrapModel, modelPath);
 
 var app = builder.Build();
 

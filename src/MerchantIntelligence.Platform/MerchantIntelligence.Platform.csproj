@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MerchantIntelligence.CreditDecision\MerchantIntelligence.CreditDecision.csproj" />
+    <ProjectReference Include="..\MerchantIntelligence.MccValidation\MerchantIntelligence.MccValidation.csproj" />
+    <ProjectReference Include="..\MerchantIntelligence.Kyb\MerchantIntelligence.Kyb.csproj" />
+    <ProjectReference Include="..\MerchantIntelligence.Underwriting\MerchantIntelligence.Underwriting.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\default-rules.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="MerchantIntelligence.Tests" />
+  </ItemGroup>
+
+</Project>

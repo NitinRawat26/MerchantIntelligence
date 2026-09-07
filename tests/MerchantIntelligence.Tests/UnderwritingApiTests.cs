@@ -63,12 +63,15 @@ public sealed class UnderwritingApiTests : IClassFixture<WebApplicationFactory<P
         Assert.True(root.GetProperty("factors").GetArrayLength() > 0);
     }
 
-    [Fact]
-    public async Task RecommendTerms_validates_ranges()
+    [Theory]
+    [InlineData(1.7)]
+    [InlineData(1.1)]
+    [InlineData(-0.1)]
+    public async Task RecommendTerms_validates_ranges(double cardNotPresentShare)
     {
         var response = await _client.PostAsJsonAsync("/api/underwriting/recommend-terms", new
         {
-            merchantCategoryCode = 5411, annualVolume = 600000, averageTicket = 40, highestTicket = 250, cardNotPresentShare = 1.7
+            merchantCategoryCode = 5411, annualVolume = 600000, averageTicket = 40, highestTicket = 250, cardNotPresentShare
         });
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
