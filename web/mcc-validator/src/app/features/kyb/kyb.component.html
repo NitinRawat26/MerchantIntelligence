@@ -1,0 +1,137 @@
+<div class="page">
+  <mat-card appearance="outlined">
+    <mat-card-header>
+      <mat-icon mat-card-avatar>verified_user</mat-icon>
+      <mat-card-title>KYB report</mat-card-title>
+      <mat-card-subtitle>Registry verification (GLEIF · SEC EDGAR · Census geocoder) · sanctions/PEP screening (OFAC · UN · OpenSanctions) · GDELT adverse media · website compliance · prohibited-business detection</mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-content>
+      <form [formGroup]="form" (ngSubmit)="submit()">
+        <h3>Business</h3>
+        <div class="grid-4">
+          <mat-form-field appearance="outline"><mat-label>Legal name</mat-label><input matInput formControlName="legalName" required></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Trading name / DBA</mat-label><input matInput formControlName="tradingName"></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Registration / LEI</mat-label><input matInput formControlName="registrationNumber"></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Tax ID</mat-label><input matInput formControlName="taxId"></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Address</mat-label><input matInput formControlName="addressLine"></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>City</mat-label><input matInput formControlName="city"></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Region / State</mat-label><input matInput formControlName="region"></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Postal code</mat-label><input matInput formControlName="postalCode"></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Country (ISO-2)</mat-label><input matInput formControlName="country" maxlength="2"></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Website</mat-label><input matInput formControlName="websiteUrl" placeholder="https://"></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Declared MCC</mat-label><input matInput type="number" formControlName="declaredMcc"></mat-form-field>
+          <mat-form-field appearance="outline" class="wide"><mat-label>Business description</mat-label><textarea matInput rows="2" formControlName="businessDescription"></textarea></mat-form-field>
+        </div>
+
+        <h3>Beneficial owners &amp; principals <button mat-button type="button" (click)="addOwner()"><mat-icon>add</mat-icon> Add</button></h3>
+        <div formArrayName="owners">
+          @for (o of owners.controls; track o; let i = $index) {
+            <div class="grid-4 owner" [formGroupName]="i">
+              <mat-form-field appearance="outline"><mat-label>Full name</mat-label><input matInput formControlName="fullName"></mat-form-field>
+              <mat-form-field appearance="outline"><mat-label>Date of birth</mat-label><input matInput type="date" formControlName="dateOfBirth"></mat-form-field>
+              <mat-form-field appearance="outline"><mat-label>Nationality</mat-label><input matInput formControlName="nationality"></mat-form-field>
+              <div class="row">
+                <mat-form-field appearance="outline"><mat-label>Role</mat-label><input matInput formControlName="role"></mat-form-field>
+                <mat-form-field appearance="outline" class="pct"><mat-label>%</mat-label><input matInput type="number" formControlName="ownershipPercent"></mat-form-field>
+                <button mat-icon-button type="button" (click)="removeOwner(i)" aria-label="Remove owner"><mat-icon>close</mat-icon></button>
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="actions">
+          <button mat-flat-button color="primary" type="submit" [disabled]="form.invalid || loading()"><mat-icon>travel_explore</mat-icon> Run KYB</button>
+          <span class="muted">Queries live public sources; typically 5–30 s.</span>
+        </div>
+      </form>
+    </mat-card-content>
+  </mat-card>
+
+  <mi-status [loading]="loading()" [error]="error()" loadingText="Querying registries, sanctions lists and website…"></mi-status>
+
+  @if (report(); as r) {
+    <mat-card appearance="outlined" class="result-card" [class]="r.overallRisk === 'Low' ? 'good' : r.overallRisk === 'Medium' ? 'warn' : 'bad'">
+      <mat-card-content class="summary">
+        <mi-gauge [value]="r.verification.confidencePercent" suffix="%" [percent]="r.verification.confidencePercent" label="Verification confidence"></mi-gauge>
+        <div class="summary-text">
+          <div class="headline">
+            <span class="pill" [class]="'text-' + r.overallRisk.toLowerCase()">Overall KYB risk: {{ r.overallRisk }}</span>
+            <span class="pill neutral">Verification: {{ r.verification.status }}</span>
+            <span class="pill" [class]="r.screening.overallRisk === 'Low' ? 'good' : r.screening.overallRisk === 'Medium' ? 'warn' : 'bad'">Screening: {{ r.screening.overallRisk }}</span>
+            @if (r.websiteCompliance; as w) { <span class="pill" [class]="w.score >= 80 ? 'good' : w.score >= 60 ? 'warn' : 'bad'">Website {{ w.grade }} ({{ w.score }})</span>
+              <span class="pill" [class]="outcomeClass(w.prohibitedBusiness.verdict === 'Acceptable' ? 'Approve' : w.prohibitedBusiness.verdict === 'Prohibited' ? 'Decline' : 'Refer')">{{ w.prohibitedBusiness.verdict }}</span> }
+          </div>
+          @if (r.verification.entityAgeMonths != null) { <p>Entity age: {{ r.verification.entityAgeMonths }} months</p> }
+          <mi-flags [flags]="r.flags" emptyText="No overall flags."></mi-flags>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card appearance="outlined">
+      <mat-card-content>
+        <mat-tab-group>
+          <mat-tab label="Registry verification">
+            <div class="tab">
+              @if (r.verification.bestMatch; as bm) {
+                <p><strong>Best match</strong> from {{ bm.record.source }} · <strong>{{ bm.record.legalName }}</strong> · name {{ bm.nameScore | percent:'1.0-0' }} · address {{ bm.addressScore | percent:'1.0-0' }} · overall {{ bm.overallScore | percent:'1.0-0' }}</p>
+                <p class="muted">{{ recordSummary(bm.record) }} @if (bm.record.sourceUrl) { · <a [href]="bm.record.sourceUrl" target="_blank" rel="noopener">source</a> }</p>
+              }
+              <mi-flags [flags]="r.verification.flags"></mi-flags>
+              <h4>Sources</h4>
+              <mat-accordion>
+                @for (s of r.verification.sources; track s.source) {
+                  <mat-expansion-panel>
+                    <mat-expansion-panel-header>
+                      <mat-panel-title><mat-icon [class]="s.succeeded ? 'text-low' : 'text-high'">{{ s.succeeded ? 'check_circle' : 'error' }}</mat-icon>&nbsp;{{ s.source }}</mat-panel-title>
+                      <mat-panel-description>{{ s.succeeded ? s.matches.length + ' match(es)' : (s.error || 'failed') }}</mat-panel-description>
+                    </mat-expansion-panel-header>
+                    @for (m of s.matches; track $index) { <p><strong>{{ m.overallScore | percent:'1.0-0' }}</strong> {{ m.record.legalName }} <span class="muted">— {{ recordSummary(m.record) }}</span></p> } @empty { <p class="muted">No records.</p> }
+                  </mat-expansion-panel>
+                }
+              </mat-accordion>
+            </div>
+          </mat-tab>
+
+          <mat-tab label="Sanctions, PEP & media">
+            <div class="tab">
+              <p class="muted">Lists: @for (l of r.screening.lists; track l.listName) { <span class="pill small" [class]="l.error ? 'bad' : 'neutral'" [matTooltip]="l.error || (l.loadedAt || '')">{{ l.listName }} ({{ l.entityCount | number }})</span> }</p>
+              <mi-flags [flags]="r.screening.flags"></mi-flags>
+              @for (s of r.screening.subjects; track s.subject.name) {
+                <h4><mat-icon inline>{{ s.subject.isIndividual ? 'person' : 'business' }}</mat-icon> {{ s.subject.name }} <span class="muted">{{ s.subject.role }}</span>
+                  <span class="pill small" [class]="s.potentialMatch ? 'bad' : 'good'">{{ s.potentialMatch ? 'potential match' : 'clear' }}</span></h4>
+                @for (h of s.hits; track $index) { <p><span class="pill small warn">{{ h.score | percent:'1.0-0' }}</span> {{ h.entity.name }} <span class="muted">— {{ h.entity.listName }} · {{ h.entity.programs.join(', ') }} · matched "{{ h.matchedName }}" · {{ h.reasons.join('; ') }}</span></p> }
+                @if (s.adverseMedia; as am) {
+                  <p class="muted">Adverse media ({{ am.provider }}): {{ am.succeeded ? am.articleCount + ' article(s), ' + am.negativeCount + ' negative' : (am.error || 'unavailable') }}</p>
+                  <ul>@for (a of am.articles.slice(0, 5); track a.url) { <li><a [href]="a.url" target="_blank" rel="noopener">{{ a.title }}</a> <span class="muted">{{ a.source }} · {{ a.tone }}</span></li> }</ul>
+                }
+                <mi-flags [flags]="s.flags" [showMessages]="false" emptyText=""></mi-flags>
+              }
+            </div>
+          </mat-tab>
+
+          @if (r.websiteCompliance; as w) {
+            <mat-tab label="Website compliance">
+              <div class="tab">
+                <p><strong>{{ w.websiteUrl }}</strong> · {{ w.reachable ? 'reachable' : 'unreachable' }} · grade {{ w.grade }} ({{ w.score }}/100) · {{ w.pagesAnalyzed.length }} pages analysed</p>
+                @if (w.domain; as d) { <p class="muted">Domain {{ d.domain }} · registered {{ d.registered || '?' }} · expires {{ d.expires || '?' }} · {{ d.registrar || '' }} {{ d.error ? '· ' + d.error : '' }}</p> }
+                <table mat-table [dataSource]="w.checks" class="full">
+                  <ng-container matColumnDef="status"><th mat-header-cell *matHeaderCellDef>Status</th><td mat-cell *matCellDef="let c"><span class="pill small" [class]="outcomeClass(c.status)">{{ c.status }}</span></td></ng-container>
+                  <ng-container matColumnDef="title"><th mat-header-cell *matHeaderCellDef>Check</th><td mat-cell *matCellDef="let c">{{ c.title }}<br><span class="muted">{{ c.code }}</span></td></ng-container>
+                  <ng-container matColumnDef="detail"><th mat-header-cell *matHeaderCellDef>Detail</th><td mat-cell *matCellDef="let c" class="detail">{{ c.detail }} @if (c.evidence) { <br><em>{{ c.evidence }}</em> }</td></ng-container>
+                  <tr mat-header-row *matHeaderRowDef="checkColumns"></tr>
+                  <tr mat-row *matRowDef="let row; columns: checkColumns"></tr>
+                </table>
+                <h4>Prohibited / restricted business</h4>
+                <p><span class="pill" [class]="outcomeClass(w.prohibitedBusiness.verdict === 'Acceptable' ? 'Approve' : w.prohibitedBusiness.verdict === 'Prohibited' ? 'Decline' : 'Refer')">{{ w.prohibitedBusiness.verdict }}</span></p>
+                @for (m of w.prohibitedBusiness.matches; track m.category.code) { <p><strong>{{ m.category.name }}</strong> ({{ m.category.policy }}, score {{ m.score | number:'1.2-2' }}) — keywords: {{ m.matchedKeywords.join(', ') }} @if (m.declaredMccInCategory) { · <em>declared MCC is in this category</em> }</p> }
+                <mi-flags [flags]="w.prohibitedBusiness.flags"></mi-flags>
+              </div>
+            </mat-tab>
+          }
+        </mat-tab-group>
+      </mat-card-content>
+    </mat-card>
+
+    <mi-json [data]="r" title="Raw KYB report"></mi-json>
+  }
+</div>

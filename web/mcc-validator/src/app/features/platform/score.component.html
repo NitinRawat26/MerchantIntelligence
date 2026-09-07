@@ -1,0 +1,130 @@
+<div class="page">
+  <mat-card appearance="outlined">
+    <mat-card-header>
+      <mat-icon mat-card-avatar>speed</mat-icon>
+      <mat-card-title>Unified merchant risk score</mat-card-title>
+      <mat-card-subtitle>Blend the credit model with KYB, screening, website, plausibility and terms signals · 0–1000, higher is safer</mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-content>
+      <form [formGroup]="form" (ngSubmit)="submit()">
+        <div class="presets">
+          <span class="muted">Presets:</span>
+          <button mat-stroked-button type="button" (click)="presets.clean()">Clean merchant</button>
+          <button mat-stroked-button type="button" (click)="presets.sanctioned()">Sanctions hit</button>
+          <button mat-stroked-button type="button" (click)="presets.sparse()">Credit only (coverage gaps)</button>
+        </div>
+
+        <h3>Merchant</h3>
+        <div class="grid-4">
+          <mat-form-field appearance="outline"><mat-label>Merchant name</mat-label><input matInput formControlName="merchantName"></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>External ref</mat-label><input matInput formControlName="externalRef"></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Actor</mat-label><input matInput formControlName="actor" required></mat-form-field>
+          <mat-checkbox formControlName="createCase" class="cb">Open a review case with this snapshot</mat-checkbox>
+        </div>
+
+        <h3><mat-checkbox formControlName="includeApplication">Credit application (LightGBM model)</mat-checkbox></h3>
+        @if (form.controls.includeApplication.value) {
+          <div class="grid-4">
+            <mat-form-field appearance="outline"><mat-label>MCC</mat-label><input matInput type="number" formControlName="merchantCategoryCode"></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Annual volume</mat-label><input matInput type="number" formControlName="annualVolume"><span matTextPrefix>$&nbsp;</span></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Average ticket</mat-label><input matInput type="number" formControlName="averageTicket"><span matTextPrefix>$&nbsp;</span></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Highest ticket</mat-label><input matInput type="number" formControlName="highestTicket"><span matTextPrefix>$&nbsp;</span></mat-form-field>
+            <mat-checkbox formControlName="matchFound" class="cb">MATCH found (model feature)</mat-checkbox>
+            <mat-checkbox formControlName="existingRelationship" class="cb">Existing relationship</mat-checkbox>
+          </div>
+        }
+
+        <h3>Upstream signals <span class="muted">(leave blank = not run → coverage gap)</span></h3>
+        <div class="grid-4">
+          <mat-form-field appearance="outline"><mat-label>KYB risk</mat-label>
+            <mat-select formControlName="kybRisk"><mat-option value="">—</mat-option><mat-option value="Low">Low</mat-option><mat-option value="Medium">Medium</mat-option><mat-option value="High">High</mat-option></mat-select></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Business verified</mat-label>
+            <mat-select formControlName="businessVerified"><mat-option value="">—</mat-option><mat-option value="true">Yes</mat-option><mat-option value="false">No</mat-option></mat-select></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Entity age (months)</mat-label><input matInput type="number" formControlName="entityAgeMonths"></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Sanctions match</mat-label>
+            <mat-select formControlName="sanctionsMatch"><mat-option value="">—</mat-option><mat-option value="true">Yes</mat-option><mat-option value="false">No</mat-option></mat-select></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>PEP match</mat-label>
+            <mat-select formControlName="pepMatch"><mat-option value="">—</mat-option><mat-option value="true">Yes</mat-option><mat-option value="false">No</mat-option></mat-select></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Adverse media</mat-label>
+            <mat-select formControlName="adverseMedia"><mat-option value="">—</mat-option><mat-option value="true">Yes</mat-option><mat-option value="false">No</mat-option></mat-select></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Prohibited-business verdict</mat-label>
+            <mat-select formControlName="prohibitedVerdict"><mat-option value="">—</mat-option>
+              <mat-option value="Acceptable">Acceptable</mat-option><mat-option value="HighRisk">HighRisk</mat-option><mat-option value="Restricted">Restricted</mat-option><mat-option value="Prohibited">Prohibited</mat-option></mat-select></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Website compliance score</mat-label><input matInput type="number" min="0" max="100" formControlName="websiteComplianceScore"></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Volume plausibility score</mat-label><input matInput type="number" min="0" max="100" formControlName="volumePlausibilityScore"></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Terms risk band</mat-label>
+            <mat-select formControlName="termsRiskBand"><mat-option value="">—</mat-option>@for (b of ['A','B','C','D','E']; track b) {<mat-option [value]="b">{{ b }}</mat-option>}</mat-select></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>MATCH listed</mat-label>
+            <mat-select formControlName="matchListed"><mat-option value="">— (not checked)</mat-option><mat-option value="true">Yes</mat-option><mat-option value="false">No</mat-option></mat-select></mat-form-field>
+        </div>
+
+        <div class="actions">
+          <button mat-flat-button color="primary" type="submit" [disabled]="form.invalid || loading()"><mat-icon>calculate</mat-icon> Score merchant</button>
+        </div>
+      </form>
+    </mat-card-content>
+  </mat-card>
+
+  <mi-status [loading]="loading()" [error]="error()" loadingText="Scoring…"></mi-status>
+
+  @if (result(); as r) {
+    <mat-card appearance="outlined" class="result-card" [class]="outcomeClass(r.score.recommendedAction)">
+      <mat-card-content class="summary">
+        <mi-gauge [value]="r.score.score" [percent]="r.score.score / 10" label="Unified score" [color]="r.score.score >= 650 ? 'primary' : 'warn'"></mi-gauge>
+        <div class="summary-text">
+          <div class="headline">
+            <span class="pill" [class]="outcomeClass(r.score.recommendedAction)">{{ r.score.recommendedAction }}</span>
+            <span class="pill neutral">Tier {{ r.score.tier }}</span>
+            <span class="pill" [class]="outcomeClass(r.rules.outcome)">Rules: {{ r.rules.outcome }}</span>
+            @if (r.creditDecision; as cd) { <span class="pill neutral">Model: {{ cd.decision }} ({{ cd.confidence | percent:'1.0-0' }})</span> }
+          </div>
+          <p>Coverage {{ r.score.coveragePercent | number:'1.0-0' }}% · deciding rule <code>{{ r.rules.decidingRule }}</code> · rule set v{{ r.rules.ruleSetVersion }}</p>
+          @if (r.score.hardStops.length) {
+            <p class="hard-stop"><mat-icon>block</mat-icon> Hard stops: {{ r.score.hardStops.join(', ') }}</p>
+          }
+          @if (r.score.coverageGaps.length) {
+            <p class="muted">Not covered: {{ r.score.coverageGaps.join(', ') }}</p>
+          }
+          @if (r.case; as c) {
+            <p><mat-icon inline>inbox</mat-icon> Case opened: <a [routerLink]="['/cases', c.id]">{{ c.id }}</a> · {{ c.status }} · {{ c.priority }} priority</p>
+          }
+          @if (r.decisionLogId != null) { <p class="muted">Decision logged #{{ r.decisionLogId }} for model ops.</p> }
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <div class="two-col">
+      <mat-card appearance="outlined">
+        <mat-card-header><mat-card-title>Score components</mat-card-title></mat-card-header>
+        <mat-card-content>
+          <table mat-table [dataSource]="r.score.components" class="full">
+            <ng-container matColumnDef="name"><th mat-header-cell *matHeaderCellDef>Section</th><td mat-cell *matCellDef="let c">{{ c.name }} @if (!c.covered) {<mat-icon inline matTooltip="Not covered – neutral fill">help_outline</mat-icon>}</td></ng-container>
+            <ng-container matColumnDef="weight"><th mat-header-cell *matHeaderCellDef>Weight</th><td mat-cell *matCellDef="let c">{{ c.weight | percent:'1.0-0' }}</td></ng-container>
+            <ng-container matColumnDef="score"><th mat-header-cell *matHeaderCellDef>Score</th><td mat-cell *matCellDef="let c">{{ c.score | number:'1.0-0' }}</td></ng-container>
+            <ng-container matColumnDef="weighted"><th mat-header-cell *matHeaderCellDef>Weighted</th><td mat-cell *matCellDef="let c">{{ c.weighted | number:'1.0-0' }}</td></ng-container>
+            <ng-container matColumnDef="detail"><th mat-header-cell *matHeaderCellDef>Detail</th><td mat-cell *matCellDef="let c" class="detail">{{ c.detail }}</td></ng-container>
+            <tr mat-header-row *matHeaderRowDef="componentColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: componentColumns" [class.uncovered]="!row.covered"></tr>
+          </table>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card appearance="outlined">
+        <mat-card-header><mat-card-title>Reason codes</mat-card-title></mat-card-header>
+        <mat-card-content>
+          <mi-flags [flags]="reasonFlags(r)" emptyText="No adverse reason codes."></mi-flags>
+          <h4>Matched rules</h4>
+          @if (r.rules.matchedRules.length) {
+            <ul class="rule-list">
+              @for (m of r.rules.matchedRules; track m.id) {
+                <li><span class="pill small" [class]="outcomeClass(m.outcome)">{{ m.outcome }}</span> <code>{{ m.id }}</code> <span class="muted">p{{ m.priority }}</span> {{ m.description }}</li>
+              }
+            </ul>
+          } @else { <p class="muted">No rules matched; default outcome applied.</p> }
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <mi-json [data]="r" title="Raw score response"></mi-json>
+  }
+</div>

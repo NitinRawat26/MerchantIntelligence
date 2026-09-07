@@ -1,135 +1,90 @@
-import { Component, computed, inject, signal } from '@angular/core';
-import { AsyncPipe, DatePipe, DecimalPipe, PercentPipe } from '@angular/common';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { HttpErrorResponse } from '@angular/common/http';
+import { Component, inject, signal } from '@angular/core';
+import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { BreakpointObserver } from '@angular/cdk/layout';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { MatAutocompleteModule } from '@angular/material/autocomplete';
-import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
-import { MatChipsModule } from '@angular/material/chips';
-import { MatExpansionModule } from '@angular/material/expansion';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatTableModule } from '@angular/material/table';
+import { map } from 'rxjs';
 import { MatToolbarModule } from '@angular/material/toolbar';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { startWith } from 'rxjs';
-import { HistoryEntry, MccCatalogItem, MccValidationResult, MccVerdict, RiskTier } from './mcc-validation.models';
-import { MccValidationService } from './mcc-validation.service';
+import { MatSidenavModule } from '@angular/material/sidenav';
+import { MatListModule } from '@angular/material/list';
+import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
+import { MatDividerModule } from '@angular/material/divider';
+
+interface NavItem { path: string; label: string; icon: string; }
+interface NavGroup { title: string; items: NavItem[]; }
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [
-    AsyncPipe, DatePipe, DecimalPipe, PercentPipe, ReactiveFormsModule,
-    MatAutocompleteModule, MatButtonModule, MatCardModule, MatChipsModule, MatExpansionModule,
-    MatFormFieldModule, MatIconModule, MatInputModule, MatProgressBarModule, MatProgressSpinnerModule,
-    MatTableModule, MatToolbarModule, MatTooltipModule
-  ],
-  templateUrl: './app.component.html',
-  styleUrl: './app.component.scss'
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, MatToolbarModule, MatSidenavModule, MatListModule, MatIconModule, MatButtonModule, MatDividerModule],
+  template: `
+    <mat-toolbar color="primary" class="toolbar">
+      @if (handset()) {
+        <button mat-icon-button (click)="opened.set(!opened())" aria-label="Toggle navigation"><mat-icon>menu</mat-icon></button>
+      }
+      <mat-icon>insights</mat-icon>
+      <span class="toolbar-title">Merchant Intelligence</span>
+      <span class="spacer"></span>
+      <span class="toolbar-subtitle">Onboarding &amp; underwriting workbench</span>
+      <a mat-icon-button href="/swagger" target="_blank" rel="noopener" aria-label="Open Swagger"><mat-icon>api</mat-icon></a>
+    </mat-toolbar>
+
+    <mat-sidenav-container class="shell">
+      <mat-sidenav [mode]="handset() ? 'over' : 'side'" [opened]="handset() ? opened() : true" (closed)="opened.set(false)" class="nav">
+        <mat-nav-list>
+          @for (g of groups; track g.title) {
+            <div mat-subheader>{{ g.title }}</div>
+            @for (n of g.items; track n.path) {
+              <a mat-list-item [routerLink]="n.path" routerLinkActive="active" (click)="handset() && opened.set(false)">
+                <mat-icon matListItemIcon>{{ n.icon }}</mat-icon>
+                <span matListItemTitle>{{ n.label }}</span>
+              </a>
+            }
+            <mat-divider></mat-divider>
+          }
+        </mat-nav-list>
+      </mat-sidenav>
+      <mat-sidenav-content>
+        <main class="content"><router-outlet></router-outlet></main>
+      </mat-sidenav-content>
+    </mat-sidenav-container>
+  `,
+  styles: [`
+    :host { display: flex; flex-direction: column; min-height: 100vh; background: #f4f6fa; }
+    .toolbar { position: sticky; top: 0; z-index: 10; gap: 10px; }
+    .toolbar-title { font-weight: 500; }
+    .toolbar-subtitle { font-size: 13px; opacity: 0.85; }
+    .spacer { flex: 1; }
+    .shell { flex: 1; background: #f4f6fa; }
+    .nav { width: 232px; border-right: 1px solid #e0e0e0; }
+    .nav a.active { background: rgba(0, 86, 210, 0.10); font-weight: 500; }
+    .content { max-width: 1200px; margin: 0 auto; padding: 24px 16px 48px; }
+    [mat-subheader] { color: #666; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; }
+  `]
 })
 export class AppComponent {
-  private readonly api = inject(MccValidationService);
-  private readonly fb = inject(FormBuilder);
+  private readonly bp = inject(BreakpointObserver);
+  readonly handset = toSignal(this.bp.observe('(max-width: 900px)').pipe(map(r => r.matches)), { initialValue: false });
+  readonly opened = signal(false);
 
-  readonly form = this.fb.nonNullable.group({
-    mcc: ['', [Validators.required, Validators.pattern(/^\d{4}$/)]],
-    websiteUrl: ['', [Validators.required, Validators.pattern(/^(https?:\/\/)?[\w.-]+\.[a-z]{2,}(\/.*)?$/i)]]
-  });
-
-  readonly catalog = toSignal(this.api.catalog$, { initialValue: [] as MccCatalogItem[] });
-  private readonly mccInput = toSignal(this.form.controls.mcc.valueChanges.pipe(startWith('')), { initialValue: '' });
-
-  readonly filteredCatalog = computed(() => {
-    const q = (this.mccInput() ?? '').toString().toLowerCase().trim();
-    const items = this.catalog();
-    if (!q) return items.slice(0, 50);
-    return items
-      .filter(i => i.mcc.toString().startsWith(q) || i.description.toLowerCase().includes(q) || i.category.toLowerCase().includes(q))
-      .slice(0, 50);
-  });
-
-  readonly selectedEntry = computed(() => {
-    const code = Number(this.mccInput());
-    return this.catalog().find(i => i.mcc === code) ?? null;
-  });
-
-  readonly loading = signal(false);
-  readonly error = signal<string | null>(null);
-  readonly result = signal<MccValidationResult | null>(null);
-  readonly history = signal<HistoryEntry[]>([]);
-  readonly historyColumns = ['at', 'mcc', 'website', 'verdict', 'accuracy', 'suggested'];
-
-  readonly examples = [
-    { mcc: '5045', websiteUrl: 'https://www.apple.com' },
-    { mcc: '5812', websiteUrl: 'https://www.mcdonalds.com' },
-    { mcc: '7011', websiteUrl: 'https://www.marriott.com' },
-    { mcc: '5411', websiteUrl: 'https://www.draftkings.com' }
+  readonly groups: NavGroup[] = [
+    { title: 'Decision', items: [
+      { path: '/score', label: 'Unified risk score', icon: 'speed' },
+      { path: '/cases', label: 'Case queue', icon: 'inbox' },
+      { path: '/rules', label: 'Policy rules', icon: 'rule' }
+    ] },
+    { title: 'Pre-boarding', items: [
+      { path: '/kyb', label: 'KYB & screening', icon: 'verified_user' },
+      { path: '/mcc', label: 'MCC validator', icon: 'fact_check' },
+      { path: '/match', label: 'MATCH inquiry', icon: 'policy' }
+    ] },
+    { title: 'Underwriting', items: [
+      { path: '/underwriting', label: 'Explain, terms & statements', icon: 'account_balance' }
+    ] },
+    { title: 'Operations', items: [
+      { path: '/audit', label: 'Audit trail', icon: 'history' },
+      { path: '/models', label: 'Model ops', icon: 'model_training' },
+      { path: '/webhooks', label: 'Webhooks', icon: 'webhook' }
+    ] }
   ];
-
-  displayMcc = (value: string | number | null): string => (value == null ? '' : value.toString());
-
-  useExample(example: { mcc: string; websiteUrl: string }): void {
-    this.form.setValue(example);
-    this.submit();
-  }
-
-  submit(): void {
-    if (this.form.invalid || this.loading()) {
-      this.form.markAllAsTouched();
-      return;
-    }
-
-    const request = { mcc: Number(this.form.controls.mcc.value), websiteUrl: this.form.controls.websiteUrl.value.trim() };
-    this.loading.set(true);
-    this.error.set(null);
-
-    this.api.validate(request).subscribe({
-      next: result => {
-        this.result.set(result);
-        this.history.update(h => [{ at: new Date(), request, result }, ...h].slice(0, 20));
-        this.loading.set(false);
-      },
-      error: (err: HttpErrorResponse) => {
-        const detail = err.error?.errors ? Object.values(err.error.errors as Record<string, string[]>).flat().join(' ') : err.error?.title;
-        this.error.set(detail || err.message || 'Validation failed.');
-        this.loading.set(false);
-      }
-    });
-  }
-
-  reload(entry: HistoryEntry): void {
-    this.form.setValue({ mcc: entry.request.mcc.toString(), websiteUrl: entry.request.websiteUrl });
-    this.result.set(entry.result);
-    this.error.set(null);
-  }
-
-  verdictIcon(verdict: MccVerdict): string {
-    return { Consistent: 'verified', Questionable: 'help', Inconsistent: 'report', Insufficient: 'visibility_off' }[verdict];
-  }
-
-  verdictLabel(verdict: MccVerdict): string {
-    return {
-      Consistent: 'MCC matches the business',
-      Questionable: 'MCC is plausible but needs review',
-      Inconsistent: 'MCC does not match the business',
-      Insufficient: 'Not enough evidence'
-    }[verdict];
-  }
-
-  verdictClass(verdict: MccVerdict): string {
-    return `verdict-${verdict.toLowerCase()}`;
-  }
-
-  tierClass(tier: RiskTier): string {
-    return `tier-${tier.toLowerCase()}`;
-  }
-
-  gaugeColor(percent: number): 'primary' | 'accent' | 'warn' {
-    return percent >= 55 ? 'primary' : percent >= 25 ? 'accent' : 'warn';
-  }
 }
