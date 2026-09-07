@@ -21,7 +21,7 @@ import { SuiteApiService, describeError } from '../../shared/suite-api.service';
 import { AssessmentListItem, AssessmentRequest, AssessmentResult, AssessmentStep, AssessmentStepDescriptor, Flag, StepStatus } from '../../shared/models';
 import { FlagsComponent, GaugeComponent, JsonViewComponent, StatusComponent, outcomeClass, tierClass } from '../../shared/ui';
 
-type Preset = 'clean' | 'sanctioned' | 'restricted';
+type Preset = 'approved' | 'clean' | 'sanctioned' | 'restricted';
 
 @Component({
   selector: 'mi-assessment',
@@ -127,6 +127,13 @@ export class AssessmentComponent {
   preset(p: Preset): void {
     this.owners.clear();
     switch (p) {
+      case 'approved':
+        this.form.patchValue({ legalName: 'Starbucks Corporation', tradingName: 'Starbucks', country: 'US', addressLine: '2401 Utah Avenue South', city: 'Seattle', region: 'WA', postalCode: '98134',
+          websiteUrl: 'https://www.starbucks.com', businessDescription: 'Coffeehouse chain selling brewed coffee, espresso drinks, pastries and packaged coffee in stores and online.', merchantCategoryCode: 5814,
+          annualVolume: 900_000, averageTicket: 40, highestTicket: 400, employeeCount: 50, yearsInBusiness: 15, priorYearRevenue: 1_000_000, hasPhysicalLocation: 'true',
+          existingRelationship: true, cardNotPresentShare: 0.3, deliveryDays: 0, offersSubscriptions: false, offersFreeTrials: false });
+        this.owners.push(this.owner('Brian Niccol', 'CEO'));
+        break;
       case 'clean':
         this.form.patchValue({ legalName: 'Apple Inc.', tradingName: '', country: 'US', addressLine: 'One Apple Park Way', city: 'Cupertino', region: 'CA', postalCode: '95014',
           websiteUrl: 'https://www.apple.com', businessDescription: 'Consumer electronics, software and online services.', merchantCategoryCode: 5732,
