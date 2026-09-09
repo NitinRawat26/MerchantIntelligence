@@ -90,7 +90,8 @@ interface NavGroup { title: string; items: NavItem[]; }
     .brand-name { color: #fff; font-weight: 600; font-size: 15px; letter-spacing: -0.01em; }
     .brand-sub { font-size: 11.5px; color: var(--mi-nav-text); opacity: 0.8; margin-top: 2px; }
 
-    .nav-scroll { flex: 1; overflow-y: auto; padding: 4px 12px 12px; }
+    .nav-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 12px 12px; scrollbar-width: none; }
+    .nav-scroll::-webkit-scrollbar { display: none; }
     .nav-group { margin-top: 14px; }
     .nav-title { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.12em; color: #64748b; font-weight: 600; padding: 0 12px 8px; }
     .nav-item {
@@ -132,6 +133,23 @@ interface NavGroup { title: string; items: NavItem[]; }
     .env-pill .dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2); }
 
     .content { max-width: 1240px; margin: 0 auto; padding: 28px 28px 64px; }
+
+    @media (max-height: 800px) {
+      .brand { padding: 14px 20px 10px; }
+      .nav-group { margin-top: 8px; }
+      .nav-title { padding-bottom: 4px; }
+      .nav-item { padding: 6px 12px; margin: 1px 0; font-size: 13px; }
+      .nav-item.active::before { top: 6px; bottom: 6px; }
+      .nav-footer { padding: 6px 12px; }
+    }
+    @media (max-height: 640px) {
+      .brand { padding: 10px 20px 6px; }
+      .brand-sub { display: none; }
+      .nav-group { margin-top: 4px; }
+      .nav-title { padding-bottom: 2px; }
+      .nav-item { padding: 4px 12px; margin: 0; }
+      .nav-item.active::before { top: 4px; bottom: 4px; }
+    }
 
     @media (max-width: 900px) {
       .topbar { padding: 10px 14px; }
