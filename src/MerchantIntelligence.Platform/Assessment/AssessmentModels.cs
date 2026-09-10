@@ -40,7 +40,8 @@ public sealed record AssessmentIntake(
     string? FinancialStatementText = null,
     string? ExternalRef = null,
     string Actor = "analyst",
-    bool CreateCase = true);
+    bool CreateCase = true,
+    int? LocationCount = null);
 
 public sealed record UploadedDocument(string FileName, byte[] Content);
 
@@ -128,7 +129,8 @@ public sealed record AssessmentIntakeSummary(
     string? BankStatementSource,
     string? FinancialStatementSource,
     string? ExternalRef,
-    string Actor);
+    string Actor,
+    int? LocationCount = null);
 
 public sealed record AssessmentListItem(
     string Id,
