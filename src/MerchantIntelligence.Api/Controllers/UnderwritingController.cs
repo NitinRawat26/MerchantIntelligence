@@ -32,6 +32,7 @@ public sealed class VolumePlausibilityRequest
     [Range(0, double.MaxValue)] public decimal? HighestTicket { get; set; }
     [Range(1, 9999)] public int? MerchantCategoryCode { get; set; }
     [Range(0, 1_000_000)] public int? EmployeeCount { get; set; }
+    [Range(0, 100_000)] public int? LocationCount { get; set; }
     [Range(0, 200)] public decimal? YearsInBusiness { get; set; }
     [Range(0, double.MaxValue)] public decimal? PriorYearRevenue { get; set; }
     [Range(0, double.MaxValue)] public decimal? MonthlyCardVolumeFromStatements { get; set; }
@@ -83,7 +84,7 @@ public sealed class UnderwritingController(
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     public ActionResult<VolumePlausibilityResult> VolumePlausibility([FromBody] VolumePlausibilityRequest r) =>
         Ok(plausibility.Analyze(new VolumeDeclaration(r.AnnualVolume, r.AverageTicket, r.HighestTicket, r.MerchantCategoryCode, r.EmployeeCount,
-            r.YearsInBusiness, r.PriorYearRevenue, r.MonthlyCardVolumeFromStatements, r.WebsiteProductCount, r.HasPhysicalLocation)));
+            r.YearsInBusiness, r.PriorYearRevenue, r.MonthlyCardVolumeFromStatements, r.WebsiteProductCount, r.HasPhysicalLocation, r.LocationCount)));
 
     /// <summary>Upload a bank statement (CSV or text-based PDF) as multipart/form-data field "file".</summary>
     [HttpPost("bank-statement")]

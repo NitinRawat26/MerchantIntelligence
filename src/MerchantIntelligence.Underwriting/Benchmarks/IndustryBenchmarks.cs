@@ -12,12 +12,18 @@ public sealed record IndustryBenchmark(
     double TicketP10,
     double TicketP90,
     double ChargebackRate,
-    int DeliveryDays);
+    int DeliveryDays,
+    int MaxEmployeesPerLocation,
+    int MaxEmployees);
 
 /// <summary>Embedded per-category / per-MCC SMB benchmarks used for plausibility and exposure maths.</summary>
 public sealed class IndustryBenchmarks
 {
-    private sealed record Raw(double[] RevenuePerEmployee, double[] Ticket, double ChargebackRate, int DeliveryDays);
+    private sealed record Raw(double[] RevenuePerEmployee, double[] Ticket, double ChargebackRate, int DeliveryDays,
+        int? MaxEmployeesPerLocation = null, int? MaxEmployees = null);
+
+    private const int DefaultMaxEmployeesPerLocation = 300;
+    private const int DefaultMaxEmployees = 5000;
     private sealed record File(Dictionary<string, Raw> Categories, Dictionary<string, Raw> MccOverrides);
 
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
@@ -37,15 +43,18 @@ public sealed class IndustryBenchmarks
 
     public IndustryBenchmark Resolve(int? mcc)
     {
-        if (mcc is int m && _mcc.TryGetValue(m, out var o)) return Map($"MCC {m}", o);
         var category = mcc is int m2 ? _catalog.Find(m2)?.Category : null;
-        if (category is not null && _categories.TryGetValue(category, out var c)) return Map($"Category '{category}'", c);
-        return Map("All industries", new Raw(new[] { 60000.0, 150000, 500000 }, new[] { 15.0, 1500 }, 0.005, 7));
+        var c = category is not null && _categories.TryGetValue(category, out var found) ? found : null;
+        if (mcc is int m && _mcc.TryGetValue(m, out var o)) return Map($"MCC {m}", o, c);
+        if (c is not null) return Map($"Category '{category}'", c, null);
+        return Map("All industries", new Raw(new[] { 60000.0, 150000, 500000 }, new[] { 15.0, 1500 }, 0.005, 7), null);
     }
 
-    private static IndustryBenchmark Map(string source, Raw r) => new(source,
+    private static IndustryBenchmark Map(string source, Raw r, Raw? categoryFallback) => new(source,
         r.RevenuePerEmployee[0], r.RevenuePerEmployee[1], r.RevenuePerEmployee[2],
-        r.Ticket[0], r.Ticket[1], r.ChargebackRate, r.DeliveryDays);
+        r.Ticket[0], r.Ticket[1], r.ChargebackRate, r.DeliveryDays,
+        r.MaxEmployeesPerLocation ?? categoryFallback?.MaxEmployeesPerLocation ?? DefaultMaxEmployeesPerLocation,
+        r.MaxEmployees ?? categoryFallback?.MaxEmployees ?? DefaultMaxEmployees);
 
     private static IndustryBenchmarks LoadEmbedded(MccCatalog catalog)
     {

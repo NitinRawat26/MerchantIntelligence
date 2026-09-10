@@ -175,7 +175,7 @@ public sealed class AssessmentService
         var plausibility = await Step("plausibility", steps, report,
             () => Task.FromResult(_plausibility.Analyze(new VolumeDeclaration(intake.AnnualVolume, intake.AverageTicket, intake.HighestTicket, intake.MerchantCategoryCode,
                 intake.EmployeeCount, intake.YearsInBusiness, intake.PriorYearRevenue ?? financials?.Statement.Revenue,
-                bank is null ? null : bank.AverageMonthlyCardDeposits, intake.WebsiteProductCount, intake.HasPhysicalLocation))),
+                bank is null ? null : bank.AverageMonthlyCardDeposits, intake.WebsiteProductCount, intake.HasPhysicalLocation, intake.LocationCount))),
             p => $"{p.PlausibilityScore}/100 · {p.Verdict}");
 
         // 10. Credit decision + explainability
@@ -625,5 +625,5 @@ public sealed class AssessmentService
         i.WebsiteProductCount, i.HasPhysicalLocation,
         bank?.FileName ?? (i.BankStatementCsv is null ? null : "inline CSV"),
         fin?.FileName ?? (i.FinancialStatementText is null ? null : "inline text"),
-        i.ExternalRef, i.Actor);
+        i.ExternalRef, i.Actor, i.LocationCount);
 }

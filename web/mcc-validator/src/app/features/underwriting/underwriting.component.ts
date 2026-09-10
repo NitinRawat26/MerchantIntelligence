@@ -80,7 +80,7 @@ export class UnderwritingComponent {
     websiteComplianceScore: ['' as string | number], volumePlausibilityScore: ['' as string | number], offersSubscriptions: [false], offersFreeTrials: [false]
   });
   readonly plaus = this.fb.nonNullable.group({
-    employeeCount: ['' as string | number], yearsInBusiness: ['' as string | number], priorYearRevenue: ['' as string | number],
+    employeeCount: ['' as string | number], locationCount: ['' as string | number], yearsInBusiness: ['' as string | number], priorYearRevenue: ['' as string | number],
     monthlyCardVolumeFromStatements: ['' as string | number], websiteProductCount: ['' as string | number], hasPhysicalLocation: ['']
   });
   readonly bankCsv = this.fb.nonNullable.control(SAMPLE_CSV);
@@ -118,7 +118,7 @@ export class UnderwritingComponent {
     const a = this.app.getRawValue(); const p = this.plaus.getRawValue();
     this.run(this.plausResult, this.api.volumePlausibility({
       annualVolume: a.annualVolume, averageTicket: a.averageTicket, highestTicket: a.highestTicket, merchantCategoryCode: a.merchantCategoryCode,
-      employeeCount: this.num(p.employeeCount), yearsInBusiness: this.num(p.yearsInBusiness), priorYearRevenue: this.num(p.priorYearRevenue),
+      employeeCount: this.num(p.employeeCount), locationCount: this.num(p.locationCount), yearsInBusiness: this.num(p.yearsInBusiness), priorYearRevenue: this.num(p.priorYearRevenue),
       monthlyCardVolumeFromStatements: this.num(p.monthlyCardVolumeFromStatements), websiteProductCount: this.num(p.websiteProductCount), hasPhysicalLocation: this.bool(p.hasPhysicalLocation)
     }));
   }

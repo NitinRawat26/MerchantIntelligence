@@ -22,6 +22,7 @@ public sealed class AssessmentRequest
     public bool OffersSubscriptions { get; set; }
     public bool OffersFreeTrials { get; set; }
     [Range(0, 1_000_000)] public int? EmployeeCount { get; set; }
+    [Range(0, 100_000)] public int? LocationCount { get; set; }
     [Range(0, 200)] public decimal? YearsInBusiness { get; set; }
     [Range(0, double.MaxValue)] public decimal? PriorYearRevenue { get; set; }
     [Range(0, int.MaxValue)] public int? WebsiteProductCount { get; set; }
@@ -37,7 +38,7 @@ public sealed class AssessmentRequest
     public AssessmentIntake ToIntake() => new(Business.ToIdentity(), Owners.Select(o => o.ToOwner()).ToList(), BusinessDescription, MerchantCategoryCode,
         AnnualVolume, AverageTicket, HighestTicket, ExistingRelationship, DeliveryDays, CardNotPresentShare, OffersSubscriptions, OffersFreeTrials,
         EmployeeCount, YearsInBusiness, PriorYearRevenue, WebsiteProductCount, HasPhysicalLocation, BankStatementCsv, FinancialStatementText,
-        ExternalRef, Actor, CreateCase);
+        ExternalRef, Actor, CreateCase, LocationCount);
 }
 
 public sealed record AssessmentStepDescriptor(string Id, string Name);
