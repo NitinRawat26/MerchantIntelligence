@@ -13,7 +13,8 @@ public sealed record VolumeDeclaration(
     decimal? PriorYearRevenue = null,
     decimal? MonthlyCardVolumeFromStatements = null,
     int? WebsiteProductCount = null,
-    bool? HasPhysicalLocation = null);
+    bool? HasPhysicalLocation = null,
+    int? LocationCount = null);
 
 public sealed record PlausibilityFlag(string Code, string Message, RiskTier Severity);
 
@@ -88,6 +89,8 @@ public sealed class VolumePlausibilityAnalyzer
             var rpe = volume / employees;
             var assess = rpe > bm.RevenuePerEmployeeP90 * 2 ? "More than 2x industry p90"
                 : rpe > bm.RevenuePerEmployeeP90 ? "Above industry p90"
+                : rpe < bm.RevenuePerEmployeeP10 / 20 ? "Less than 1/20th of industry p10"
+                : rpe < bm.RevenuePerEmployeeP10 / 4 ? "Less than 1/4 of industry p10"
                 : rpe < bm.RevenuePerEmployeeP10 ? "Below industry p10" : "Within p10-p90";
             metrics.Add(new PlausibilityMetric("Card volume / employee", rpe.ToString("N0"), $"{bm.RevenuePerEmployeeP10:N0} - {bm.RevenuePerEmployeeP90:N0}", assess));
             if (rpe > bm.RevenuePerEmployeeP90 * 2)
@@ -99,6 +102,37 @@ public sealed class VolumePlausibilityAnalyzer
             {
                 flags.Add(new PlausibilityFlag("VOLUME_HIGH_FOR_HEADCOUNT", $"Card volume per employee ({rpe:N0}) is above the industry p90.", RiskTier.Medium));
                 penalty += 12;
+            }
+            else if (rpe < bm.RevenuePerEmployeeP10 / 20)
+            {
+                flags.Add(new PlausibilityFlag("HEADCOUNT_IMPLAUSIBLE_FOR_VOLUME", $"{employees:N0} employees on {volume:N0} annual card volume is {rpe:N0} per employee, less than 1/20th of the industry p10 ({bm.RevenuePerEmployeeP10:N0}); the declared headcount cannot be supported by this revenue.", RiskTier.High));
+                penalty += 30;
+            }
+            else if (rpe < bm.RevenuePerEmployeeP10 / 4)
+            {
+                flags.Add(new PlausibilityFlag("HEADCOUNT_HIGH_FOR_VOLUME", $"Card volume per employee ({rpe:N0}) is less than a quarter of the industry p10 ({bm.RevenuePerEmployeeP10:N0}); headcount looks overstated or card volume understated.", RiskTier.Medium));
+                penalty += 12;
+            }
+
+            // Absolute headcount ceilings for the industry, scaled by declared locations.
+            var locations = d.LocationCount is int l && l > 0 ? l : (int?)null;
+            var ceiling = Math.Max(bm.MaxEmployees, (locations ?? 1) * bm.MaxEmployeesPerLocation);
+            metrics.Add(new PlausibilityMetric("Employees", employees.ToString("N0"), $"<= {ceiling:N0}", employees > ceiling ? "Above industry ceiling" : "Normal"));
+            if (employees > ceiling)
+            {
+                flags.Add(new PlausibilityFlag("HEADCOUNT_ABOVE_INDUSTRY_CEILING", $"{employees:N0} employees exceeds the plausible ceiling of {ceiling:N0} for this industry{(locations is null ? " (single entity, no locations declared)" : $" across {locations:N0} location(s)")}.", RiskTier.High));
+                penalty += 25;
+            }
+
+            if (locations is int locs)
+            {
+                var perLocation = (double)employees / locs;
+                metrics.Add(new PlausibilityMetric("Employees / location", perLocation.ToString("N1"), $"<= {bm.MaxEmployeesPerLocation:N0}", perLocation > bm.MaxEmployeesPerLocation ? "Above industry ceiling" : "Normal"));
+                if (perLocation > bm.MaxEmployeesPerLocation && employees <= ceiling)
+                {
+                    flags.Add(new PlausibilityFlag("HEADCOUNT_HIGH_FOR_LOCATIONS", $"{perLocation:N0} employees per location exceeds the industry ceiling of {bm.MaxEmployeesPerLocation:N0}.", RiskTier.Medium));
+                    penalty += 12;
+                }
             }
         }
 
