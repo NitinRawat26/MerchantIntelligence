@@ -75,6 +75,7 @@ export interface TermsRecommendation {
 export interface VolumePlausibilityRequest {
   annualVolume: number; averageTicket: number; highestTicket?: number | null; merchantCategoryCode?: number | null; employeeCount?: number | null;
   yearsInBusiness?: number | null; priorYearRevenue?: number | null; monthlyCardVolumeFromStatements?: number | null; websiteProductCount?: number | null; hasPhysicalLocation?: boolean | null;
+  locationCount?: number | null;
 }
 export interface VolumePlausibilityResult {
   plausibilityScore: number; verdict: string; metrics: { name: string; value: string; benchmark: string; assessment: string }[]; flags: Flag[]; benchmarkSource: string;
@@ -143,6 +144,7 @@ export interface AssessmentRequest {
   merchantCategoryCode: number; annualVolume: number; averageTicket: number; highestTicket: number; existingRelationship: boolean;
   deliveryDays?: number | null; cardNotPresentShare: number; offersSubscriptions: boolean; offersFreeTrials: boolean;
   employeeCount?: number | null; yearsInBusiness?: number | null; priorYearRevenue?: number | null; websiteProductCount?: number | null; hasPhysicalLocation?: boolean | null;
+  locationCount?: number | null;
   bankStatementCsv?: string | null; financialStatementText?: string | null; externalRef?: string | null; actor: string; createCase: boolean;
 }
 export type StepStatus = 'Pending' | 'Running' | 'Succeeded' | 'Failed' | 'Skipped';
@@ -160,7 +162,7 @@ export interface AssessmentIntakeSummary {
   business: BusinessIdentityRequest & { fullAddress?: string }; owners: BeneficialOwnerRequest[]; businessDescription?: string | null; merchantCategoryCode: number;
   annualVolume: number; averageTicket: number; highestTicket: number; existingRelationship: boolean; deliveryDays?: number | null; cardNotPresentShare: number;
   offersSubscriptions: boolean; offersFreeTrials: boolean; employeeCount?: number | null; yearsInBusiness?: number | null; priorYearRevenue?: number | null;
-  websiteProductCount?: number | null; hasPhysicalLocation?: boolean | null; bankStatementSource?: string | null; financialStatementSource?: string | null; externalRef?: string | null; actor: string;
+  websiteProductCount?: number | null; hasPhysicalLocation?: boolean | null; locationCount?: number | null; bankStatementSource?: string | null; financialStatementSource?: string | null; externalRef?: string | null; actor: string;
 }
 export interface MccValidationSummary {
   declaredMcc: number; declaredDescription: string; declaredRiskTier: RiskTier; websiteUrl: string; verdict: 'Consistent' | 'Questionable' | 'Inconsistent' | 'Insufficient';
