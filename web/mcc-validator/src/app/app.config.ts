@@ -2,6 +2,7 @@ import { ApplicationConfig, provideZoneChangeDetection } from '@angular/core';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { provideHttpClient } from '@angular/common/http';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
+import { MAT_FORM_FIELD_DEFAULT_OPTIONS } from '@angular/material/form-field';
 import { routes } from './app.routes';
 
 export const appConfig: ApplicationConfig = {
@@ -9,6 +10,7 @@ export const appConfig: ApplicationConfig = {
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideAnimationsAsync(),
     provideHttpClient(),
-    provideRouter(routes, withComponentInputBinding())
+    provideRouter(routes, withComponentInputBinding()),
+    { provide: MAT_FORM_FIELD_DEFAULT_OPTIONS, useValue: { appearance: 'outline', subscriptSizing: 'dynamic' } }
   ]
 };

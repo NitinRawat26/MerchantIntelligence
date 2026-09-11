@@ -75,7 +75,10 @@ export const FIELD_HINTS: Record<string, string> = {
     'Credit model: direct input feature (30% component).\n' +
     'Reserve & pricing: −0.10 risk (EXISTING_RELATIONSHIP) → better band, lower reserve.',
   employeeCount:
-    'Volume plausibility only: card volume per employee vs MCC benchmark (above p90 −12, >2× p90 −30 VOLUME_EXCEEDS_HEADCOUNT_CAPACITY). Blank → this metric is skipped (no penalty).',
+    'Volume plausibility only: card volume per employee vs MCC benchmark (above p90 −12, >2× p90 −30 VOLUME_EXCEEDS_HEADCOUNT_CAPACITY; below p10/4 −12 HEADCOUNT_HIGH_FOR_VOLUME, below p10/20 −30 HEADCOUNT_IMPLAUSIBLE_FOR_VOLUME).\n' +
+    'Headcount above the MCC ceiling (e.g. 400 for a single restaurant, scaled by Locations) −25 HEADCOUNT_ABOVE_INDUSTRY_CEILING. Blank → skipped (no penalty).',
+  locationCount:
+    'Volume plausibility only: raises the headcount ceiling to locations × per-location max for the MCC (e.g. 120 per restaurant) and flags employees per location above that max (−12 HEADCOUNT_HIGH_FOR_LOCATIONS). Blank → single entity assumed.',
   yearsInBusiness:
     'Volume plausibility only: <1 year with large volume −25 (STARTUP_WITH_LARGE_VOLUME), <2 years −12. Blank → skipped.',
   priorYearRevenue:

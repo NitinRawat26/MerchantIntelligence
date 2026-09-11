@@ -71,6 +71,7 @@ export class AssessmentComponent {
     offersSubscriptions: [false],
     offersFreeTrials: [false],
     employeeCount: ['' as string | number],
+    locationCount: ['' as string | number],
     yearsInBusiness: ['' as string | number],
     priorYearRevenue: ['' as string | number],
     websiteProductCount: ['' as string | number],
@@ -138,7 +139,7 @@ export class AssessmentComponent {
       case 'clean':
         this.form.patchValue({ legalName: 'Apple Inc.', tradingName: '', country: 'US', addressLine: 'One Apple Park Way', city: 'Cupertino', region: 'CA', postalCode: '95014',
           websiteUrl: 'https://www.apple.com', businessDescription: 'Consumer electronics, software and online services.', merchantCategoryCode: 5732,
-          annualVolume: 1_200_000, averageTicket: 85, highestTicket: 1500, employeeCount: 160000, yearsInBusiness: 48, hasPhysicalLocation: 'true', offersSubscriptions: false, offersFreeTrials: false });
+          annualVolume: 12_000_000, averageTicket: 850, highestTicket: 6000, employeeCount: 40, locationCount: 1, yearsInBusiness: 48, priorYearRevenue: 11_500_000, hasPhysicalLocation: 'true', offersSubscriptions: false, offersFreeTrials: false });
         this.owners.push(this.owner('Tim Cook', 'CEO'));
         break;
       case 'sanctioned':
@@ -175,7 +176,7 @@ export class AssessmentComponent {
       merchantCategoryCode: Number(v.merchantCategoryCode), annualVolume: Number(v.annualVolume), averageTicket: Number(v.averageTicket), highestTicket: Number(v.highestTicket),
       existingRelationship: v.existingRelationship, deliveryDays: num(v.deliveryDays), cardNotPresentShare: Number(v.cardNotPresentShare),
       offersSubscriptions: v.offersSubscriptions, offersFreeTrials: v.offersFreeTrials,
-      employeeCount: num(v.employeeCount), yearsInBusiness: num(v.yearsInBusiness), priorYearRevenue: num(v.priorYearRevenue), websiteProductCount: num(v.websiteProductCount),
+      employeeCount: num(v.employeeCount), locationCount: num(v.locationCount), yearsInBusiness: num(v.yearsInBusiness), priorYearRevenue: num(v.priorYearRevenue), websiteProductCount: num(v.websiteProductCount),
       hasPhysicalLocation: v.hasPhysicalLocation === '' ? null : v.hasPhysicalLocation === 'true',
       bankStatementCsv: this.bankFile() ? null : opt(v.bankStatementCsv) ?? null,
       financialStatementText: this.financialFile() ? null : opt(v.financialStatementText) ?? null,

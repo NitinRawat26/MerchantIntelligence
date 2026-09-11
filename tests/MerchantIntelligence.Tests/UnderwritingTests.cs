@@ -164,6 +164,60 @@ public sealed class VolumePlausibilityTests
     }
 
     [Fact]
+    public void Restaurant_with_50000_employees_is_implausible()
+    {
+        var r = Analyzer.Analyze(new VolumeDeclaration(1_200_000, 45, 400, 5812, EmployeeCount: 50_000, YearsInBusiness: 5));
+        var rpe = Assert.Single(r.Flags, f => f.Code == "HEADCOUNT_IMPLAUSIBLE_FOR_VOLUME");
+        var ceiling = Assert.Single(r.Flags, f => f.Code == "HEADCOUNT_ABOVE_INDUSTRY_CEILING");
+        Assert.Equal(RiskTier.High, rpe.Severity);
+        Assert.Equal(RiskTier.High, ceiling.Severity);
+        Assert.DoesNotContain(r.Flags, f => f.Code == "VOLUME_EXCEEDS_HEADCOUNT_CAPACITY");
+        Assert.Equal("Implausible", r.Verdict);
+    }
+
+    [Fact]
+    public void Moderately_overstated_headcount_is_medium_severity()
+    {
+        // 480k / 60 staff = 8k per employee: below a quarter of the 5812 p10 (40k) but above 1/20th.
+        var r = Analyzer.Analyze(new VolumeDeclaration(480_000, 42, 380, 5812, EmployeeCount: 60));
+        var flag = Assert.Single(r.Flags, f => f.Code == "HEADCOUNT_HIGH_FOR_VOLUME");
+        Assert.Equal(RiskTier.Medium, flag.Severity);
+        Assert.DoesNotContain(r.Flags, f => f.Code == "HEADCOUNT_ABOVE_INDUSTRY_CEILING");
+    }
+
+    [Fact]
+    public void Declared_locations_raise_the_headcount_ceiling()
+    {
+        // 900 staff exceeds the 400 single-entity ceiling for 5812 but is fine across 12 locations (12 x 120 = 1,440).
+        var single = Analyzer.Analyze(new VolumeDeclaration(60_000_000, 45, 400, 5812, EmployeeCount: 900));
+        Assert.Contains(single.Flags, f => f.Code == "HEADCOUNT_ABOVE_INDUSTRY_CEILING");
+
+        var chain = Analyzer.Analyze(new VolumeDeclaration(60_000_000, 45, 400, 5812, EmployeeCount: 900, LocationCount: 12));
+        Assert.DoesNotContain(chain.Flags, f => f.Code == "HEADCOUNT_ABOVE_INDUSTRY_CEILING");
+        Assert.DoesNotContain(chain.Flags, f => f.Code == "HEADCOUNT_HIGH_FOR_LOCATIONS");
+    }
+
+    [Fact]
+    public void Too_many_employees_per_location_flagged()
+    {
+        // 350 staff in 2 restaurants = 175 per site, above the 120 per-location ceiling but below the 400 entity ceiling.
+        var r = Analyzer.Analyze(new VolumeDeclaration(20_000_000, 45, 400, 5812, EmployeeCount: 350, LocationCount: 2));
+        var flag = Assert.Single(r.Flags, f => f.Code == "HEADCOUNT_HIGH_FOR_LOCATIONS");
+        Assert.Equal(RiskTier.Medium, flag.Severity);
+        Assert.DoesNotContain(r.Flags, f => f.Code == "HEADCOUNT_ABOVE_INDUSTRY_CEILING");
+    }
+
+    [Fact]
+    public void Headcount_ceiling_falls_back_to_category_then_default()
+    {
+        Assert.Equal((120, 400), (IndustryBenchmarks.Default.Resolve(5812).MaxEmployeesPerLocation, IndustryBenchmarks.Default.Resolve(5812).MaxEmployees));
+        var retail = IndustryBenchmarks.Default.Resolve(5651); // clothing store: no MCC override → Retail category
+        Assert.Equal((150, 1500), (retail.MaxEmployeesPerLocation, retail.MaxEmployees));
+        var unknown = IndustryBenchmarks.Default.Resolve(null);
+        Assert.Equal((300, 5000), (unknown.MaxEmployeesPerLocation, unknown.MaxEmployees));
+    }
+
+    [Fact]
     public void Declared_volume_far_above_bank_statements_is_high_severity()
     {
         var r = Analyzer.Analyze(new VolumeDeclaration(2_400_000, 100, 1000, 5999, MonthlyCardVolumeFromStatements: 40_000));
