@@ -132,7 +132,7 @@ import { JsonViewComponent, StatusComponent, outcomeClass } from '../../shared/u
       </mat-card>
     </div>
   `,
-  styles: [`.tab { padding: 16px 0; } .w200 { width: 200px; } .w300 { width: 320px; }`]
+  styles: [`.tab { padding: 18px 0 4px; } .w200 { width: 200px; } .w300 { width: 320px; }`]
 })
 export class ModelsComponent {
   private readonly api = inject(SuiteApiService);

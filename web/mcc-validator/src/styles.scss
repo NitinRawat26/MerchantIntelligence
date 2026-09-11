@@ -58,6 +58,9 @@ html {
   @include mat.core();
   @include mat.all-component-themes($theme);
   @include mat.color-variants-backwards-compatibility($theme);
+  @include mat.form-field-density(-3);
+  @include mat.select-density(-3);
+  @include mat.checkbox-density(-1);
 
   // Sharpen a few M3 defaults so the workbench feels crisp rather than pastel.
   --mat-card-title-text-size: 17px;
