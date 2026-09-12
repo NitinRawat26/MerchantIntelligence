@@ -1,0 +1,21 @@
+{
+  "name": "Standard onboarding",
+  "version": "default",
+  "description": "Every deterministic check, in the order the platform has always run them. Independent checks run concurrently.",
+  "haltOnHardStop": false,
+  "steps": [
+    { "id": "verification", "enabled": true, "onFail": "Skip" },
+    { "id": "screening", "enabled": true, "onFail": "Skip" },
+    { "id": "website", "enabled": true, "onFail": "Skip" },
+    { "id": "prohibited", "enabled": true, "onFail": "Skip" },
+    { "id": "mcc", "enabled": true, "onFail": "Skip" },
+    { "id": "match", "enabled": true, "onFail": "Skip" },
+    { "id": "bank", "enabled": true, "onFail": "Skip" },
+    { "id": "financials", "enabled": true, "onFail": "Skip" },
+    { "id": "plausibility", "enabled": true, "onFail": "Skip" },
+    { "id": "credit", "enabled": true, "onFail": "Skip" },
+    { "id": "terms", "enabled": true, "onFail": "Skip" },
+    { "id": "score", "enabled": true, "onFail": "Skip" },
+    { "id": "case", "enabled": true, "onFail": "Skip" }
+  ]
+}

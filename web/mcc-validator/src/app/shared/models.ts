@@ -148,7 +148,18 @@ export interface AssessmentRequest {
   bankStatementCsv?: string | null; financialStatementText?: string | null; externalRef?: string | null; actor: string; createCase: boolean;
 }
 export type StepStatus = 'Pending' | 'Running' | 'Succeeded' | 'Failed' | 'Skipped';
-export interface AssessmentStepDescriptor { id: string; name: string; }
+export interface AssessmentStepDescriptor { id: string; name: string; enabled?: boolean; }
+
+// ---- Workflows ------------------------------------------------------------------------
+export type StepFailurePolicy = 'Skip' | 'Refer' | 'Abort';
+export interface WorkflowStepConfig { id: string; enabled: boolean; onFail: StepFailurePolicy; dependsOn?: string[] | null; params?: Record<string, unknown> | null; }
+export interface WorkflowDefinition { name: string; version: string; description?: string | null; haltOnHardStop: boolean; steps: WorkflowStepConfig[]; }
+export interface WorkflowVersion { version: number; name: string; author: string; comment?: string | null; createdAt: string; active: boolean; enabledSteps: number; totalSteps: number; }
+export interface WorkflowParamDescriptor { name: string; type: string; default: string; description: string; }
+export interface WorkflowStepDescriptor { id: string; name: string; description: string; dependsOn: string[]; consumes: string[]; required: boolean; params: WorkflowParamDescriptor[]; }
+export interface WorkflowStage { index: number; steps: string[]; }
+export interface WorkflowPlan { stages: WorkflowStage[]; warnings: string[]; disabled: string[]; mermaid: string; }
+export interface WorkflowValidationResponse { valid: boolean; error?: string | null; plan?: WorkflowPlan | null; }
 export interface AssessmentStep { id: string; name: string; status: StepStatus; summary: string; durationMs: number; error?: string | null; }
 export interface CheckOutcome { check: string; result: string; detail: string; severity: RiskTier; covered: boolean; }
 export interface ExplanationItem { section: string; code: string; message: string; severity: RiskTier; source: string; }

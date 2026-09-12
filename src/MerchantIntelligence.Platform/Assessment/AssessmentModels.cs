@@ -105,7 +105,13 @@ public sealed record AssessmentResult(
     UnifiedRiskScore? UnifiedScore,
     RulesEvaluation? Rules,
     MerchantCase? Case,
-    long? DecisionLogId);
+    long? DecisionLogId,
+    AssessmentWorkflowInfo? Workflow = null);
+
+/// <summary>Which workflow definition produced a result, for replay and audit.</summary>
+public sealed record AssessmentWorkflowInfo(string Name, string Version, IReadOnlyList<string> EnabledSteps);
+
+public sealed record AssessmentStepDescriptor(string Id, string Name, bool Enabled = true);
 
 /// <summary>Intake echoed back without the bulky statement payloads.</summary>
 public sealed record AssessmentIntakeSummary(

@@ -41,8 +41,6 @@ public sealed class AssessmentRequest
         ExternalRef, Actor, CreateCase, LocationCount);
 }
 
-public sealed record AssessmentStepDescriptor(string Id, string Name);
-
 [ApiController]
 [Route("api/assessment")]
 public sealed class AssessmentController(AssessmentService assessments) : ControllerBase
@@ -55,10 +53,9 @@ public sealed class AssessmentController(AssessmentService assessments) : Contro
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
 
-    /// <summary>The ordered list of checks an assessment runs, for rendering progress before the first event arrives.</summary>
+    /// <summary>The ordered list of checks the active workflow runs, for rendering progress before the first event arrives.</summary>
     [HttpGet("steps")]
-    public ActionResult<IReadOnlyList<AssessmentStepDescriptor>> Steps() =>
-        Ok(AssessmentService.StepCatalog.Select(s => new AssessmentStepDescriptor(s.Id, s.Name)).ToList());
+    public ActionResult<IReadOnlyList<AssessmentStepDescriptor>> Steps() => Ok(assessments.PlannedSteps());
 
     /// <summary>
     /// Run every check and return the complete assessment. JSON body, or multipart/form-data with a "request" JSON part
@@ -111,7 +108,7 @@ public sealed class AssessmentController(AssessmentService assessments) : Contro
             finally { gate.Release(); }
         }
 
-        await Emit(new { type = "steps", steps = AssessmentService.StepCatalog.Select(s => new AssessmentStepDescriptor(s.Id, s.Name)) });
+        await Emit(new { type = "steps", steps = assessments.PlannedSteps() });
         using var heartbeatCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         var heartbeat = Task.Run(async () =>
         {

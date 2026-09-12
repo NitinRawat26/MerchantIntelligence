@@ -100,7 +100,10 @@ export class AssessmentComponent {
   });
   readonly hasSteps = computed(() => Object.keys(this.steps()).length > 0);
   readonly currentStep = computed(() => Object.values(this.steps()).find(s => s.status === 'Running') ?? null);
-  readonly stepList = computed(() => this.catalog().map(c => this.steps()[c.id] ?? { id: c.id, name: c.name, status: 'Pending' as StepStatus, summary: '', durationMs: 0 }));
+  readonly stepList = computed(() => this.catalog().map(c => this.steps()[c.id] ?? {
+    id: c.id, name: c.name, status: (c.enabled === false ? 'Skipped' : 'Pending') as StepStatus,
+    summary: c.enabled === false ? 'Disabled in the active workflow.' : '', durationMs: 0
+  }));
 
   private run?: Subscription;
 
