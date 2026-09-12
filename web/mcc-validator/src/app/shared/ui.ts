@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { Component, computed, input } from '@angular/core';
 import { JsonPipe } from '@angular/common';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
@@ -6,6 +6,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { Flag, RiskTier } from './models';
+import { FIELD_HINTS } from './field-hints';
 
 export function tierClass(tier: RiskTier | string | null | undefined): string {
   return `tier-${(tier ?? 'low').toString().toLowerCase()}`;
@@ -99,6 +100,21 @@ export class JsonViewComponent {
   readonly data = input<unknown>();
   readonly title = input('Raw response');
   readonly expanded = input(false);
+}
+
+/**
+ * Info icon explaining where a form field feeds the calculations.
+ * `<mi-field-hint matSuffix for="annualVolume" />` inside a form field, or `<mi-field-hint class="inline" for="…" />` beside a checkbox/heading.
+ */
+@Component({
+  selector: 'mi-field-hint',
+  standalone: true,
+  imports: [MatIconModule, MatTooltipModule],
+  template: `<mat-icon [matTooltip]="text()" matTooltipClass="field-hint" matTooltipPosition="above" aria-label="About this field">info_outline</mat-icon>`
+})
+export class FieldHintComponent {
+  readonly for = input.required<string>();
+  readonly text = computed(() => FIELD_HINTS[this.for()] ?? '');
 }
 
 /** Error / loading banner. */

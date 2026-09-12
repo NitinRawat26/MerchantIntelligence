@@ -12,12 +12,12 @@ import { MatTableModule } from '@angular/material/table';
 import { MatTabsModule } from '@angular/material/tabs';
 import { SuiteApiService, describeError } from '../../shared/suite-api.service';
 import { ChampionChallengerReport, Decision, DriftReport, LoggedDecision, ModelsResponse } from '../../shared/models';
-import { JsonViewComponent, StatusComponent, outcomeClass } from '../../shared/ui';
+import { FieldHintComponent, JsonViewComponent, StatusComponent, outcomeClass } from '../../shared/ui';
 
 @Component({
   selector: 'mi-models',
   standalone: true,
-  imports: [ReactiveFormsModule, DatePipe, DecimalPipe, PercentPipe, MatButtonModule, MatCardModule, MatCheckboxModule, MatFormFieldModule, MatIconModule, MatInputModule, MatSelectModule, MatTableModule, MatTabsModule, JsonViewComponent, StatusComponent],
+  imports: [ReactiveFormsModule, DatePipe, DecimalPipe, PercentPipe, MatButtonModule, MatCardModule, MatCheckboxModule, MatFormFieldModule, MatIconModule, MatInputModule, MatSelectModule, MatTableModule, MatTabsModule, JsonViewComponent, StatusComponent, FieldHintComponent],
   styleUrl: './platform.scss',
   template: `
     <div class="page">
@@ -47,14 +47,14 @@ import { JsonViewComponent, StatusComponent, outcomeClass } from '../../shared/u
                 }
                 <h4>Retrain</h4>
                 <form [formGroup]="retrainForm" class="row" (ngSubmit)="retrain()">
-                  <mat-form-field appearance="outline" class="w200"><mat-label>Actor</mat-label><input matInput formControlName="actor" required></mat-form-field>
-                  <mat-form-field appearance="outline" class="w200"><mat-label>Synthetic rows</mat-label><input matInput type="number" formControlName="syntheticRows" min="0" max="200000"></mat-form-field>
-                  <mat-checkbox formControlName="registerAsChallenger">Register as challenger</mat-checkbox>
+                  <mat-form-field appearance="outline" class="w200"><mat-label>Actor</mat-label><input matInput formControlName="actor" required><mi-field-hint matSuffix for="actorRequired"></mi-field-hint></mat-form-field>
+                  <mat-form-field appearance="outline" class="w200"><mat-label>Synthetic rows</mat-label><input matInput type="number" formControlName="syntheticRows" min="0" max="200000"><mi-field-hint matSuffix for="syntheticRows"></mi-field-hint></mat-form-field>
+                  <span class="cb"><mat-checkbox formControlName="registerAsChallenger">Register as challenger</mat-checkbox><mi-field-hint class="inline" for="registerAsChallenger"></mi-field-hint></span>
                   <button mat-flat-button color="primary" type="submit" [disabled]="retrainForm.invalid || busy()"><mat-icon>autorenew</mat-icon> Retrain</button>
                 </form>
                 <h4>Promote challenger → champion</h4>
                 <form [formGroup]="promoteForm" class="row" (ngSubmit)="promote()">
-                  <mat-form-field appearance="outline" class="w300"><mat-label>Justification</mat-label><input matInput formControlName="justification"></mat-form-field>
+                  <mat-form-field appearance="outline" class="w300"><mat-label>Justification</mat-label><input matInput formControlName="justification"><mi-field-hint matSuffix for="justification"></mi-field-hint></mat-form-field>
                   <button mat-stroked-button color="primary" type="submit" [disabled]="!models()?.challenger || busy()"><mat-icon>upgrade</mat-icon> Promote</button>
                 </form>
               </div>
@@ -107,7 +107,7 @@ import { JsonViewComponent, StatusComponent, outcomeClass } from '../../shared/u
               <div class="tab">
                 <div class="row">
                   <button mat-stroked-button type="button" (click)="loadDecisions()"><mat-icon>refresh</mat-icon> Refresh</button>
-                  <mat-form-field appearance="outline" class="w200"><mat-label>Label as actor</mat-label><input matInput [formControl]="labelActor"></mat-form-field>
+                  <mat-form-field appearance="outline" class="w200"><mat-label>Label as actor</mat-label><input matInput [formControl]="labelActor"><mi-field-hint matSuffix for="actorRequired"></mi-field-hint></mat-form-field>
                   <span class="muted">Record the real outcome to feed champion/challenger metrics and retraining.</span>
                 </div>
                 <table mat-table [dataSource]="decisions()" class="full">

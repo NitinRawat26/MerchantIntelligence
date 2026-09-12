@@ -10,7 +10,7 @@ import { MatTableModule } from '@angular/material/table';
 import { MatTabsModule } from '@angular/material/tabs';
 import { SuiteApiService, describeError } from '../../shared/suite-api.service';
 import { RuleSet, RuleSetVersion, RulesEvaluation } from '../../shared/models';
-import { StatusComponent, outcomeClass } from '../../shared/ui';
+import { FieldHintComponent, StatusComponent, outcomeClass } from '../../shared/ui';
 
 const SAMPLE_FACTS = {
   score: 720, tier: 'Low', coveragePercent: 85, sanctionsMatch: false, prohibitedVerdict: 'Acceptable', matchFound: false,
@@ -20,7 +20,7 @@ const SAMPLE_FACTS = {
 @Component({
   selector: 'mi-rules',
   standalone: true,
-  imports: [ReactiveFormsModule, DatePipe, MatButtonModule, MatCardModule, MatFormFieldModule, MatIconModule, MatInputModule, MatTableModule, MatTabsModule, StatusComponent],
+  imports: [ReactiveFormsModule, DatePipe, MatButtonModule, MatCardModule, MatFormFieldModule, MatIconModule, MatInputModule, MatTableModule, MatTabsModule, StatusComponent, FieldHintComponent],
   styleUrl: './platform.scss',
   template: `
     <div class="page">
@@ -38,8 +38,8 @@ const SAMPLE_FACTS = {
                 <div class="row">
                   <button mat-stroked-button type="button" (click)="load()"><mat-icon>refresh</mat-icon> Reload</button>
                   <button mat-stroked-button type="button" (click)="validate()" [disabled]="!editor.valid"><mat-icon>check_circle</mat-icon> Validate</button>
-                  <mat-form-field appearance="outline" class="w200"><mat-label>Author</mat-label><input matInput [formControl]="author"></mat-form-field>
-                  <mat-form-field appearance="outline" class="w300"><mat-label>Comment</mat-label><input matInput [formControl]="comment"></mat-form-field>
+                  <mat-form-field appearance="outline" class="w200"><mat-label>Author</mat-label><input matInput [formControl]="author"><mi-field-hint matSuffix for="ruleAuthor"></mi-field-hint></mat-form-field>
+                  <mat-form-field appearance="outline" class="w300"><mat-label>Comment</mat-label><input matInput [formControl]="comment"><mi-field-hint matSuffix for="ruleComment"></mi-field-hint></mat-form-field>
                   <button mat-flat-button color="primary" type="button" (click)="publish()" [disabled]="!editor.valid || author.invalid"><mat-icon>publish</mat-icon> Publish new version</button>
                 </div>
                 @if (message(); as m) { <p [class]="m.ok ? 'text-low' : 'text-high'">{{ m.text }}</p> }
@@ -47,7 +47,7 @@ const SAMPLE_FACTS = {
                   <mat-label>Rule set JSON</mat-label>
                   <textarea matInput class="mono" rows="24" [formControl]="editor"></textarea>
                   @if (editor.invalid) { <mat-error>Not valid JSON</mat-error> }
-                </mat-form-field>
+                <mi-field-hint matSuffix for="ruleEditor"></mi-field-hint></mat-form-field>
               </div>
             </mat-tab>
 
@@ -58,7 +58,7 @@ const SAMPLE_FACTS = {
                   <mat-form-field appearance="outline" class="full">
                     <mat-label>Facts JSON</mat-label>
                     <textarea matInput class="mono" rows="14" [formControl]="facts"></textarea>
-                  </mat-form-field>
+                  <mi-field-hint matSuffix for="ruleFacts"></mi-field-hint></mat-form-field>
                   <button mat-flat-button color="primary" type="button" (click)="evaluate()" [disabled]="facts.invalid"><mat-icon>play_arrow</mat-icon> Evaluate</button>
                 </div>
                 <div>

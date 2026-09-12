@@ -18,6 +18,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { startWith } from 'rxjs';
 import { HistoryEntry, MccCatalogItem, MccValidationResult, MccVerdict, RiskTier } from './mcc-validation.models';
 import { MccValidationService } from './mcc-validation.service';
+import { FieldHintComponent } from '../../shared/ui';
 
 @Component({
   selector: 'mi-mcc-validator',
@@ -26,7 +27,7 @@ import { MccValidationService } from './mcc-validation.service';
     AsyncPipe, DatePipe, DecimalPipe, PercentPipe, ReactiveFormsModule,
     MatAutocompleteModule, MatButtonModule, MatCardModule, MatChipsModule, MatExpansionModule,
     MatFormFieldModule, MatIconModule, MatInputModule, MatProgressBarModule, MatProgressSpinnerModule,
-    MatTableModule, MatTooltipModule
+    MatTableModule, MatTooltipModule, FieldHintComponent
   ],
   templateUrl: './mcc-validator.component.html',
   styleUrl: './mcc-validator.component.scss'
