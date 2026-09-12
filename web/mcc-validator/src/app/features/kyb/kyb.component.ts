@@ -13,13 +13,13 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { SuiteApiService, describeError } from '../../shared/suite-api.service';
 import { FullKybRequest, KybReport, RegistryRecord } from '../../shared/models';
-import { FlagsComponent, GaugeComponent, JsonViewComponent, StatusComponent, outcomeClass, tierClass } from '../../shared/ui';
+import { FieldHintComponent, FlagsComponent, GaugeComponent, JsonViewComponent, StatusComponent, outcomeClass, tierClass } from '../../shared/ui';
 
 @Component({
   selector: 'mi-kyb',
   standalone: true,
   imports: [ReactiveFormsModule, DecimalPipe, PercentPipe, MatButtonModule, MatCardModule, MatChipsModule, MatExpansionModule, MatFormFieldModule, MatIconModule, MatInputModule,
-    MatTableModule, MatTabsModule, MatTooltipModule, FlagsComponent, GaugeComponent, JsonViewComponent, StatusComponent],
+    MatTableModule, MatTabsModule, MatTooltipModule, FlagsComponent, GaugeComponent, JsonViewComponent, StatusComponent, FieldHintComponent],
   templateUrl: './kyb.component.html',
   styleUrl: '../platform/platform.scss'
 })

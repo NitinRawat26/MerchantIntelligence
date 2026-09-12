@@ -14,48 +14,48 @@
           <button mat-stroked-button type="button" (click)="presets.sparse()">Credit only (coverage gaps)</button>
         </div>
 
-        <h3>Merchant</h3>
+        <h3><mat-icon>storefront</mat-icon> Merchant</h3>
         <div class="grid-4">
-          <mat-form-field appearance="outline"><mat-label>Merchant name</mat-label><input matInput formControlName="merchantName"></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>External ref</mat-label><input matInput formControlName="externalRef"></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>Actor</mat-label><input matInput formControlName="actor" required></mat-form-field>
-          <mat-checkbox formControlName="createCase" class="cb">Open a review case with this snapshot</mat-checkbox>
+          <mat-form-field appearance="outline"><mat-label>Merchant name</mat-label><input matInput formControlName="merchantName"><mi-field-hint matSuffix for="merchantName"></mi-field-hint></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>External ref</mat-label><input matInput formControlName="externalRef"><mi-field-hint matSuffix for="externalRef"></mi-field-hint></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Actor</mat-label><input matInput formControlName="actor" required><mi-field-hint matSuffix for="actor"></mi-field-hint></mat-form-field>
+          <span class="cb"><mat-checkbox formControlName="createCase" class="cb">Open a review case with this snapshot</mat-checkbox><mi-field-hint class="inline" for="createCase"></mi-field-hint></span>
         </div>
 
-        <h3><mat-checkbox formControlName="includeApplication">Credit application (LightGBM model)</mat-checkbox></h3>
+        <h3><span class="cb"><mat-checkbox formControlName="includeApplication">Credit application (LightGBM model)</mat-checkbox><mi-field-hint class="inline" for="includeApplication"></mi-field-hint></span></h3>
         @if (form.controls.includeApplication.value) {
           <div class="grid-4">
-            <mat-form-field appearance="outline"><mat-label>MCC</mat-label><input matInput type="number" formControlName="merchantCategoryCode"></mat-form-field>
-            <mat-form-field appearance="outline"><mat-label>Annual volume</mat-label><input matInput type="number" formControlName="annualVolume"><span matTextPrefix>$&nbsp;</span></mat-form-field>
-            <mat-form-field appearance="outline"><mat-label>Average ticket</mat-label><input matInput type="number" formControlName="averageTicket"><span matTextPrefix>$&nbsp;</span></mat-form-field>
-            <mat-form-field appearance="outline"><mat-label>Highest ticket</mat-label><input matInput type="number" formControlName="highestTicket"><span matTextPrefix>$&nbsp;</span></mat-form-field>
-            <mat-checkbox formControlName="matchFound" class="cb">MATCH found (model feature)</mat-checkbox>
-            <mat-checkbox formControlName="existingRelationship" class="cb">Existing relationship</mat-checkbox>
+            <mat-form-field appearance="outline"><mat-label>MCC</mat-label><input matInput type="number" formControlName="merchantCategoryCode"><mi-field-hint matSuffix for="merchantCategoryCode"></mi-field-hint></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Annual volume</mat-label><input matInput type="number" formControlName="annualVolume"><span matTextPrefix>$&nbsp;</span><mi-field-hint matSuffix for="annualVolume"></mi-field-hint></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Average ticket</mat-label><input matInput type="number" formControlName="averageTicket"><span matTextPrefix>$&nbsp;</span><mi-field-hint matSuffix for="averageTicket"></mi-field-hint></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Highest ticket</mat-label><input matInput type="number" formControlName="highestTicket"><span matTextPrefix>$&nbsp;</span><mi-field-hint matSuffix for="highestTicket"></mi-field-hint></mat-form-field>
+            <span class="cb"><mat-checkbox formControlName="matchFound" class="cb">MATCH found (model feature)</mat-checkbox><mi-field-hint class="inline" for="matchFound"></mi-field-hint></span>
+            <span class="cb"><mat-checkbox formControlName="existingRelationship" class="cb">Existing relationship</mat-checkbox><mi-field-hint class="inline" for="existingRelationship"></mi-field-hint></span>
           </div>
         }
 
-        <h3>Upstream signals <span class="muted">(leave blank = not run → coverage gap)</span></h3>
+        <h3><mat-icon>hub</mat-icon> Upstream signals <span class="muted">(leave blank = not run → coverage gap)</span></h3>
         <div class="grid-4">
           <mat-form-field appearance="outline"><mat-label>KYB risk</mat-label>
-            <mat-select formControlName="kybRisk"><mat-option value="">—</mat-option><mat-option value="Low">Low</mat-option><mat-option value="Medium">Medium</mat-option><mat-option value="High">High</mat-option></mat-select></mat-form-field>
+            <mat-select formControlName="kybRisk"><mat-option value="">—</mat-option><mat-option value="Low">Low</mat-option><mat-option value="Medium">Medium</mat-option><mat-option value="High">High</mat-option></mat-select><mi-field-hint matSuffix for="kybRisk"></mi-field-hint></mat-form-field>
           <mat-form-field appearance="outline"><mat-label>Business verified</mat-label>
-            <mat-select formControlName="businessVerified"><mat-option value="">—</mat-option><mat-option value="true">Yes</mat-option><mat-option value="false">No</mat-option></mat-select></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>Entity age (months)</mat-label><input matInput type="number" formControlName="entityAgeMonths"></mat-form-field>
+            <mat-select formControlName="businessVerified"><mat-option value="">—</mat-option><mat-option value="true">Yes</mat-option><mat-option value="false">No</mat-option></mat-select><mi-field-hint matSuffix for="businessVerified"></mi-field-hint></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Entity age (months)</mat-label><input matInput type="number" formControlName="entityAgeMonths"><mi-field-hint matSuffix for="entityAgeMonths"></mi-field-hint></mat-form-field>
           <mat-form-field appearance="outline"><mat-label>Sanctions match</mat-label>
-            <mat-select formControlName="sanctionsMatch"><mat-option value="">—</mat-option><mat-option value="true">Yes</mat-option><mat-option value="false">No</mat-option></mat-select></mat-form-field>
+            <mat-select formControlName="sanctionsMatch"><mat-option value="">—</mat-option><mat-option value="true">Yes</mat-option><mat-option value="false">No</mat-option></mat-select><mi-field-hint matSuffix for="sanctionsMatch"></mi-field-hint></mat-form-field>
           <mat-form-field appearance="outline"><mat-label>PEP match</mat-label>
-            <mat-select formControlName="pepMatch"><mat-option value="">—</mat-option><mat-option value="true">Yes</mat-option><mat-option value="false">No</mat-option></mat-select></mat-form-field>
+            <mat-select formControlName="pepMatch"><mat-option value="">—</mat-option><mat-option value="true">Yes</mat-option><mat-option value="false">No</mat-option></mat-select><mi-field-hint matSuffix for="pepMatch"></mi-field-hint></mat-form-field>
           <mat-form-field appearance="outline"><mat-label>Adverse media</mat-label>
-            <mat-select formControlName="adverseMedia"><mat-option value="">—</mat-option><mat-option value="true">Yes</mat-option><mat-option value="false">No</mat-option></mat-select></mat-form-field>
+            <mat-select formControlName="adverseMedia"><mat-option value="">—</mat-option><mat-option value="true">Yes</mat-option><mat-option value="false">No</mat-option></mat-select><mi-field-hint matSuffix for="adverseMedia"></mi-field-hint></mat-form-field>
           <mat-form-field appearance="outline"><mat-label>Prohibited-business verdict</mat-label>
             <mat-select formControlName="prohibitedVerdict"><mat-option value="">—</mat-option>
-              <mat-option value="Acceptable">Acceptable</mat-option><mat-option value="HighRisk">HighRisk</mat-option><mat-option value="Restricted">Restricted</mat-option><mat-option value="Prohibited">Prohibited</mat-option></mat-select></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>Website compliance score</mat-label><input matInput type="number" min="0" max="100" formControlName="websiteComplianceScore"></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>Volume plausibility score</mat-label><input matInput type="number" min="0" max="100" formControlName="volumePlausibilityScore"></mat-form-field>
+              <mat-option value="Acceptable">Acceptable</mat-option><mat-option value="HighRisk">HighRisk</mat-option><mat-option value="Restricted">Restricted</mat-option><mat-option value="Prohibited">Prohibited</mat-option></mat-select><mi-field-hint matSuffix for="prohibitedVerdict"></mi-field-hint></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Website compliance score</mat-label><input matInput type="number" min="0" max="100" formControlName="websiteComplianceScore"><mi-field-hint matSuffix for="websiteComplianceScore"></mi-field-hint></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Volume plausibility score</mat-label><input matInput type="number" min="0" max="100" formControlName="volumePlausibilityScore"><mi-field-hint matSuffix for="volumePlausibilityScore"></mi-field-hint></mat-form-field>
           <mat-form-field appearance="outline"><mat-label>Terms risk band</mat-label>
-            <mat-select formControlName="termsRiskBand"><mat-option value="">—</mat-option>@for (b of ['A','B','C','D','E']; track b) {<mat-option [value]="b">{{ b }}</mat-option>}</mat-select></mat-form-field>
+            <mat-select formControlName="termsRiskBand"><mat-option value="">—</mat-option>@for (b of ['A','B','C','D','E']; track b) {<mat-option [value]="b">{{ b }}</mat-option>}</mat-select><mi-field-hint matSuffix for="termsRiskBand"></mi-field-hint></mat-form-field>
           <mat-form-field appearance="outline"><mat-label>MATCH listed</mat-label>
-            <mat-select formControlName="matchListed"><mat-option value="">— (not checked)</mat-option><mat-option value="true">Yes</mat-option><mat-option value="false">No</mat-option></mat-select></mat-form-field>
+            <mat-select formControlName="matchListed"><mat-option value="">— (not checked)</mat-option><mat-option value="true">Yes</mat-option><mat-option value="false">No</mat-option></mat-select><mi-field-hint matSuffix for="matchListed"></mi-field-hint></mat-form-field>
         </div>
 
         <div class="actions">

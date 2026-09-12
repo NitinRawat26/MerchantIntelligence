@@ -5,8 +5,8 @@
 mat-card { background: var(--mi-surface); }
 mat-card-header { margin-bottom: 8px; }
 
-.form { display: grid; grid-template-columns: 260px 1fr auto; gap: 12px; align-items: start; margin-top: 8px; }
-.submit { height: 56px; min-width: 140px; }
+.form { display: grid; grid-template-columns: 300px 1fr auto; gap: 12px; align-items: start; margin-top: 8px; }
+.submit { height: 44px; min-width: 140px; }
 .submit mat-spinner { display: inline-block; }
 @media (max-width: 800px) { .form { grid-template-columns: 1fr; } }
 

@@ -6,12 +6,12 @@
     </mat-card-header>
     <mat-card-content>
       <form [formGroup]="app" class="grid-4">
-        <mat-form-field appearance="outline"><mat-label>MCC</mat-label><input matInput type="number" formControlName="merchantCategoryCode"></mat-form-field>
-        <mat-form-field appearance="outline"><mat-label>Annual volume</mat-label><input matInput type="number" formControlName="annualVolume"></mat-form-field>
-        <mat-form-field appearance="outline"><mat-label>Average ticket</mat-label><input matInput type="number" formControlName="averageTicket"></mat-form-field>
-        <mat-form-field appearance="outline"><mat-label>Highest ticket</mat-label><input matInput type="number" formControlName="highestTicket"></mat-form-field>
-        <mat-checkbox formControlName="matchFound">MATCH record found</mat-checkbox>
-        <mat-checkbox formControlName="existingRelationship">Existing relationship</mat-checkbox>
+        <mat-form-field appearance="outline"><mat-label>MCC</mat-label><input matInput type="number" formControlName="merchantCategoryCode"><mi-field-hint matSuffix for="merchantCategoryCode"></mi-field-hint></mat-form-field>
+        <mat-form-field appearance="outline"><mat-label>Annual volume</mat-label><input matInput type="number" formControlName="annualVolume"><mi-field-hint matSuffix for="annualVolume"></mi-field-hint></mat-form-field>
+        <mat-form-field appearance="outline"><mat-label>Average ticket</mat-label><input matInput type="number" formControlName="averageTicket"><mi-field-hint matSuffix for="averageTicket"></mi-field-hint></mat-form-field>
+        <mat-form-field appearance="outline"><mat-label>Highest ticket</mat-label><input matInput type="number" formControlName="highestTicket"><mi-field-hint matSuffix for="highestTicket"></mi-field-hint></mat-form-field>
+        <span class="cb"><mat-checkbox formControlName="matchFound">MATCH record found</mat-checkbox><mi-field-hint class="inline" for="matchFound"></mi-field-hint></span>
+        <span class="cb"><mat-checkbox formControlName="existingRelationship">Existing relationship</mat-checkbox><mi-field-hint class="inline" for="existingRelationship"></mi-field-hint></span>
       </form>
     </mat-card-content>
   </mat-card>
@@ -22,7 +22,7 @@
         <div class="actions">
           <mat-form-field appearance="outline"><mat-label>Explain class</mat-label>
             <mat-select [formControl]="explainClass"><mat-option value="">Predicted class</mat-option>@for (d of decisions; track d) { <mat-option [value]="d">{{ d }}</mat-option> }</mat-select>
-          </mat-form-field>
+          <mi-field-hint matSuffix for="explainClass"></mi-field-hint></mat-form-field>
           <button mat-flat-button color="primary" (click)="doExplain()" [disabled]="app.invalid || explain().loading"><mat-icon>insights</mat-icon> Explain</button>
         </div>
         <mi-status [loading]="explain().loading" [error]="explain().error"></mi-status>
@@ -57,15 +57,15 @@
     <mat-tab label="Reserve & pricing">
       <div class="tab">
         <form [formGroup]="terms" class="grid-4">
-          <mat-form-field appearance="outline"><mat-label>Delivery days</mat-label><input matInput type="number" formControlName="deliveryDays"></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>Card-not-present share (0–1)</mat-label><input matInput type="number" step="0.05" formControlName="cardNotPresentShare"></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Delivery days</mat-label><input matInput type="number" formControlName="deliveryDays"><mi-field-hint matSuffix for="deliveryDays"></mi-field-hint></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Card-not-present share (0–1)</mat-label><input matInput type="number" step="0.05" formControlName="cardNotPresentShare"><mi-field-hint matSuffix for="cardNotPresentShare"></mi-field-hint></mat-form-field>
           <mat-form-field appearance="outline"><mat-label>KYB high risk</mat-label>
             <mat-select formControlName="kybHighRisk"><mat-option value="">Unknown</mat-option><mat-option value="true">Yes</mat-option><mat-option value="false">No</mat-option></mat-select>
-          </mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>Website compliance score</mat-label><input matInput type="number" formControlName="websiteComplianceScore"></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>Volume plausibility score</mat-label><input matInput type="number" formControlName="volumePlausibilityScore"></mat-form-field>
-          <mat-checkbox formControlName="offersSubscriptions">Subscriptions</mat-checkbox>
-          <mat-checkbox formControlName="offersFreeTrials">Free trials</mat-checkbox>
+          <mi-field-hint matSuffix for="kybHighRisk"></mi-field-hint></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Website compliance score</mat-label><input matInput type="number" formControlName="websiteComplianceScore"><mi-field-hint matSuffix for="websiteComplianceScore"></mi-field-hint></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Volume plausibility score</mat-label><input matInput type="number" formControlName="volumePlausibilityScore"><mi-field-hint matSuffix for="volumePlausibilityScore"></mi-field-hint></mat-form-field>
+          <span class="cb"><mat-checkbox formControlName="offersSubscriptions">Subscriptions</mat-checkbox><mi-field-hint class="inline" for="offersSubscriptions"></mi-field-hint></span>
+          <span class="cb"><mat-checkbox formControlName="offersFreeTrials">Free trials</mat-checkbox><mi-field-hint class="inline" for="offersFreeTrials"></mi-field-hint></span>
         </form>
         <div class="actions"><button mat-flat-button color="primary" (click)="doTerms()" [disabled]="app.invalid || terms.invalid || termsResult().loading"><mat-icon>price_check</mat-icon> Recommend terms</button></div>
         <mi-status [loading]="termsResult().loading" [error]="termsResult().error"></mi-status>
@@ -106,15 +106,15 @@
     <mat-tab label="Volume plausibility">
       <div class="tab">
         <form [formGroup]="plaus" class="grid-3">
-          <mat-form-field appearance="outline"><mat-label>Employees</mat-label><input matInput type="number" formControlName="employeeCount"></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>Locations</mat-label><input matInput type="number" formControlName="locationCount"></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>Years in business</mat-label><input matInput type="number" formControlName="yearsInBusiness"></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>Prior-year revenue</mat-label><input matInput type="number" formControlName="priorYearRevenue"></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>Monthly card volume (statements)</mat-label><input matInput type="number" formControlName="monthlyCardVolumeFromStatements"></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>Website product count</mat-label><input matInput type="number" formControlName="websiteProductCount"></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Employees</mat-label><input matInput type="number" formControlName="employeeCount"><mi-field-hint matSuffix for="employeeCount"></mi-field-hint></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Locations</mat-label><input matInput type="number" formControlName="locationCount"><mi-field-hint matSuffix for="locationCount"></mi-field-hint></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Years in business</mat-label><input matInput type="number" formControlName="yearsInBusiness"><mi-field-hint matSuffix for="yearsInBusiness"></mi-field-hint></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Prior-year revenue</mat-label><input matInput type="number" formControlName="priorYearRevenue"><mi-field-hint matSuffix for="priorYearRevenue"></mi-field-hint></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Monthly card volume (statements)</mat-label><input matInput type="number" formControlName="monthlyCardVolumeFromStatements"><mi-field-hint matSuffix for="monthlyCardVolumeFromStatements"></mi-field-hint></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Website product count</mat-label><input matInput type="number" formControlName="websiteProductCount"><mi-field-hint matSuffix for="websiteProductCount"></mi-field-hint></mat-form-field>
           <mat-form-field appearance="outline"><mat-label>Physical location</mat-label>
             <mat-select formControlName="hasPhysicalLocation"><mat-option value="">Unknown</mat-option><mat-option value="true">Yes</mat-option><mat-option value="false">No</mat-option></mat-select>
-          </mat-form-field>
+          <mi-field-hint matSuffix for="hasPhysicalLocation"></mi-field-hint></mat-form-field>
         </form>
         <div class="actions"><button mat-flat-button color="primary" (click)="doPlausibility()" [disabled]="app.invalid || plausResult().loading"><mat-icon>fact_check</mat-icon> Check plausibility</button></div>
         <mi-status [loading]="plausResult().loading" [error]="plausResult().error"></mi-status>
@@ -139,7 +139,7 @@
     <mat-tab label="Bank statement">
       <div class="tab">
         <mat-form-field appearance="outline" class="full"><mat-label>Statement CSV (Date, Description, Amount[, Balance])</mat-label>
-          <textarea matInput rows="8" [formControl]="bankCsv"></textarea></mat-form-field>
+          <textarea matInput rows="8" [formControl]="bankCsv"></textarea><mi-field-hint matSuffix for="bankCsv"></mi-field-hint></mat-form-field>
         <div class="actions">
           <button mat-flat-button color="primary" (click)="doBankCsv()" [disabled]="!bankCsv.value || bank().loading"><mat-icon>account_balance</mat-icon> Analyse CSV</button>
           <button mat-stroked-button (click)="bankFile.click()" [disabled]="bank().loading"><mat-icon>upload_file</mat-icon> Upload CSV / PDF</button>
@@ -176,9 +176,9 @@
     <mat-tab label="P&L / balance sheet">
       <div class="tab">
         <mat-form-field appearance="outline" class="full"><mat-label>Statement lines ("label,amount" per line or free text)</mat-label>
-          <textarea matInput rows="8" [formControl]="pnlText"></textarea></mat-form-field>
+          <textarea matInput rows="8" [formControl]="pnlText"></textarea><mi-field-hint matSuffix for="pnlText"></mi-field-hint></mat-form-field>
         <div class="actions">
-          <mat-form-field appearance="outline"><mat-label>Declared annual card volume</mat-label><input matInput type="number" [formControl]="declaredVolume"></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Declared annual card volume</mat-label><input matInput type="number" [formControl]="declaredVolume"><mi-field-hint matSuffix for="declaredVolume"></mi-field-hint></mat-form-field>
           <button mat-flat-button color="primary" (click)="doPnlText()" [disabled]="!pnlText.value || pnl().loading"><mat-icon>request_quote</mat-icon> Analyse text</button>
           <button mat-stroked-button (click)="pnlFile.click()" [disabled]="pnl().loading"><mat-icon>upload_file</mat-icon> Upload CSV / TXT / PDF</button>
           <input #pnlFile type="file" accept=".csv,.txt,.pdf" hidden (change)="doPnlFile($event)">

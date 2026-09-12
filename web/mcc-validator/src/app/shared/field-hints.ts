@@ -110,5 +110,108 @@ export const FIELD_HINTS: Record<string, string> = {
   externalRef:
     'Case only: stored as the case external reference (falls back to the assessment id). Not used in scoring.',
   createCase:
-    'When on, a case is opened with the decision, reason codes and decision-log id, and an audit event is written. Off → case step is skipped (no effect on the decision).'
+    'When on, a case is opened with the decision, reason codes and decision-log id, and an audit event is written. Off → case step is skipped (no effect on the decision).',
+
+  // ---- Underwriting page -------------------------------------------------
+  matchFound:
+    'Credit model: direct input feature (30% component); a MATCH listing is a strong negative Shapley contributor (MATCH_LISTED reason code).\n' +
+    'Reserve & pricing: forces rolling reserve ≥20% for ≥180 days and an upfront reserve.',
+  explainClass:
+    'Explainability only: which outcome class (Approved / Referred / Declined) the Shapley contributions are computed for. Blank = the predicted class. Does not change the decision.',
+  kybHighRisk:
+    'Reserve & pricing only: "Yes" adds +0.20 risk (KYB_HIGH_RISK) → worse band, higher rolling reserve and settlement delay. Unknown = no adjustment.',
+  websiteComplianceScore:
+    'Reserve & pricing: scores <60 add (60 − score) / 400 risk, up to +0.15 (WEBSITE_NON_COMPLIANT).\n' +
+    'Unified score: the same value is the WebsiteCompliance component (10%); <60 raises the WEBSITE_NON_COMPLIANT reason code. Blank = not run → coverage gap.',
+  volumePlausibilityScore:
+    'Reserve & pricing: scores <60 add (60 − score) / 400 risk, up to +0.15 (VOLUME_IMPLAUSIBLE).\n' +
+    'Unified score: the same value is the VolumePlausibility component (10%); <50 raises VOLUME_IMPLAUSIBLE. Blank = not run → coverage gap.',
+  monthlyCardVolumeFromStatements:
+    'Volume plausibility only: annualised (×12) and compared with the declared annual volume. Declared >1.5× statements −12 (DECLARED_ABOVE_STATEMENTS), >2.5× −30 (DECLARED_FAR_ABOVE_STATEMENTS); declared <0.5× statements −10 (DECLARED_BELOW_STATEMENTS, possible volume splitting). Blank → skipped.',
+  bankCsv:
+    'Bank statement analysis: rows are parsed into monthly inflows / outflows / net, card-processor deposits (by descriptor), NSF & overdraft fees, negative-balance days, volatility and seasonality → flags.\n' +
+    'Implied annual card volume from the deposits feeds the plausibility comparison.',
+  pnlText:
+    'P&L / balance-sheet analysis: lines are matched to revenue, COGS, opex, net income, assets, liabilities, equity, cash → margins, leverage and liquidity ratios vs benchmark → flags.',
+  declaredVolume:
+    'P&L analysis only: compared with statement revenue (card volume far above total revenue → VOLUME_EXCEEDS_REVENUE).',
+
+  // ---- KYB page -------------------------------------------------------------
+  declaredMcc:
+    'Prohibited & restricted business check: used as a category hint alongside the description and website text.\n' +
+    'Website compliance scan: sets which policy pages are expected for the industry.',
+
+  // ---- Unified score page -----------------------------------------------------
+  merchantName:
+    'Label only: recorded on the score signals, the decision log and the case title. Not used in scoring.',
+  includeApplication:
+    'When on, the LightGBM credit model runs on MCC / volume / tickets / MATCH / relationship and its probability of approval becomes the CreditModel component (30%). Off → component treated as not run (coverage gap).',
+  kybRisk:
+    'KYB component (20%): Low → 90/100, Medium → 55, High → 20 (+ KYB_HIGH_RISK reason code). Blank with "Business verified" also blank → component not run (coverage gap).',
+  businessVerified:
+    'KYB component (20%): "No" deducts 25 and raises BUSINESS_UNVERIFIED (High).',
+  entityAgeMonths:
+    'KYB component (20%): <12 months deducts 10 and raises NEW_ENTITY (Medium).',
+  sanctionsMatch:
+    'Screening component (15%): "Yes" → component 0 and hard stop SANCTIONS_MATCH (score capped, Decline via HARD_STOP_SANCTIONS rule).',
+  pepMatch:
+    'Screening component (15%): "Yes" deducts 40 and raises PEP_MATCH (Medium) → the PEP_EDD rule refers the case for enhanced due diligence.',
+  adverseMedia:
+    'Screening component (15%): "Yes" deducts 25 and raises ADVERSE_MEDIA (Medium).',
+  prohibitedVerdict:
+    'BusinessPolicy component (10%): Acceptable 100 · HighRisk 60 (HIGH_RISK_BUSINESS) · Restricted 35 (RESTRICTED_BUSINESS) · Prohibited 0 + hard stop PROHIBITED_BUSINESS → Decline.',
+  termsRiskBand:
+    'Pricing component (5%): A 95 · B 80 · C 60 · D 35 · E 15; D/E raise HEAVY_RESERVE_REQUIRED. Blank = not run → coverage gap.',
+  matchListed:
+    '"Yes" → hard stop MATCH_LISTED (High) → Decline via HARD_STOP_MATCH. "No" clears the check; blank = not checked (coverage gap).',
+
+  // ---- MATCH page -------------------------------------------------------------
+  matchLegalName:
+    'MATCH / terminated-merchant inquiry: matched (with DBA) against the configured terminated-merchant list. A listing is a hard stop in the unified score.',
+  doingBusinessAs:
+    'MATCH inquiry: secondary business-name match alongside the legal name.',
+  matchTaxId:
+    'MATCH inquiry: exact identifier match — the strongest evidence of a prior termination.',
+  matchAddress:
+    'MATCH inquiry: address, city, region and postal code are matched together to catch the same merchant re-applying under a new name.',
+  matchCountry:
+    'MATCH inquiry: scopes the address / principal match to a jurisdiction (ISO-2).',
+  principalName:
+    'MATCH inquiry: principal first + last name matched against terminated-merchant principals (catches owners re-applying with a new entity).',
+  principalDateOfBirth:
+    'MATCH inquiry: disambiguates principals with common names; a matching birth date raises the match confidence.',
+
+  // ---- MCC validator page -------------------------------------------------------
+  mcc:
+    'MCC validation: the declared code is compared with what the website evidence suggests (text classifier, structured data, EDGAR SIC mapping). Mismatch → Inconsistent / Refer. Also sets the risk tier shown alongside the code.',
+  mccWebsite:
+    'MCC validation: pages are crawled and classified to infer the real business category; the SEC filer index is checked for a matching company. The evidence score drives the verdict.',
+
+  // ---- Cases / webhooks -----------------------------------------------------------
+  casePriority:
+    'Case queue ordering only; does not affect any score or decision.',
+  actorRequired:
+    'Audit only: written as the actor on every case / audit event so the hash-chained log records who did what.',
+  webhookUrl:
+    'Endpoint that receives signed JSON events (assessment.completed, case.updated, …). Deliveries and failures are listed below.',
+  webhookSecret:
+    'Used to HMAC-SHA256 sign every delivery (X-MI-Signature header) so the receiver can verify authenticity.',
+  webhookEvents:
+    'Which platform events are pushed to this endpoint.',
+
+  // ---- Rules / models -----------------------------------------------------------------
+  ruleAuthor:
+    'Governance only: recorded on the published rule-set version and in the audit chain. Required to publish.',
+  ruleComment:
+    'Governance only: change note stored with the rule-set version for reviewers.',
+  ruleEditor:
+    'The policy rules applied after scoring: each rule has a priority, an outcome (Approve / Refer / Decline) and a condition over the score facts (score, tier, hardStops, reasonCodes, matchFound …). Lowest priority wins; hard stops are priority 1. Publishing activates the new version immediately.',
+  ruleFacts:
+    'Dry-run input: the flattened scoring result the rules are evaluated against (score, tier, sanctionsMatch, annualVolume …). Nothing is stored.',
+  syntheticRows:
+    'Retraining only: number of synthetic applications generated to augment the labelled decisions before training the challenger model.',
+  registerAsChallenger:
+    'When on, the retrained model is registered as challenger so it can be compared against the champion (PSI drift, agreement) before promotion. Off → trained and evaluated only.',
+  justification:
+    'Governance only: reason recorded in the model registry and audit chain when the challenger replaces the champion.'
 };
