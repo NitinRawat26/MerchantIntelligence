@@ -7,6 +7,7 @@ using MerchantIntelligence.Platform.Rules;
 using MerchantIntelligence.Platform.Scoring;
 using MerchantIntelligence.Platform.Storage;
 using MerchantIntelligence.Platform.Webhooks;
+using MerchantIntelligence.Platform.Workflows;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -39,6 +40,26 @@ public static class PlatformServiceCollectionExtensions
             sp.GetRequiredService<WebhookDispatcher>(), options, bootstrapPredictor(sp), bootstrapModelPath));
         services.AddSingleton<IDecisionPredictor>(sp => sp.GetRequiredService<ModelRegistry>());
         services.AddSingleton<ModelOpsService>();
+        services.AddSingleton<IAssessmentStep, VerificationStep>();
+        services.AddSingleton<IAssessmentStep, ScreeningStep>();
+        services.AddSingleton<IAssessmentStep, WebsiteStep>();
+        services.AddSingleton<IAssessmentStep, ProhibitedStep>();
+        services.AddSingleton<IAssessmentStep, MccStep>();
+        services.AddSingleton<IAssessmentStep, MatchStep>();
+        services.AddSingleton<IAssessmentStep, BankStatementStep>();
+        services.AddSingleton<IAssessmentStep, FinancialsStep>();
+        services.AddSingleton<IAssessmentStep, PlausibilityStep>();
+        services.AddSingleton<IAssessmentStep, CreditStep>();
+        services.AddSingleton<IAssessmentStep, TermsStep>();
+        services.AddSingleton<IAssessmentStep, ScoreStep>();
+        services.AddSingleton<IAssessmentStep, CaseStep>();
+        services.AddSingleton<IAssessmentAgent, PreCheckAgent>();
+        services.AddSingleton<IAssessmentAgent, KybAgent>();
+        services.AddSingleton<IAssessmentAgent, FinancialAgent>();
+        services.AddSingleton<IAssessmentAgent, DecisionAgent>();
+        services.AddSingleton<WorkflowPlanner>();
+        services.AddSingleton<WorkflowRepository>();
+        services.AddSingleton<WorkflowRunner>();
         services.AddSingleton<AssessmentService>();
 
         services.AddHttpClient(HttpMatchProvider.HttpClientName, c => c.Timeout = TimeSpan.FromSeconds(15));

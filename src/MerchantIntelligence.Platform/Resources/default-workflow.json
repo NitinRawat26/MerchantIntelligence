@@ -1,0 +1,27 @@
+{
+  "name": "Standard onboarding",
+  "version": "default",
+  "description": "Every deterministic check, grouped under four rule-based agents. Pre-check and KYB run first, Financial & credit follows, Decision & case closes.",
+  "haltOnHardStop": false,
+  "agents": [
+    { "id": "precheck", "enabled": true, "steps": ["website", "prohibited", "mcc"] },
+    { "id": "kyb", "enabled": true, "steps": ["verification", "screening", "match"] },
+    { "id": "financial", "enabled": true, "steps": ["bank", "financials", "plausibility", "credit"] },
+    { "id": "decision", "enabled": true, "steps": ["terms", "score", "case"] }
+  ],
+  "steps": [
+    { "id": "verification", "enabled": true, "onFail": "Skip" },
+    { "id": "screening", "enabled": true, "onFail": "Skip" },
+    { "id": "website", "enabled": true, "onFail": "Skip" },
+    { "id": "prohibited", "enabled": true, "onFail": "Skip" },
+    { "id": "mcc", "enabled": true, "onFail": "Skip" },
+    { "id": "match", "enabled": true, "onFail": "Skip" },
+    { "id": "bank", "enabled": true, "onFail": "Skip" },
+    { "id": "financials", "enabled": true, "onFail": "Skip" },
+    { "id": "plausibility", "enabled": true, "onFail": "Skip" },
+    { "id": "credit", "enabled": true, "onFail": "Skip" },
+    { "id": "terms", "enabled": true, "onFail": "Skip" },
+    { "id": "score", "enabled": true, "onFail": "Skip" },
+    { "id": "case", "enabled": true, "onFail": "Skip" }
+  ]
+}

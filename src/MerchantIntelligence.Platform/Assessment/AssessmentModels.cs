@@ -105,7 +105,40 @@ public sealed record AssessmentResult(
     UnifiedRiskScore? UnifiedScore,
     RulesEvaluation? Rules,
     MerchantCase? Case,
-    long? DecisionLogId);
+    long? DecisionLogId,
+    AssessmentWorkflowInfo? Workflow = null,
+    IReadOnlyList<AgentReport>? Agents = null);
+
+/// <summary>Which workflow definition produced a result, for replay and audit.</summary>
+public sealed record AssessmentWorkflowInfo(string Name, string Version, IReadOnlyList<string> EnabledSteps);
+
+public enum AgentFindingKind
+{
+    /// <summary>Evidence is missing or weak; the decision is affected but the run continues.</summary>
+    Advisory,
+    /// <summary>The agent took an extra deterministic action on its own initiative (e.g. re-screened an alias).</summary>
+    Action,
+    /// <summary>Something the agent noticed across its tools' results that an analyst should read.</summary>
+    Observation
+}
+
+/// <summary>A note an agent writes while reviewing what its tools produced. Findings never change a score or outcome.</summary>
+public sealed record AgentFinding(AgentFindingKind Kind, string Code, string Message, string? Impact = null);
+
+/// <summary>What one agent did during a run: the steps it ran, what it concluded and every finding it raised.</summary>
+public sealed record AgentReport(
+    string Id,
+    string Name,
+    string Mandate,
+    StepStatus Status,
+    IReadOnlyList<string> Steps,
+    string Summary,
+    IReadOnlyList<AgentFinding> Findings,
+    long DurationMs);
+
+public sealed record AssessmentStepDescriptor(string Id, string Name, bool Enabled = true);
+
+public sealed record AssessmentAgentDescriptor(string Id, string Name, string Mandate, bool Enabled, IReadOnlyList<string> Steps);
 
 /// <summary>Intake echoed back without the bulky statement payloads.</summary>
 public sealed record AssessmentIntakeSummary(

@@ -199,6 +199,28 @@ export const FIELD_HINTS: Record<string, string> = {
   webhookEvents:
     'Which platform events are pushed to this endpoint.',
 
+  // ---- Workflows -----------------------------------------------------------------------
+  workflowName:
+    'Label shown in the assessment report and audit trail for every run made with this version.',
+  workflowDescription:
+    'Free text for reviewers describing why this configuration exists.',
+  workflowHaltOnHardStop:
+    'When on, once a sanctions match, MATCH listing or prohibited category is confirmed, the remaining evidence steps are skipped (score and case still run). Off keeps gathering evidence for the analyst.',
+  workflowStepEnabled:
+    'Disabled steps are recorded as Skipped coverage gaps: the unified score is reweighted over the checks that did run and coverage % drops. Steps that depend on a disabled one run degraded.',
+  workflowAgentEnabled:
+    'Disabling an agent skips every step it owns (all become coverage gaps) and removes it from the run; agents that waited on it start earlier. Its rule-based review (advisories, alias re-screen, reconciliation) is not produced.',
+  workflowStepAgent:
+    'Which agent runs this step. Steps of one agent run together as an Agent Framework executor; agents whose steps depend on another agent\'s output wait for it. Every step must be owned by exactly one agent.',
+  workflowOnFail:
+    'What happens if this check throws: Skip = coverage gap (today\'s behaviour); Refer = coverage gap and the final decision cannot be Approve; Abort = the whole assessment fails.',
+  workflowParams:
+    'Optional per-step tuning, validated against the step\'s declared parameters. Leave empty for platform defaults.',
+  workflowAuthor:
+    'Governance only: recorded on the published workflow version and in the audit chain. Required to publish.',
+  workflowComment:
+    'Governance only: change note stored with the workflow version for reviewers.',
+
   // ---- Rules / models -----------------------------------------------------------------
   ruleAuthor:
     'Governance only: recorded on the published rule-set version and in the audit chain. Required to publish.',

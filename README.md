@@ -1,7 +1,10 @@
 
 # MerchantIntelligence
 
-A suite of tools for merchant acquiring pre-checks and credit checks, built in C# / .NET 10.
+A suite of tools for merchant acquiring pre-checks and credit checks, built in C# / .NET 10. A full
+assessment runs as a **Microsoft Agent Framework workflow** of four rule-based agents over 13
+pluggable checks; the workflow (agents, checks, order, failure policy) is data you edit in the UI, and
+no LLM or external model is involved anywhere.
 
 #### Working [Merchant Intel](https://merchant-intelligence-3gtq.onrender.com/assess)
 
@@ -10,46 +13,46 @@ A suite of tools for merchant acquiring pre-checks and credit checks, built in C
 ```mermaid
 flowchart TD
     A(["Analyst opens /assess"]) --> B["Intake form<br/>business · owners · website · MCC · volumes<br/>size &amp; footprint · statements · case options"]
-    B -->|POST /api/assessment/run/stream| C{{Orchestrator}}
+    B -->|POST /api/assessment/run/stream| W{{"Active workflow version<br/>(SQLite) → Agent Framework graph"}}
 
-    subgraph KYB [Pre-boarding KYB]
-        S1[1 Identity verification<br/>GLEIF · EDGAR · Census]
-        S2["2 Sanctions / PEP / media<br/>OpenSanctions · OFAC · UN · GDELT"]
-        S3["3 Website compliance<br/>crawl · RDAP"]
-        S4["4 Prohibited / restricted"]
-        S5[5 MCC validation]
-        S6["6 MATCH / TMF<br/>NotConfigured → unknown"]
+    subgraph PC [Pre-check agent — stage 1]
+        S3["Website compliance<br/>crawl · RDAP"] --> S4["Prohibited / restricted"]
+        S5[MCC validation]
+        PCR["review: completeness &amp; consistency<br/>NO_WEBSITE · NO_BANK_STATEMENT · NO_OWNERS · THIN_DESCRIPTION …"]
     end
-    subgraph UW [Underwriting]
-        S7[7 Bank statement]
-        S8["8 P&amp;L / balance sheet"]
-        S9[9 Volume plausibility]
-        S10["10 Credit model + Shapley"]
-        S11["11 Reserve &amp; pricing"]
+    subgraph KYB [KYB &amp; screening agent — stage 1]
+        S1["Identity verification<br/>GLEIF · EDGAR · Census"]
+        S2["Sanctions / PEP / media<br/>OpenSanctions · OFAC · UN · GDELT"]
+        S6["MATCH / TMF<br/>NotConfigured → unknown"]
+        KR["review: re-screen registry aliases<br/>ALIAS_RESCREENED · MATCH_UNAVAILABLE"]
     end
-    subgraph PLAT [Platform]
-        S12["12 Unified score 0–1000<br/>+ policy rules"]
-        S13[13 Case + audit]
+    subgraph FIN [Financial &amp; credit agent — stage 2]
+        S7[Bank statement]
+        S8["P&amp;L / balance sheet"]
+        S7 & S8 --> S9[Volume plausibility]
+        S10["Credit model + Shapley"]
+        FR["review: reconcile statements vs declared<br/>STATEMENT_VS_DECLARED · NSF_EVENTS · LOSS_MAKING · MODEL_VS_PLAUSIBILITY"]
+    end
+    subgraph DEC [Decision &amp; case agent — stage 3]
+        S11["Reserve &amp; pricing"] --> S12["Unified score 0–1000<br/>+ policy rules"] --> S13[Case + audit]
+        DR["review: hard stops · forced refer · coverage gaps · brief"]
     end
 
-    C --> S1 --> S2 --> S3 --> S4 --> S5 --> S6 --> S7 --> S8 --> S9 --> S10 --> S11 --> S12 --> S13
-    S3 -. content .-> S4
-    S3 -. score .-> S11
-    S7 -. card deposits .-> S9
-    S8 -. revenue .-> S9
-    S9 -. score .-> S11
+    W --> PC & KYB --> FIN --> DEC
     S6 -. matchFound .-> S10
-    KYB -. KYB risk tier .-> S11
-    KYB & UW -. signals & coverage .-> S12
 
-    S13 --> D["Decision: Approve / Refer / Decline<br/>score · tier · deciding rule · coverage"]
-    D --> E["Explainability<br/>findings · reason codes · components · gaps · hard stops · next steps"]
-    D --> F[("SQLite: assessments · cases · audit chain")]
+    DEC --> D["Decision: Approve / Refer / Decline<br/>score · tier · deciding rule · coverage"]
+    D --> E["Explainability + agent reports<br/>findings · reason codes · advisories · gaps · hard stops · next steps"]
+    D --> F[("SQLite: assessments · workflows · cases · audit chain")]
     E --> G[PDF memo]
     E --> H["/assess result tabs"]
 ```
 
-Solid arrows are execution order; dotted arrows are results fed forward into later steps. See [docs/full-assessment.md §2](docs/full-assessment.md#2-high-level-flow) for the annotated version.
+Agents in the same stage run concurrently; a stage starts when every agent it depends on has
+finished. Inside an agent, independent checks fan out and dependent ones wait. The `review` in each
+agent is deterministic code (no model) that reads the structured results of its own checks and
+emits findings — it never changes a score, a hard stop or the decision. See
+[docs/full-assessment.md](docs/full-assessment.md) for the annotated per-check specification.
 
 ```bash
 curl -s localhost:5292/api/assessment/run -H 'Content-Type: application/json' -d '{
@@ -152,19 +155,45 @@ State lives in a local SQLite file (`Platform:DatabasePath`, default `data/platf
 
 ### Full assessment (`/api/assessment`, UI `/assess`)
 
-One intake, every check, one decision. Collects the business, owners, website, MCC, declared volumes and optional statements once, then runs the checks in order — verification → screening → website → prohibited/restricted → MCC → MATCH → bank statement → P&L → volume plausibility → credit model + explainability → terms → unified score + rules → case — and returns a persisted result with a detailed explainability report and a PDF.
+One intake, every check, one decision. Collects the business, owners, website, MCC, declared volumes and optional statements once, then executes the **active workflow** (see next section) and returns a persisted result with the per-check outcomes, the four agent reports, a detailed explainability report and a PDF.
 
 | Endpoint | What it does |
 |----------|--------------|
-| `GET steps` | Ordered step catalogue (id + display name) |
-| `POST run` | Runs everything, returns the `AssessmentResult`. Body is JSON, or `multipart/form-data` with a `request` JSON part plus optional `bankStatement` (CSV/PDF) and `financialStatement` (text/PDF) files |
-| `POST run/stream` | Same input; responds with newline-delimited JSON: `{"type":"steps"}` once, `{"type":"step"}` per status change (Pending/Running/Succeeded/Failed/Skipped), then `{"type":"result"}` |
+| `GET steps` | Step catalogue for the active workflow (id, display name, enabled) |
+| `GET agents` | Agent catalogue for the active workflow (id, name, mandate, enabled, owned steps) |
+| `POST run` | Runs everything, returns the `AssessmentResult` (now including `agents[]`). Body is JSON, or `multipart/form-data` with a `request` JSON part plus optional `bankStatement` (CSV/PDF) and `financialStatement` (text/PDF) files |
+| `POST run/stream` | Same input; responds with newline-delimited JSON: `{"type":"steps","steps":[…],"agents":[…]}` once, `{"type":"step"}` per step status change (Pending/Running/Succeeded/Failed/Skipped), `{"type":"agent"}` when an agent starts and when it finishes (with its summary and findings), then `{"type":"result"}` |
 | `GET`, `GET {id}` | History and stored results |
 | `GET {id}/pdf` | Full underwriting report (decision, intake, check outcomes, score components, reason codes, model contributions, rules, narrative, findings, terms, analyst actions, execution log, source limitations) |
 
-Each step is isolated: a failing step is recorded as a coverage gap, never as clear. If every public registry fails, or no sanctions list could be downloaded, the result is reported as *Unavailable* and excluded from the unified score rather than being read as verified/clear. MATCH stays `NotConfigured` without credentials.
+Each step is isolated: a failing step is recorded as a coverage gap, never as clear. If every public registry fails, or no sanctions list could be downloaded, the result is reported as *Unavailable* and excluded from the unified score rather than being read as verified/clear. MATCH stays `NotConfigured` without credentials. **Missing evidence never stops a run**: the Pre-check agent tells the analyst what is missing and how it degrades coverage/confidence, and the assessment continues over the evidence that is there.
 
-The complete functional specification — every intake field, each of the 13 steps (inputs, processing, outputs, how it feeds the score), decision derivation, coverage semantics, the explainability report, the PDF memo, presets and a field-to-check matrix — is in **[docs/full-assessment.md](docs/full-assessment.md)**.
+The complete functional specification — every intake field, each of the 13 checks (inputs, processing, outputs, how it feeds the score), decision derivation, coverage semantics, the explainability report, the PDF memo, presets and a field-to-check matrix — is in **[docs/full-assessment.md](docs/full-assessment.md)**.
+
+### Agentic workflow (`/api/workflows`, UI `/workflows`)
+
+The assessment is not a hard-coded pipeline. Each of the 13 checks is an `IAssessmentStep` (id, display name, `dependsOn`, parameters) and each agent is an `IAssessmentAgent` (id, name, mandate, default steps, a deterministic `ReviewAsync`). A **workflow definition** — JSON, versioned in SQLite with publish / rollback / audit events like policy rules — says which agents are enabled, which steps each agent owns, the step order, per-step parameters and the on-failure policy (`Skip` → coverage gap, `Refer` → force Refer, `Abort`). `WorkflowPlanner` validates it (unknown / duplicate / unowned steps, unknown parameters, dependency cycles, degraded checks whose dependency is disabled) and computes the stages; `WorkflowRunner` compiles the plan into a `Microsoft.Agents.AI.Workflows` graph — one executor per enabled agent, fan-out inside a stage, a gate between stages — and streams executor events back to the API.
+
+| Agent | Owns (default) | Deterministic review it adds |
+|-------|----------------|------------------------------|
+| **Pre-check** | website, prohibited, mcc | Application completeness and internal consistency. Advisories `NO_WEBSITE`, `WEBSITE_UNREACHABLE`, `NO_BANK_STATEMENT`, `NO_FINANCIALS`, `NO_OWNERS`, `THIN_DESCRIPTION`, `THIN_PROFILE`, each stating the effect on coverage or confidence; observations for MCC inconsistency and non-acceptable business classification |
+| **KYB & screening** | verification, screening, match | Compares registry legal / trading names with the declared ones and **re-screens any new alias** against the sanctions lists (`ALIAS_RESCREENED`, merged into the screening result); reports registry status, sanctions / PEP hits and MATCH availability (`MATCH_UNAVAILABLE`) as coverage, never as clear |
+| **Financial & credit** | bank, financials, plausibility, credit | Reconciles bank-statement implied card volume with the declared volume (`STATEMENT_VS_DECLARED`), flags `NSF_EVENTS`, `MULTIPLE_PROCESSORS`, `VOLUME_EXCEEDS_REVENUE`, `LOSS_MAKING`, and disagreement between the plausibility check and the credit model (`MODEL_VS_PLAUSIBILITY`) |
+| **Decision & case** | terms, score, case | Runs the deterministic unified score + policy rules and reports hard stops, forced Refer, `COVERAGE_GAPS` and a `BRIEF` of all upstream findings. It cannot override score, hard stops, rules or case creation |
+
+Agents are logical groupings of executors with coded heuristics — they coordinate through the Agent Framework runtime (messages, fan-out / fan-in, streamed events) but contain **no LLM**; there is nothing to configure, no API key, and every finding is reproducible and audited.
+
+| Endpoint | What it does |
+|----------|--------------|
+| `GET catalog` | Step catalogue: id, name, description, `dependsOn`, parameter schema |
+| `GET agents` | Agent catalogue: id, name, mandate, description, default steps |
+| `GET default` | The embedded default workflow (`Resources/default-workflow.json`) |
+| `GET active`, `GET active/plan`, `GET active/steps` | Active definition, its computed plan (agent stages, step stages, disabled steps, warnings, Mermaid graph) and its step list |
+| `POST validate` | Validates a draft and returns its plan and warnings without saving |
+| `POST publish` | Stores a new version and makes it active (author, comment; audited) |
+| `GET history`, `POST rollback/{version}` | Version history and rollback (creates a new version) |
+
+Disabling a step, or a whole agent, makes every affected check a *Skipped* coverage gap — results stay 13-check compatible and the score simply has less to work with.
 
 ## Project layout
 
@@ -177,6 +206,8 @@ src/
   MerchantIntelligence.Kyb/                       # Registry verification, sanctions screening, website compliance, prohibited-business taxonomy
   MerchantIntelligence.Underwriting/              # Decision explainability, reserve/pricing recommender, volume plausibility, statement parsing
   MerchantIntelligence.Platform/                  # Unified score, rules engine, cases + audit (SQLite), webhooks, model ops, MATCH boundary
+    Assessment/                                   #   Full-assessment service, composer (decision/explainability), PDF
+    Workflows/                                    #   IAssessmentStep implementations, the four IAssessmentAgents, planner, Agent Framework runner, workflow repository
   MerchantIntelligence.Api/                       # ASP.NET Core Web API (all tools)
 web/
   mcc-validator/                                  # Angular 18 + Material UI for the whole suite
@@ -190,7 +221,9 @@ models/
 
 ## Getting started
 
-Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
+Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) (`global.json` pins it;
+`dotnet --list-sdks` must show a 10.0.x entry — on macOS Arm64 use the *Installer* `.pkg`, not the
+binaries tarball) and Node 20+ for the web UI.
 
 ```bash
 # Train (or retrain) the model. Uses synthetic data by default.
@@ -261,7 +294,7 @@ curl -X POST http://localhost:5292/api/kyb/report \
 
 The first call downloads ~100 MB of sanctions data (30-60 s); subsequent calls are fast.
 
-### MCC validator UI
+### Web UI
 
 ```bash
 cd web/mcc-validator
@@ -288,12 +321,16 @@ your own labelled merchant records to it before running `train` to improve cover
 
 ## Web UI
 
-`web/mcc-validator` is an Angular 18 + Material single-page app with a page per capability. All pages
-call the .NET API through the `/api` dev proxy (`proxy.conf.json` → `http://localhost:5292`).
+`web/mcc-validator` is an Angular 18 + Material single-page app with a page per capability, grouped in
+the sidebar the same way the assessment runs: *Agentic* (Full assessment, Workflows) → *Pre-check* →
+*KYB & Screening* → *Financial & Credit* → *Decision* → *Review* (Case queue) → *Operations*. Every form
+control has an ⓘ hint stating which calculation it feeds. All pages call the .NET API through the
+`/api` dev proxy (`proxy.conf.json` → `http://localhost:5292`).
 
 | Route | Page |
 |-------|------|
-| `/assess`, `/assess/:id` | Full assessment (default page): one intake form (business, owners, website, MCC, volumes, statements/uploads), live step-by-step run, decision card, tabbed explainability report (identity & screening, website/MCC/business type, financials & plausibility, terms, run log), PDF download and recent-assessment history |
+| `/assess`, `/assess/:id` | Full assessment (default page): one intake form (business, owners, website, MCC, volumes, statements/uploads), live run grouped into agent lanes (per-check status plus each agent's advisories / actions / observations as they happen), decision card, tabbed explainability report (identity & screening, website/MCC/business type, financials & plausibility, terms, **agents**, run log with owning agent), PDF download and recent-assessment history |
+| `/workflows` | Workflow editor: agent cards (mandate, enable toggle, owned checks, stage and what it waits for), drag-to-reorder check list with enable toggles, agent assignment, on-failure policy and parameters, live validation with degraded / unowned warnings, stage + Mermaid graph preview, version history with load and rollback, publish |
 | `/score` | Unified risk score: enter credit application + upstream KYB/screening/website/plausibility signals, see score, tier, coverage gaps, hard stops, reason codes, matched rules; optionally open a case |
 | `/kyb` | KYB & screening: business identity, beneficial owners, registry sources, sanctions/PEP/adverse media, website compliance checks, prohibited-business verdict |
 | `/underwriting` | Explainability (Shapley bars + reason codes), reserve & pricing terms, volume plausibility, bank-statement CSV/PDF and P&L analysis |

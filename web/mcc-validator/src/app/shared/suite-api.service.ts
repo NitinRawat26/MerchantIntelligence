@@ -7,7 +7,8 @@ import {
   DriftReport, ExplainRequest, FinancialStatementAnalysis, FullKybRequest, KybReport, LoggedDecision, MatchInquiryRequest, MatchResult,
   MerchantCase, ModelsResponse, RegisteredModel, RetrainResult, RuleSet, RuleSetVersion, RulesEvaluation, TermsRecommendation, TermsRequest,
   UnifiedScoreRequest, UnifiedScoreResponse, VolumePlausibilityRequest, VolumePlausibilityResult, WebhookDelivery, WebhookSubscription, Decision, CasePriority, RuleOutcome,
-  AssessmentEvent, AssessmentListItem, AssessmentRequest, AssessmentResult, AssessmentStepDescriptor
+  AssessmentAgentDescriptor, AssessmentEvent, AssessmentListItem, AssessmentRequest, AssessmentResult, AssessmentStepDescriptor,
+  WorkflowAgentDescriptor, WorkflowDefinition, WorkflowPlan, WorkflowStepDescriptor, WorkflowValidationResponse, WorkflowVersion
 } from './models';
 
 /** Flattens ASP.NET ProblemDetails / validation errors and our `{ error }` bodies into one line. */
@@ -103,8 +104,21 @@ export class SuiteApiService {
 
   private form(file: File): FormData { const f = new FormData(); f.append('file', file, file.name); return f; }
 
+  // Workflows
+  workflowCatalog(): Observable<WorkflowStepDescriptor[]> { return this.http.get<WorkflowStepDescriptor[]>(`${this.base}/workflows/catalog`); }
+  workflowAgents(): Observable<WorkflowAgentDescriptor[]> { return this.http.get<WorkflowAgentDescriptor[]>(`${this.base}/workflows/agents`); }
+  workflowDefault(): Observable<WorkflowDefinition> { return this.http.get<WorkflowDefinition>(`${this.base}/workflows/default`); }
+  workflowActive(): Observable<WorkflowDefinition> { return this.http.get<WorkflowDefinition>(`${this.base}/workflows/active`); }
+  workflowActivePlan(): Observable<WorkflowPlan> { return this.http.get<WorkflowPlan>(`${this.base}/workflows/active/plan`); }
+  workflowHistory(): Observable<WorkflowVersion[]> { return this.http.get<WorkflowVersion[]>(`${this.base}/workflows/history`); }
+  workflowVersion(v: number): Observable<WorkflowDefinition> { return this.http.get<WorkflowDefinition>(`${this.base}/workflows/${v}`); }
+  validateWorkflow(def: WorkflowDefinition): Observable<WorkflowValidationResponse> { return this.http.post<WorkflowValidationResponse>(`${this.base}/workflows/validate`, def); }
+  publishWorkflow(workflow: WorkflowDefinition, author: string, comment?: string): Observable<WorkflowVersion> { return this.http.post<WorkflowVersion>(`${this.base}/workflows/publish`, { workflow, author, comment }); }
+  rollbackWorkflow(version: number, actor: string): Observable<WorkflowVersion> { return this.http.post<WorkflowVersion>(`${this.base}/workflows/rollback/${version}`, { actor }); }
+
   // Full assessment
   assessmentSteps(): Observable<AssessmentStepDescriptor[]> { return this.http.get<AssessmentStepDescriptor[]>(`${this.base}/assessment/steps`); }
+  assessmentAgents(): Observable<AssessmentAgentDescriptor[]> { return this.http.get<AssessmentAgentDescriptor[]>(`${this.base}/assessment/agents`); }
   assessments(limit = 50): Observable<AssessmentListItem[]> { return this.http.get<AssessmentListItem[]>(`${this.base}/assessment`, { params: new HttpParams().set('limit', limit) }); }
   assessment(id: string): Observable<AssessmentResult> { return this.http.get<AssessmentResult>(`${this.base}/assessment/${encodeURIComponent(id)}`); }
   assessmentPdfUrl(id: string): string { return `${this.base}/assessment/${encodeURIComponent(id)}/pdf`; }
