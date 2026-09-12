@@ -40,7 +40,6 @@ flowchart TD
 
     W --> PC & KYB --> FIN --> DEC
     S6 -. matchFound .-> S10
-    S3 -. content .-> S4
 
     DEC --> D["Decision: Approve / Refer / Decline<br/>score · tier · deciding rule · coverage"]
     D --> E["Explainability + agent reports<br/>findings · reason codes · advisories · gaps · hard stops · next steps"]
