@@ -11,7 +11,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTableModule } from '@angular/material/table';
 import { SuiteApiService, describeError } from '../../shared/suite-api.service';
 import { CasePriority, CaseQueueStats, CaseStatus, MerchantCase } from '../../shared/models';
-import { StatusComponent, outcomeClass } from '../../shared/ui';
+import { FieldHintComponent, StatusComponent, outcomeClass } from '../../shared/ui';
 
 export const CASE_STATUSES: CaseStatus[] = ['Open', 'InReview', 'PendingDocuments', 'Approved', 'Declined', 'Withdrawn'];
 export const CASE_PRIORITIES: CasePriority[] = ['Low', 'Normal', 'High', 'Urgent'];
@@ -19,7 +19,7 @@ export const CASE_PRIORITIES: CasePriority[] = ['Low', 'Normal', 'High', 'Urgent
 @Component({
   selector: 'mi-cases',
   standalone: true,
-  imports: [ReactiveFormsModule, DatePipe, DecimalPipe, MatButtonModule, MatCardModule, MatFormFieldModule, MatIconModule, MatInputModule, MatSelectModule, MatTableModule, StatusComponent],
+  imports: [ReactiveFormsModule, DatePipe, DecimalPipe, MatButtonModule, MatCardModule, MatFormFieldModule, MatIconModule, MatInputModule, MatSelectModule, MatTableModule, StatusComponent, FieldHintComponent],
   styleUrl: './platform.scss',
   template: `
     <div class="page">
@@ -69,11 +69,11 @@ export const CASE_PRIORITIES: CasePriority[] = ['Low', 'Normal', 'High', 'Urgent
         <mat-card-header><mat-card-title>Create case manually</mat-card-title></mat-card-header>
         <mat-card-content>
           <form [formGroup]="create" (ngSubmit)="createCase()" class="grid-4">
-            <mat-form-field appearance="outline"><mat-label>Merchant name</mat-label><input matInput formControlName="merchantName" required></mat-form-field>
-            <mat-form-field appearance="outline"><mat-label>External ref</mat-label><input matInput formControlName="externalRef"></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Merchant name</mat-label><input matInput formControlName="merchantName" required><mi-field-hint matSuffix for="merchantName"></mi-field-hint></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>External ref</mat-label><input matInput formControlName="externalRef"><mi-field-hint matSuffix for="externalRef"></mi-field-hint></mat-form-field>
             <mat-form-field appearance="outline"><mat-label>Priority</mat-label>
-              <mat-select formControlName="priority">@for (p of priorities; track p) {<mat-option [value]="p">{{ p }}</mat-option>}</mat-select></mat-form-field>
-            <mat-form-field appearance="outline"><mat-label>Actor</mat-label><input matInput formControlName="actor" required></mat-form-field>
+              <mat-select formControlName="priority">@for (p of priorities; track p) {<mat-option [value]="p">{{ p }}</mat-option>}</mat-select><mi-field-hint matSuffix for="casePriority"></mi-field-hint></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Actor</mat-label><input matInput formControlName="actor" required><mi-field-hint matSuffix for="actorRequired"></mi-field-hint></mat-form-field>
             <div class="actions wide"><button mat-flat-button color="primary" type="submit" [disabled]="create.invalid">Create case</button>
               @if (createError(); as e) { <span class="text-high">{{ e }}</span> }</div>
           </form>

@@ -10,12 +10,12 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTableModule } from '@angular/material/table';
 import { SuiteApiService, describeError } from '../../shared/suite-api.service';
 import { WebhookDelivery, WebhookSubscription } from '../../shared/models';
-import { StatusComponent } from '../../shared/ui';
+import { FieldHintComponent, StatusComponent } from '../../shared/ui';
 
 @Component({
   selector: 'mi-webhooks',
   standalone: true,
-  imports: [ReactiveFormsModule, DatePipe, MatButtonModule, MatCardModule, MatFormFieldModule, MatIconModule, MatInputModule, MatSelectModule, MatTableModule, StatusComponent],
+  imports: [ReactiveFormsModule, DatePipe, MatButtonModule, MatCardModule, MatFormFieldModule, MatIconModule, MatInputModule, MatSelectModule, MatTableModule, StatusComponent, FieldHintComponent],
   styleUrl: './platform.scss',
   template: `
     <div class="page">
@@ -27,10 +27,10 @@ import { StatusComponent } from '../../shared/ui';
         </mat-card-header>
         <mat-card-content>
           <form [formGroup]="form" (ngSubmit)="register()" class="grid-4">
-            <mat-form-field appearance="outline" class="wide-2"><mat-label>Endpoint URL</mat-label><input matInput formControlName="url" placeholder="https://example.com/hooks/mi" required></mat-form-field>
-            <mat-form-field appearance="outline"><mat-label>Secret (≥16 chars)</mat-label><input matInput type="password" formControlName="secret" required></mat-form-field>
+            <mat-form-field appearance="outline" class="wide-2"><mat-label>Endpoint URL</mat-label><input matInput formControlName="url" placeholder="https://example.com/hooks/mi" required><mi-field-hint matSuffix for="webhookUrl"></mi-field-hint></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Secret (≥16 chars)</mat-label><input matInput type="password" formControlName="secret" required><mi-field-hint matSuffix for="webhookSecret"></mi-field-hint></mat-form-field>
             <mat-form-field appearance="outline"><mat-label>Events</mat-label>
-              <mat-select formControlName="events" multiple>@for (e of events(); track e) {<mat-option [value]="e">{{ e }}</mat-option>}</mat-select></mat-form-field>
+              <mat-select formControlName="events" multiple>@for (e of events(); track e) {<mat-option [value]="e">{{ e }}</mat-option>}</mat-select><mi-field-hint matSuffix for="webhookEvents"></mi-field-hint></mat-form-field>
             <div class="actions wide"><button mat-flat-button color="primary" type="submit" [disabled]="form.invalid">Register webhook</button>
               @if (message(); as m) { <span [class]="m.ok ? 'text-low' : 'text-high'">{{ m.text }}</span> }</div>
           </form>

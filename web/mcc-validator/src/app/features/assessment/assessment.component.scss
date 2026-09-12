@@ -36,5 +36,3 @@ mat-expansion-panel { margin-bottom: 8px; }
 }
 @media (max-width: 700px) { .history li { grid-template-columns: auto 1fr auto; .when { display: none; } } }
 
-mat-icon.hint { color: var(--mi-text-3); cursor: help; font-size: 18px; width: 18px; height: 18px; &:hover { color: var(--mi-primary); }
-  &.inline { vertical-align: middle; margin-left: 2px; } }

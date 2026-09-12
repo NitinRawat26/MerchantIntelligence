@@ -15,7 +15,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { Observable } from 'rxjs';
 import { SuiteApiService, describeError } from '../../shared/suite-api.service';
 import { CashFlowAnalysis, Decision, DecisionExplanation, FinancialStatementAnalysis, TermsRecommendation, VolumePlausibilityResult } from '../../shared/models';
-import { FlagsComponent, GaugeComponent, JsonViewComponent, StatusComponent, outcomeClass } from '../../shared/ui';
+import { FieldHintComponent, FlagsComponent, GaugeComponent, JsonViewComponent, StatusComponent, outcomeClass } from '../../shared/ui';
 
 const SAMPLE_CSV = `Date,Description,Amount,Balance
 2024-01-03,STRIPE TRANSFER,4820.15,12450.15
@@ -54,7 +54,7 @@ const empty = <T>(): Panel<T> => ({ loading: false, error: null, result: null })
   selector: 'mi-underwriting',
   standalone: true,
   imports: [ReactiveFormsModule, CurrencyPipe, DecimalPipe, PercentPipe, MatButtonModule, MatCardModule, MatCheckboxModule, MatFormFieldModule, MatIconModule, MatInputModule,
-    MatSelectModule, MatSliderModule, MatTableModule, MatTabsModule, MatTooltipModule, FlagsComponent, GaugeComponent, JsonViewComponent, StatusComponent],
+    MatSelectModule, MatSliderModule, MatTableModule, MatTabsModule, MatTooltipModule, FlagsComponent, GaugeComponent, JsonViewComponent, StatusComponent, FieldHintComponent],
   templateUrl: './underwriting.component.html',
   styleUrl: '../platform/platform.scss'
 })
