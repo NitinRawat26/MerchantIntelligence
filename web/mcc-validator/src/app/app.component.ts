@@ -165,20 +165,26 @@ export class AppComponent {
   readonly opened = signal(false);
 
   readonly groups: NavGroup[] = [
-    { title: 'Decision', items: [
-      { path: '/assess', label: 'Full assessment', icon: 'checklist_rtl', blurb: 'One intake, every check, one decision with a PDF memo' },
-      { path: '/score', label: 'Unified risk score', icon: 'speed', blurb: 'Blend credit, KYB, screening and web signals into a 0–1000 score' },
-      { path: '/cases', label: 'Case queue', icon: 'inbox', blurb: 'Review, assign and decide merchant cases' },
-      { path: '/rules', label: 'Policy rules', icon: 'rule', blurb: 'Versioned decision policy with history and rollback' },
-      { path: '/workflows', label: 'Workflows', icon: 'account_tree', blurb: 'Enable, disable and reorder the checks an assessment runs' }
+    { title: 'Agentic', items: [
+      { path: '/assess', label: 'Full assessment', icon: 'checklist_rtl', blurb: 'One intake, four agents, every check, one decision with a PDF memo' },
+      { path: '/workflows', label: 'Workflows', icon: 'account_tree', blurb: 'Configure the agents and the checks an assessment runs' }
     ] },
-    { title: 'Pre-boarding', items: [
+    { title: 'Pre-check', items: [
+      { path: '/mcc', label: 'MCC validator', icon: 'fact_check', blurb: 'Check the declared MCC against what the website actually sells' }
+    ] },
+    { title: 'KYB & Screening', items: [
       { path: '/kyb', label: 'KYB & screening', icon: 'verified_user', blurb: 'Registry verification, sanctions/PEP, adverse media, website compliance' },
-      { path: '/mcc', label: 'MCC validator', icon: 'fact_check', blurb: 'Check the declared MCC against what the website actually sells' },
       { path: '/match', label: 'MATCH inquiry', icon: 'policy', blurb: 'Terminated Merchant File lookup' }
     ] },
-    { title: 'Underwriting', items: [
+    { title: 'Financial & Credit', items: [
       { path: '/underwriting', label: 'Explain, terms & statements', icon: 'account_balance', blurb: 'Model explanations, pricing terms and bank statement analysis' }
+    ] },
+    { title: 'Decision', items: [
+      { path: '/score', label: 'Unified risk score', icon: 'speed', blurb: 'Blend credit, KYB, screening and web signals into a 0–1000 score' },
+      { path: '/rules', label: 'Policy rules', icon: 'rule', blurb: 'Versioned decision policy with history and rollback' }
+    ] },
+    { title: 'Review', items: [
+      { path: '/cases', label: 'Case queue', icon: 'inbox', blurb: 'Review, assign and decide merchant cases' }
     ] },
     { title: 'Operations', items: [
       { path: '/audit', label: 'Audit trail', icon: 'history', blurb: 'Tamper-evident log of every decision and mutation' },
