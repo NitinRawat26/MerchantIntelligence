@@ -13,7 +13,7 @@
         <mat-form-field appearance="outline" class="mcc-field">
           <mat-label>Declared MCC</mat-label>
           <input matInput formControlName="mcc" [matAutocomplete]="auto" placeholder="e.g. 5812 or 'restaurant'">
-          <mat-icon matSuffix>category</mat-icon>
+          <mi-field-hint matSuffix for="mcc"></mi-field-hint>
           <mat-autocomplete #auto="matAutocomplete" [displayWith]="displayMcc">
             @for (item of filteredCatalog(); track item.mcc) {
               <mat-option [value]="item.mcc.toString()">
@@ -37,6 +37,7 @@
           <mat-label>Business website</mat-label>
           <input matInput formControlName="websiteUrl" placeholder="https://www.example.com" type="url" autocomplete="url">
           <mat-icon matSuffix>language</mat-icon>
+          <mi-field-hint matSuffix for="mccWebsite"></mi-field-hint>
           @if (form.controls.websiteUrl.touched && form.controls.websiteUrl.invalid) {
             <mat-error>Enter a valid website address</mat-error>
           }

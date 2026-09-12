@@ -14,7 +14,7 @@ import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { SuiteApiService, describeError } from '../../shared/suite-api.service';
 import { UnifiedScoreRequest, UnifiedScoreResponse } from '../../shared/models';
-import { FlagsComponent, GaugeComponent, JsonViewComponent, StatusComponent, outcomeClass, tierClass } from '../../shared/ui';
+import { FieldHintComponent, FlagsComponent, GaugeComponent, JsonViewComponent, StatusComponent, outcomeClass, tierClass } from '../../shared/ui';
 
 const nullIfBlank = (v: unknown) => (v === '' || v === null || v === undefined ? null : v);
 
@@ -22,7 +22,7 @@ const nullIfBlank = (v: unknown) => (v === '' || v === null || v === undefined ?
   selector: 'mi-score',
   standalone: true,
   imports: [ReactiveFormsModule, RouterLink, DecimalPipe, PercentPipe, MatButtonModule, MatCardModule, MatCheckboxModule, MatChipsModule, MatFormFieldModule,
-    MatIconModule, MatInputModule, MatSelectModule, MatTableModule, MatTooltipModule, FlagsComponent, GaugeComponent, JsonViewComponent, StatusComponent],
+    MatIconModule, MatInputModule, MatSelectModule, MatTableModule, MatTooltipModule, FlagsComponent, GaugeComponent, JsonViewComponent, StatusComponent, FieldHintComponent],
   templateUrl: './score.component.html',
   styleUrl: './platform.scss'
 })

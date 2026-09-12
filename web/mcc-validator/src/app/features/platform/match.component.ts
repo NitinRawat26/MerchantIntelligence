@@ -8,12 +8,12 @@ import { MatInputModule } from '@angular/material/input';
 import { MatTableModule } from '@angular/material/table';
 import { SuiteApiService, describeError } from '../../shared/suite-api.service';
 import { MatchResult } from '../../shared/models';
-import { JsonViewComponent, StatusComponent } from '../../shared/ui';
+import { FieldHintComponent, JsonViewComponent, StatusComponent } from '../../shared/ui';
 
 @Component({
   selector: 'mi-match',
   standalone: true,
-  imports: [ReactiveFormsModule, MatButtonModule, MatCardModule, MatFormFieldModule, MatIconModule, MatInputModule, MatTableModule, JsonViewComponent, StatusComponent],
+  imports: [ReactiveFormsModule, MatButtonModule, MatCardModule, MatFormFieldModule, MatIconModule, MatInputModule, MatTableModule, JsonViewComponent, StatusComponent, FieldHintComponent],
   styleUrl: './platform.scss',
   template: `
     <div class="page">
@@ -25,21 +25,22 @@ import { JsonViewComponent, StatusComponent } from '../../shared/ui';
         </mat-card-header>
         <mat-card-content>
           <form [formGroup]="form" (ngSubmit)="submit()">
+            <h3><mat-icon>business</mat-icon> Business</h3>
             <div class="grid-4">
-              <mat-form-field appearance="outline"><mat-label>Legal name</mat-label><input matInput formControlName="legalName" required></mat-form-field>
-              <mat-form-field appearance="outline"><mat-label>DBA</mat-label><input matInput formControlName="doingBusinessAs"></mat-form-field>
-              <mat-form-field appearance="outline"><mat-label>Tax ID</mat-label><input matInput formControlName="taxId"></mat-form-field>
-              <mat-form-field appearance="outline"><mat-label>Country</mat-label><input matInput formControlName="country" maxlength="2"></mat-form-field>
-              <mat-form-field appearance="outline"><mat-label>Address</mat-label><input matInput formControlName="addressLine"></mat-form-field>
-              <mat-form-field appearance="outline"><mat-label>City</mat-label><input matInput formControlName="city"></mat-form-field>
-              <mat-form-field appearance="outline"><mat-label>Region</mat-label><input matInput formControlName="region"></mat-form-field>
-              <mat-form-field appearance="outline"><mat-label>Postal code</mat-label><input matInput formControlName="postalCode"></mat-form-field>
+              <mat-form-field appearance="outline"><mat-label>Legal name</mat-label><input matInput formControlName="legalName" required><mi-field-hint matSuffix for="matchLegalName"></mi-field-hint></mat-form-field>
+              <mat-form-field appearance="outline"><mat-label>DBA</mat-label><input matInput formControlName="doingBusinessAs"><mi-field-hint matSuffix for="doingBusinessAs"></mi-field-hint></mat-form-field>
+              <mat-form-field appearance="outline"><mat-label>Tax ID</mat-label><input matInput formControlName="taxId"><mi-field-hint matSuffix for="matchTaxId"></mi-field-hint></mat-form-field>
+              <mat-form-field appearance="outline"><mat-label>Country</mat-label><input matInput formControlName="country" maxlength="2"><mi-field-hint matSuffix for="matchCountry"></mi-field-hint></mat-form-field>
+              <mat-form-field appearance="outline"><mat-label>Address</mat-label><input matInput formControlName="addressLine"><mi-field-hint matSuffix for="matchAddress"></mi-field-hint></mat-form-field>
+              <mat-form-field appearance="outline"><mat-label>City</mat-label><input matInput formControlName="city"><mi-field-hint matSuffix for="matchAddress"></mi-field-hint></mat-form-field>
+              <mat-form-field appearance="outline"><mat-label>Region</mat-label><input matInput formControlName="region"><mi-field-hint matSuffix for="matchAddress"></mi-field-hint></mat-form-field>
+              <mat-form-field appearance="outline"><mat-label>Postal code</mat-label><input matInput formControlName="postalCode"><mi-field-hint matSuffix for="matchAddress"></mi-field-hint></mat-form-field>
             </div>
-            <h3>Principal</h3>
+            <h3><mat-icon>person</mat-icon> Principal</h3>
             <div class="grid-4">
-              <mat-form-field appearance="outline"><mat-label>First name</mat-label><input matInput formControlName="firstName"></mat-form-field>
-              <mat-form-field appearance="outline"><mat-label>Last name</mat-label><input matInput formControlName="lastName"></mat-form-field>
-              <mat-form-field appearance="outline"><mat-label>Date of birth</mat-label><input matInput type="date" formControlName="dateOfBirth"></mat-form-field>
+              <mat-form-field appearance="outline"><mat-label>First name</mat-label><input matInput formControlName="firstName"><mi-field-hint matSuffix for="principalName"></mi-field-hint></mat-form-field>
+              <mat-form-field appearance="outline"><mat-label>Last name</mat-label><input matInput formControlName="lastName"><mi-field-hint matSuffix for="principalName"></mi-field-hint></mat-form-field>
+              <mat-form-field appearance="outline"><mat-label>Date of birth</mat-label><input matInput type="date" formControlName="dateOfBirth"><mi-field-hint matSuffix for="principalDateOfBirth"></mi-field-hint></mat-form-field>
             </div>
             <div class="actions"><button mat-flat-button color="primary" type="submit" [disabled]="form.invalid || loading()"><mat-icon>search</mat-icon> Run inquiry</button></div>
           </form>
