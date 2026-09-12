@@ -68,11 +68,15 @@ public sealed class WorkflowTests : IClassFixture<WebApplicationFactory<Program>
         var plan = Planner.Plan(Default());
         Assert.Empty(plan.Warnings);
         Assert.Empty(plan.Disabled);
-        // list order is monotonic: independent steps share a stage until one has to wait (prohibited needs website)
-        Assert.Equal(["verification", "screening", "website"], plan.Stages[0].Steps);
-        Assert.Equal(["prohibited", "mcc", "match", "bank", "financials"], plan.Stages[1].Steps);
+        // Pre-check and KYB agents run concurrently; inside each, list order is monotonic (prohibited needs website)
+        Assert.Equal(["verification", "screening", "website", "match"], plan.Stages[0].Steps);
+        Assert.Equal(["prohibited", "mcc"], plan.Stages[1].Steps);
         Assert.Equal(["score"], plan.Stages[^2].Steps);
         Assert.Equal(["case"], plan.Stages[^1].Steps);
+        Assert.Equal(["precheck", "kyb", "financial", "decision"], plan.Agents.Select(a => a.Id));
+        Assert.Equal([1, 1, 2, 3], plan.Agents.Select(a => a.Stage));
+        Assert.Equal(["kyb"], plan.Agents.Single(a => a.Id == "financial").WaitsFor);       // credit needs match
+        Assert.Equal(["financial", "kyb", "precheck"], plan.Agents.Single(a => a.Id == "decision").WaitsFor);
         Assert.StartsWith("flowchart LR", plan.Mermaid);
     }
 
@@ -260,6 +264,128 @@ public sealed class WorkflowTests : IClassFixture<WebApplicationFactory<Program>
         }));
         Assert.Equal("Refer", root.GetProperty("decision").GetProperty("outcome").GetString());
         Assert.Contains("disabled", root.GetProperty("decision").GetProperty("summary").GetString());
+
+        await Json(await _client.PostAsJsonAsync("/api/workflows/publish", new { workflow = Default(), author = "tester" }));
+    }
+
+    // ---- agents ----
+
+    [Fact]
+    public void Agent_catalog_has_four_agents_owning_every_step()
+    {
+        var agents = Planner.AgentCatalog;
+        Assert.Equal(["precheck", "kyb", "financial", "decision"], agents.Select(a => a.Id));
+        Assert.Equal(Planner.Catalog.Select(s => s.Id).OrderBy(x => x), agents.SelectMany(a => a.DefaultSteps).OrderBy(x => x));
+
+        var noAgents = Default();
+        noAgents.Agents = null;
+        Assert.Equal(Default().Agents!.Select(a => a.Id), Planner.AgentsOf(noAgents).Select(a => a.Id));
+    }
+
+    [Fact]
+    public void Agent_configuration_is_validated()
+    {
+        var unknown = Default();
+        unknown.Agents!.Add(new WorkflowAgentConfig { Id = "oracle" });
+        Assert.Contains("Unknown agent 'oracle'", Assert.Throws<WorkflowValidationException>(() => Planner.Validate(unknown)).Message);
+
+        var dup = Default();
+        dup.Agents!.Add(new WorkflowAgentConfig { Id = "kyb" });
+        Assert.Contains("more than once", Assert.Throws<WorkflowValidationException>(() => Planner.Validate(dup)).Message);
+
+        var twice = Default();
+        twice.Agents!.Single(a => a.Id == "precheck").Steps.Add("match");
+        Assert.Contains("owned by both", Assert.Throws<WorkflowValidationException>(() => Planner.Validate(twice)).Message);
+
+        var orphan = Default();
+        orphan.Agents!.Single(a => a.Id == "kyb").Steps.Remove("match");
+        Assert.Contains("'match' is not owned", Assert.Throws<WorkflowValidationException>(() => Planner.Validate(orphan)).Message);
+
+        var missing = Default();
+        missing.Agents!.RemoveAll(a => a.Id == "decision");
+        Assert.Contains("Agent 'decision' is missing", Assert.Throws<WorkflowValidationException>(() => Planner.Validate(missing)).Message);
+
+        // website (pre-check) waiting on verification (KYB) while match (KYB) waits on mcc (pre-check) is a cycle between agents
+        var cycle = Default();
+        cycle.Step("website")!.DependsOn = ["verification"];
+        cycle.Step("match")!.DependsOn = ["mcc"];
+        Assert.Contains("depend on each other", Assert.Throws<WorkflowValidationException>(() => Planner.Validate(cycle)).Message);
+    }
+
+    [Fact]
+    public void Disabling_an_agent_disables_its_steps_and_warns()
+    {
+        var def = Default();
+        def.Agents!.Single(a => a.Id == "precheck").Enabled = false;
+        var plan = Planner.Plan(def);
+        Assert.Equal(["website", "prohibited", "mcc"], plan.Disabled);
+        Assert.Contains(plan.Warnings, w => w.Contains("Agent 'precheck' is disabled"));
+        Assert.Equal(0, plan.Agents.Single(a => a.Id == "precheck").Stage);
+        Assert.Equal(["financial", "kyb"], plan.Agents.Single(a => a.Id == "decision").WaitsFor);
+    }
+
+    [Fact]
+    public async Task Agents_report_advisories_for_missing_evidence_without_stopping_the_run()
+    {
+        var events = new List<string>();
+        var request = new
+        {
+            business = new { legalName = "Good Shoes Ltd", country = "US" },   // no website, no statements, no owners
+            businessDescription = "Shoes.", merchantCategoryCode = 5661, annualVolume = 600000, averageTicket = 120, highestTicket = 900,
+            actor = "tester", createCase = false
+        };
+        using var response = await _client.SendAsync(new HttpRequestMessage(HttpMethod.Post, "/api/assessment/run/stream") { Content = JsonContent.Create(request) }, HttpCompletionOption.ResponseHeadersRead);
+        using var reader = new StreamReader(await response.Content.ReadAsStreamAsync());
+        JsonElement? result = null;
+        while (await reader.ReadLineAsync() is { } line)
+        {
+            if (line.Length == 0) continue;
+            var el = JsonDocument.Parse(line).RootElement.Clone();
+            events.Add(el.GetProperty("type").GetString()!);
+            if (el.GetProperty("type").GetString() == "result") result = el.GetProperty("result");
+        }
+        Assert.Contains("agent", events);
+        Assert.NotNull(result);
+
+        var agents = result.Value.GetProperty("agents").EnumerateArray().ToList();
+        Assert.Equal(["precheck", "kyb", "financial", "decision"], agents.Select(a => a.GetProperty("id").GetString()));
+        Assert.All(agents, a => Assert.Equal("Succeeded", a.GetProperty("status").GetString()));
+
+        var precheck = agents[0].GetProperty("findings").EnumerateArray().Select(f => f.GetProperty("code").GetString()).ToList();
+        Assert.Contains("NO_WEBSITE", precheck);
+        Assert.Contains("NO_BANK_STATEMENT", precheck);
+        Assert.Contains("NO_OWNERS", precheck);
+        Assert.Contains("THIN_DESCRIPTION", precheck);
+
+        // the run went all the way: score produced, decision is the rules engine's, advisories did not abort anything
+        Assert.Equal("Succeeded", result.Value.GetProperty("steps").EnumerateArray().Single(s => s.GetProperty("id").GetString() == "score").GetProperty("status").GetString());
+        Assert.Contains(result.Value.GetProperty("decision").GetProperty("outcome").GetString(), new[] { "Approve", "Refer", "Decline" });
+        Assert.StartsWith(result.Value.GetProperty("decision").GetProperty("outcome").GetString()!, agents[3].GetProperty("summary").GetString());
+    }
+
+    [Fact]
+    public async Task Disabled_agent_is_reported_and_its_steps_skip()
+    {
+        var def = Default();
+        def.Name = "No financial agent";
+        def.Agents!.Single(a => a.Id == "financial").Enabled = false;
+        await Json(await _client.PostAsJsonAsync("/api/workflows/publish", new { workflow = def, author = "tester" }));
+
+        var planned = await Json(await _client.GetAsync("/api/assessment/agents"));
+        Assert.False(planned.EnumerateArray().Single(a => a.GetProperty("id").GetString() == "financial").GetProperty("enabled").GetBoolean());
+
+        var root = await Json(await _client.PostAsJsonAsync("/api/assessment/run", new
+        {
+            business = new { legalName = "Good Shoes Ltd", country = "US" },
+            owners = new[] { new { fullName = "Jane Cobbler", role = "Owner", ownershipPercent = 100 } },
+            businessDescription = "Handmade leather shoes.", merchantCategoryCode = 5661, annualVolume = 600000, averageTicket = 120, highestTicket = 900,
+            employeeCount = 6, yearsInBusiness = 4, actor = "tester", createCase = false
+        }));
+        var credit = root.GetProperty("steps").EnumerateArray().Single(s => s.GetProperty("id").GetString() == "credit");
+        Assert.Equal("Skipped", credit.GetProperty("status").GetString());
+        Assert.Contains("Agent 'financial' disabled", credit.GetProperty("summary").GetString());
+        var financial = root.GetProperty("agents").EnumerateArray().Single(a => a.GetProperty("id").GetString() == "financial");
+        Assert.Equal("Skipped", financial.GetProperty("status").GetString());
 
         await Json(await _client.PostAsJsonAsync("/api/workflows/publish", new { workflow = Default(), author = "tester" }));
     }

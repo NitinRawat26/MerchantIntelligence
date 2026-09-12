@@ -18,8 +18,12 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Subscription } from 'rxjs';
 import { SuiteApiService, describeError } from '../../shared/suite-api.service';
-import { AssessmentListItem, AssessmentRequest, AssessmentResult, AssessmentStep, AssessmentStepDescriptor, Flag, StepStatus } from '../../shared/models';
+import { AgentFindingKind, AgentReport, AssessmentAgentDescriptor, AssessmentListItem, AssessmentRequest, AssessmentResult, AssessmentStep, AssessmentStepDescriptor, Flag, StepStatus } from '../../shared/models';
 import { FieldHintComponent, FlagsComponent, GaugeComponent, JsonViewComponent, StatusComponent, outcomeClass, tierClass } from '../../shared/ui';
+
+const AGENT_ICONS: Record<string, string> = { precheck: 'fact_check', kyb: 'verified_user', financial: 'account_balance', decision: 'gavel' };
+
+interface AgentLane { id: string; name: string; mandate: string; status: StepStatus; steps: AssessmentStep[]; report: AgentReport | null; }
 
 type Preset = 'approved' | 'clean' | 'sanctioned' | 'restricted';
 
@@ -45,7 +49,7 @@ export class AssessmentComponent {
   readonly componentColumns = ['name', 'weight', 'score', 'weighted', 'detail'];
   readonly contributionColumns = ['feature', 'value', 'baseline', 'contribution', 'direction'];
   readonly complianceColumns = ['status', 'title', 'detail'];
-  readonly stepColumns = ['status', 'name', 'summary', 'duration'];
+  readonly stepColumns = ['status', 'name', 'agent', 'summary', 'duration'];
 
   readonly form = this.fb.nonNullable.group({
     legalName: ['Apple Inc.', Validators.required],
@@ -86,7 +90,9 @@ export class AssessmentComponent {
   readonly financialFile = signal<File | null>(null);
 
   readonly catalog = signal<AssessmentStepDescriptor[]>([]);
+  readonly agentCatalog = signal<AssessmentAgentDescriptor[]>([]);
   readonly steps = signal<Record<string, AssessmentStep>>({});
+  readonly agentReports = signal<Record<string, AgentReport>>({});
   readonly running = signal(false);
   readonly error = signal<string | null>(null);
   readonly result = signal<AssessmentResult | null>(null);
@@ -105,10 +111,26 @@ export class AssessmentComponent {
     summary: c.enabled === false ? 'Disabled in the active workflow.' : '', durationMs: 0
   }));
 
+  /** Timeline grouped by owning agent; agent status is derived from its steps until the agent's own report arrives. */
+  readonly agentLanes = computed<AgentLane[]>(() => {
+    const byId = Object.fromEntries(this.stepList().map(s => [s.id, s]));
+    return this.agentCatalog().map(a => {
+      const steps = a.steps.map(id => byId[id]).filter((s): s is AssessmentStep => !!s);
+      const report = this.agentReports()[a.id] ?? null;
+      const status: StepStatus = report ? report.status
+        : !a.enabled ? 'Skipped'
+        : steps.some(s => s.status === 'Running') ? 'Running'
+        : steps.length && steps.every(s => s.status !== 'Pending') ? 'Running'   // steps done, review pending
+        : 'Pending';
+      return { id: a.id, name: a.name, mandate: a.mandate, status, steps, report };
+    });
+  });
+
   private run?: Subscription;
 
   constructor() {
     this.api.assessmentSteps().pipe(takeUntilDestroyed()).subscribe({ next: s => this.catalog.set(s), error: () => { /* rendered once the stream sends the catalogue */ } });
+    this.api.assessmentAgents().pipe(takeUntilDestroyed()).subscribe({ next: a => this.agentCatalog.set(a), error: () => { /* rendered once the stream sends the catalogue */ } });
     this.loadHistory();
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe(p => {
       const id = p.get('id');
@@ -185,13 +207,17 @@ export class AssessmentComponent {
       externalRef: opt(v.externalRef) ?? null, actor: v.actor.trim() || 'analyst', createCase: v.createCase
     };
 
-    this.running.set(true); this.error.set(null); this.result.set(null); this.steps.set({});
+    this.running.set(true); this.error.set(null); this.result.set(null); this.steps.set({}); this.agentReports.set({});
     this.run?.unsubscribe();
     this.run = this.api.runAssessment(req, { bankStatement: this.bankFile(), financialStatement: this.financialFile() }).subscribe({
       next: ev => {
         switch (ev.type) {
-          case 'steps': if (!this.catalog().length) this.catalog.set(ev.steps); break;
+          case 'steps':
+            if (!this.catalog().length) this.catalog.set(ev.steps);
+            if (ev.agents?.length) this.agentCatalog.set(ev.agents);
+            break;
           case 'step': this.steps.update(s => ({ ...s, [ev.step.id]: ev.step })); break;
+          case 'agent': this.agentReports.update(a => ({ ...a, [ev.agent.id]: ev.agent })); break;
           case 'result':
             this.result.set(ev.result);
             this.router.navigate(['/assess', ev.result.id], { replaceUrl: true });
@@ -216,7 +242,7 @@ export class AssessmentComponent {
     });
   }
 
-  newAssessment(): void { this.result.set(null); this.steps.set({}); this.error.set(null); this.router.navigate(['/assess']); }
+  newAssessment(): void { this.result.set(null); this.steps.set({}); this.agentReports.set({}); this.error.set(null); this.router.navigate(['/assess']); }
 
   loadHistory(): void {
     this.loadingHistory.set(true);
@@ -234,6 +260,13 @@ export class AssessmentComponent {
       default: return 'radio_button_unchecked';
     }
   }
+
+  agentIcon(id: string): string { return AGENT_ICONS[id] ?? 'smart_toy'; }
+  agentPillClass(status: StepStatus): string { return status === 'Succeeded' ? 'good' : status === 'Failed' ? 'bad' : status === 'Skipped' ? 'warn' : 'neutral'; }
+  findingIcon(kind: AgentFindingKind): string { return kind === 'Advisory' ? 'info' : kind === 'Action' ? 'bolt' : 'compare_arrows'; }
+  ownerName(r: AssessmentResult, stepId: string): string { return r.agents?.find(a => a.steps.includes(stepId))?.name ?? '—'; }
+  stepName(r: AssessmentResult, stepId: string): string { return r.steps.find(s => s.id === stepId)?.name ?? stepId; }
+  stepPillClass(r: AssessmentResult, stepId: string): string { return this.agentPillClass(r.steps.find(s => s.id === stepId)?.status ?? 'Pending'); }
 
   severityClass(sev: string, covered = true): string { return covered ? `text-${sev.toLowerCase()}` : 'text-gap'; }
   outcomeCardClass(outcome: string): string { return outcomeClass(outcome); }

@@ -208,6 +208,10 @@ export const FIELD_HINTS: Record<string, string> = {
     'When on, once a sanctions match, MATCH listing or prohibited category is confirmed, the remaining evidence steps are skipped (score and case still run). Off keeps gathering evidence for the analyst.',
   workflowStepEnabled:
     'Disabled steps are recorded as Skipped coverage gaps: the unified score is reweighted over the checks that did run and coverage % drops. Steps that depend on a disabled one run degraded.',
+  workflowAgentEnabled:
+    'Disabling an agent skips every step it owns (all become coverage gaps) and removes it from the run; agents that waited on it start earlier. Its rule-based review (advisories, alias re-screen, reconciliation) is not produced.',
+  workflowStepAgent:
+    'Which agent runs this step. Steps of one agent run together as an Agent Framework executor; agents whose steps depend on another agent\'s output wait for it. Every step must be owned by exactly one agent.',
   workflowOnFail:
     'What happens if this check throws: Skip = coverage gap (today\'s behaviour); Refer = coverage gap and the final decision cannot be Approve; Abort = the whole assessment fails.',
   workflowParams:

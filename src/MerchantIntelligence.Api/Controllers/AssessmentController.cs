@@ -57,6 +57,10 @@ public sealed class AssessmentController(AssessmentService assessments) : Contro
     [HttpGet("steps")]
     public ActionResult<IReadOnlyList<AssessmentStepDescriptor>> Steps() => Ok(assessments.PlannedSteps());
 
+    /// <summary>The agents of the active workflow and the checks each one owns.</summary>
+    [HttpGet("agents")]
+    public ActionResult<IReadOnlyList<AssessmentAgentDescriptor>> Agents() => Ok(assessments.PlannedAgents());
+
     /// <summary>
     /// Run every check and return the complete assessment. JSON body, or multipart/form-data with a "request" JSON part
     /// plus optional "bankStatement" and "financialStatement" files (CSV / text / text-based PDF).
@@ -108,7 +112,7 @@ public sealed class AssessmentController(AssessmentService assessments) : Contro
             finally { gate.Release(); }
         }
 
-        await Emit(new { type = "steps", steps = assessments.PlannedSteps() });
+        await Emit(new { type = "steps", steps = assessments.PlannedSteps(), agents = assessments.PlannedAgents() });
         using var heartbeatCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         var heartbeat = Task.Run(async () =>
         {
@@ -123,7 +127,8 @@ public sealed class AssessmentController(AssessmentService assessments) : Contro
         async Task StopHeartbeat() { heartbeatCts.Cancel(); await heartbeat; }
         try
         {
-            var result = await assessments.RunAsync(request!.ToIntake(), bank, fin, step => Emit(new { type = "step", step }), ct);
+            var result = await assessments.RunAsync(request!.ToIntake(), bank, fin, step => Emit(new { type = "step", step }), ct,
+                agentProgress: agent => Emit(new { type = "agent", agent }));
             await StopHeartbeat();
             await Emit(new { type = "result", result });
         }

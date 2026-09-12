@@ -1,8 +1,14 @@
 {
   "name": "Standard onboarding",
   "version": "default",
-  "description": "Every deterministic check, in the order the platform has always run them. Independent checks run concurrently.",
+  "description": "Every deterministic check, grouped under four rule-based agents. Pre-check and KYB run first, Financial & credit follows, Decision & case closes.",
   "haltOnHardStop": false,
+  "agents": [
+    { "id": "precheck", "enabled": true, "steps": ["website", "prohibited", "mcc"] },
+    { "id": "kyb", "enabled": true, "steps": ["verification", "screening", "match"] },
+    { "id": "financial", "enabled": true, "steps": ["bank", "financials", "plausibility", "credit"] },
+    { "id": "decision", "enabled": true, "steps": ["terms", "score", "case"] }
+  ],
   "steps": [
     { "id": "verification", "enabled": true, "onFail": "Skip" },
     { "id": "screening", "enabled": true, "onFail": "Skip" },

@@ -40,16 +40,24 @@ public sealed class AssessmentService
         return def.Steps.Select(s =>
         {
             var d = _planner.Describe(s.Id);
-            return new AssessmentStepDescriptor(d.Id, d.Name, s.Enabled);
+            return new AssessmentStepDescriptor(d.Id, d.Name, _planner.IsActive(def, s.Id));
         }).ToList();
     }
 
+    /// <summary>The agents of the active workflow in planned order, with the steps each one owns.</summary>
+    public IReadOnlyList<AssessmentAgentDescriptor> PlannedAgents(WorkflowDefinition? workflow = null)
+    {
+        var def = workflow ?? _workflows.Active;
+        var byId = _planner.AgentCatalog.ToDictionary(a => a.Id);
+        return _planner.AgentsOf(def).Select(a => new AssessmentAgentDescriptor(a.Id, byId[a.Id].Name, byId[a.Id].Mandate, a.Enabled, a.Steps)).ToList();
+    }
+
     public async Task<AssessmentResult> RunAsync(AssessmentIntake intake, UploadedDocument? bankStatement, UploadedDocument? financialStatement,
-        Func<AssessmentStep, Task>? progress, CancellationToken ct = default, WorkflowDefinition? workflow = null)
+        Func<AssessmentStep, Task>? progress, CancellationToken ct = default, WorkflowDefinition? workflow = null, Func<AgentReport, Task>? agentProgress = null)
     {
         var id = $"ASMT-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString("N")[..6].ToUpperInvariant()}";
         var def = workflow ?? _workflows.Active;
-        var ctx = new AssessmentContext(id, intake, bankStatement, financialStatement, def, progress ?? (_ => Task.CompletedTask), _logger, ct);
+        var ctx = new AssessmentContext(id, intake, bankStatement, financialStatement, def, progress ?? (_ => Task.CompletedTask), _logger, ct, agentProgress);
         _audit.Record(null, intake.Actor, "assessment.started", new { assessmentId = id, workflow = def.Name, workflowVersion = def.Version });
 
         await _runner.RunAsync(def, ctx);
@@ -61,7 +69,8 @@ public sealed class AssessmentService
 
         var result = new AssessmentResult(id, ctx.StartedAt, DateTimeOffset.UtcNow, AssessmentComposer.Summarise(intake, bankStatement, financialStatement), steps, decision, explainability,
             ctx.Verification, ctx.Screening, ctx.Website, ctx.Prohibited, ctx.Mcc, ctx.Match, ctx.Bank, ctx.Financials, ctx.Plausibility, ctx.Credit, ctx.CreditExplanation,
-            ctx.Terms, ctx.Score, ctx.Rules, ctx.Case, ctx.DecisionLogId, new AssessmentWorkflowInfo(def.Name, def.Version, def.Steps.Where(s => s.Enabled).Select(s => s.Id).ToList()));
+            ctx.Terms, ctx.Score, ctx.Rules, ctx.Case, ctx.DecisionLogId,
+            new AssessmentWorkflowInfo(def.Name, def.Version, def.Steps.Where(s => _planner.IsActive(def, s.Id)).Select(s => s.Id).ToList()), ctx.Agents);
         Persist(result);
         _audit.Record(ctx.Case?.Id, intake.Actor, "assessment.completed", new { assessmentId = id, decision.Outcome, decision.Score, decision.CoveragePercent, workflow = def.Name, workflowVersion = def.Version });
         return result;
