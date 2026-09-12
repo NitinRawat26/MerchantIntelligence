@@ -5,7 +5,7 @@ description: Run live KYB API acceptance checks with Swagger and curl, preservin
 
 # Runtime KYB testing
 
-Use the repo's .NET 8 blueprint and `dotnet run --project src/MerchantIntelligence.Api`.
+Use the repo's .NET 10 blueprint and `dotnet run --project src/MerchantIntelligence.Api`.
 Check port 5292 before starting; stop an older API before rebuilding after edits.
 Swagger is at http://localhost:5292/swagger. These API routes do not require authentication.
 
@@ -27,7 +27,7 @@ Not configured source results, not block other registries.
 
 ## Public-source caveats
 - Initial sanctions loading can take a minute and download ~100 MB. Cache is
-  normally beneath API bin/Debug/net8.0/data/sanctions. State explicitly when
+  normally beneath API bin/Debug/net10.0/data/sanctions. State explicitly when
   testing loaded existing files instead of exercising a cold download.
 - GDELT may rate-limit. Require HTTP200 with structured `succeeded=false` and
   an explanatory error, not an API500. No articles returned is not proof that
