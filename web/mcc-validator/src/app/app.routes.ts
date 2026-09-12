@@ -11,6 +11,7 @@ export const routes: Routes = [
   { path: 'cases', title: 'Cases', loadComponent: () => import('./features/platform/cases.component').then(m => m.CasesComponent) },
   { path: 'cases/:id', title: 'Case', loadComponent: () => import('./features/platform/case-detail.component').then(m => m.CaseDetailComponent) },
   { path: 'rules', title: 'Rules', loadComponent: () => import('./features/platform/rules.component').then(m => m.RulesComponent) },
+  { path: 'workflows', title: 'Workflows', loadComponent: () => import('./features/platform/workflows.component').then(m => m.WorkflowsComponent) },
   { path: 'audit', title: 'Audit', loadComponent: () => import('./features/platform/audit.component').then(m => m.AuditComponent) },
   { path: 'models', title: 'Model Ops', loadComponent: () => import('./features/platform/models.component').then(m => m.ModelsComponent) },
   { path: 'match', title: 'MATCH', loadComponent: () => import('./features/platform/match.component').then(m => m.MatchComponent) },

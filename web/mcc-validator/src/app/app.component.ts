@@ -169,7 +169,8 @@ export class AppComponent {
       { path: '/assess', label: 'Full assessment', icon: 'checklist_rtl', blurb: 'One intake, every check, one decision with a PDF memo' },
       { path: '/score', label: 'Unified risk score', icon: 'speed', blurb: 'Blend credit, KYB, screening and web signals into a 0–1000 score' },
       { path: '/cases', label: 'Case queue', icon: 'inbox', blurb: 'Review, assign and decide merchant cases' },
-      { path: '/rules', label: 'Policy rules', icon: 'rule', blurb: 'Versioned decision policy with history and rollback' }
+      { path: '/rules', label: 'Policy rules', icon: 'rule', blurb: 'Versioned decision policy with history and rollback' },
+      { path: '/workflows', label: 'Workflows', icon: 'account_tree', blurb: 'Enable, disable and reorder the checks an assessment runs' }
     ] },
     { title: 'Pre-boarding', items: [
       { path: '/kyb', label: 'KYB & screening', icon: 'verified_user', blurb: 'Registry verification, sanctions/PEP, adverse media, website compliance' },

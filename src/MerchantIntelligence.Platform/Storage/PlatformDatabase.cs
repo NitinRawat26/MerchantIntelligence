@@ -89,6 +89,14 @@ public sealed class PlatformDatabase : IDisposable
                 created_at TEXT NOT NULL,
                 active INTEGER NOT NULL DEFAULT 0
             );
+            CREATE TABLE IF NOT EXISTS assessment_workflows (
+                version INTEGER PRIMARY KEY AUTOINCREMENT,
+                json TEXT NOT NULL,
+                author TEXT NOT NULL,
+                comment TEXT,
+                created_at TEXT NOT NULL,
+                active INTEGER NOT NULL DEFAULT 0
+            );
             CREATE TABLE IF NOT EXISTS decision_log (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 case_id TEXT,
