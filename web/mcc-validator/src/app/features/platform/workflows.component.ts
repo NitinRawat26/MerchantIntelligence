@@ -16,8 +16,10 @@ import { forkJoin } from 'rxjs';
 import { debounceTime, Subject, switchMap } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { SuiteApiService, describeError } from '../../shared/suite-api.service';
-import { StepFailurePolicy, WorkflowDefinition, WorkflowPlan, WorkflowStepConfig, WorkflowStepDescriptor, WorkflowVersion } from '../../shared/models';
+import { StepFailurePolicy, WorkflowAgentConfig, WorkflowAgentDescriptor, WorkflowDefinition, WorkflowPlan, WorkflowStepConfig, WorkflowStepDescriptor, WorkflowVersion } from '../../shared/models';
 import { FieldHintComponent, StatusComponent } from '../../shared/ui';
+
+const AGENT_ICONS: Record<string, string> = { precheck: 'fact_check', kyb: 'verified_user', financial: 'account_balance', decision: 'gavel' };
 
 const POLICIES: { value: StepFailurePolicy; label: string; hint: string }[] = [
   { value: 'Skip', label: 'Skip (coverage gap)', hint: 'Failed check becomes a coverage gap.' },
@@ -37,7 +39,7 @@ const POLICIES: { value: StepFailurePolicy; label: string; hint: string }[] = [
         <mat-card-header>
           <mat-icon mat-card-avatar>account_tree</mat-icon>
           <mat-card-title>Assessment workflows</mat-card-title>
-          <mat-card-subtitle>Which checks the Full Assessment runs, in what order, and what happens when one fails · executed as a Microsoft Agent Framework workflow</mat-card-subtitle>
+          <mat-card-subtitle>Four rule-based agents own the checks the Full Assessment runs · which agent runs what, in what order, and what happens when a check fails · executed as a Microsoft Agent Framework workflow</mat-card-subtitle>
         </mat-card-header>
         <mat-card-content>
           <mi-status [loading]="loading()" [error]="error()"></mi-status>
@@ -61,6 +63,35 @@ const POLICIES: { value: StepFailurePolicy; label: string; hint: string }[] = [
                     <div class="row"><mat-slide-toggle [(ngModel)]="d.haltOnHardStop" (ngModelChange)="changed()">Halt evidence steps on hard stop</mat-slide-toggle><mi-field-hint for="workflowHaltOnHardStop"></mi-field-hint></div>
                   </div>
 
+                  <h3>Agents <span class="muted">each agent runs its steps as one executor and reviews their results with coded rules — no model involved</span></h3>
+                  <div class="agents">
+                    @for (a of d.agents ?? []; track a.id) {
+                      <div class="agent" [class.disabled]="!a.enabled">
+                        <div class="agent-head">
+                          <mat-icon>{{ agentIcon(a.id) }}</mat-icon>
+                          <div class="agent-title">
+                            <strong>{{ agentDesc(a.id)?.name ?? a.id }}</strong>
+                            <div class="muted small">{{ agentDesc(a.id)?.mandate }}</div>
+                          </div>
+                          <div class="row"><mat-slide-toggle [(ngModel)]="a.enabled" (ngModelChange)="changed()">Enabled</mat-slide-toggle><mi-field-hint for="workflowAgentEnabled"></mi-field-hint></div>
+                        </div>
+                        <div class="muted small">{{ agentDesc(a.id)?.description }}</div>
+                        <div class="deps">
+                          @if (agentPlan(a.id); as ap) {
+                            @if (ap.enabled) { <span class="pill small good">stage {{ ap.stage }}</span> } @else { <span class="pill small warn">skipped · {{ a.steps.length }} coverage gap(s)</span> }
+                            @if (ap.waitsFor.length) { <span class="muted small">waits for</span> @for (w of ap.waitsFor; track w) { <span class="pill small neutral">{{ agentDesc(w)?.name ?? w }}</span> } }
+                          }
+                        </div>
+                        <div class="deps">
+                          <span class="muted small">owns</span>
+                          @for (id of a.steps; track id) { <span class="pill small" [class.good]="isOn(id) && a.enabled" [class.warn]="!isOn(id) || !a.enabled">{{ describe(id)?.name ?? id }}</span> }
+                          @if (!a.steps.length) { <span class="pill small bad">no steps</span> }
+                        </div>
+                      </div>
+                    }
+                  </div>
+                  @if (unowned().length) { <p class="text-high"><mat-icon inline>error</mat-icon> Not owned by any agent: @for (u of unowned(); track u) { <code>{{ u }}</code> } — assign an agent on each step below.</p> }
+
                   <h3>Steps <span class="muted">drag to reorder · {{ enabledCount() }} of {{ d.steps.length }} enabled</span></h3>
                   <div class="steps" cdkDropList (cdkDropListDropped)="drop($event)">
                     @for (s of d.steps; track s.id; let i = $index) {
@@ -71,7 +102,9 @@ const POLICIES: { value: StepFailurePolicy; label: string; hint: string }[] = [
                             <strong>{{ describe(s.id)?.name ?? s.id }}</strong> <code class="muted">{{ s.id }}</code>
                             @if (describe(s.id)?.required) { <span class="pill small neutral" matTooltip="Disabling this step forces every decision to Refer">decision authority</span> }
                             @if (stageOf(s.id); as st) { <span class="pill small good">stage {{ st }}</span> }
+                            @if (agentOf(s.id); as ag) { <span class="pill small neutral" [matTooltip]="agentDesc(ag)?.mandate ?? ''"><mat-icon inline>{{ agentIcon(ag) }}</mat-icon> {{ agentDesc(ag)?.name ?? ag }}</span> }
                             @if (!s.enabled) { <span class="pill small warn">skipped · coverage gap</span> }
+                            @else if (agentOf(s.id) && !agentOn(agentOf(s.id)!)) { <span class="pill small warn">agent disabled · coverage gap</span> }
                             @if (blocked(s.id)) { <span class="pill small bad" matTooltip="An enabled dependency is disabled or ordered after this step">degraded</span> }
                           </div>
                           <div class="muted">{{ describe(s.id)?.description }}</div>
@@ -83,6 +116,13 @@ const POLICIES: { value: StepFailurePolicy; label: string; hint: string }[] = [
                         </div>
                         <div class="controls">
                           <div class="row"><mat-slide-toggle [(ngModel)]="s.enabled" (ngModelChange)="changed()">Enabled</mat-slide-toggle><mi-field-hint for="workflowStepEnabled"></mi-field-hint></div>
+                          <mat-form-field appearance="outline" class="w200" subscriptSizing="dynamic">
+                            <mat-label>Agent</mat-label>
+                            <mat-select [ngModel]="agentOf(s.id)" (ngModelChange)="assign(s.id, $event)">
+                              @for (a of d.agents ?? []; track a.id) { <mat-option [value]="a.id">{{ agentDesc(a.id)?.name ?? a.id }}</mat-option> }
+                            </mat-select>
+                            <mi-field-hint matSuffix for="workflowStepAgent"></mi-field-hint>
+                          </mat-form-field>
                           <mat-form-field appearance="outline" class="w200" subscriptSizing="dynamic">
                             <mat-label>On failure</mat-label>
                             <mat-select [(ngModel)]="s.onFail" (ngModelChange)="changed()" [disabled]="!s.enabled">
@@ -125,7 +165,17 @@ const POLICIES: { value: StepFailurePolicy; label: string; hint: string }[] = [
                     }
                   } @else { <p class="empty">Edit the workflow to see validation.</p> }
 
-                  <h3>Stages <span class="muted">steps in the same stage run concurrently</span></h3>
+                  <h3>Agent stages <span class="muted">agents in the same stage run concurrently</span></h3>
+                  @if (validation()?.plan; as p) {
+                    <ol class="stages">
+                      @for (a of p.agents; track a.id) {
+                        <li><span class="pill small" [class.good]="a.enabled" [class.warn]="!a.enabled"><mat-icon inline>{{ agentIcon(a.id) }}</mat-icon> {{ a.name }}</span>
+                          <span class="muted small">{{ a.enabled ? 'stage ' + a.stage : 'skipped' }}{{ a.waitsFor.length ? ' · after ' + a.waitsFor.join(', ') : '' }} · {{ a.steps.join(', ') }}</span></li>
+                      }
+                    </ol>
+                  }
+
+                  <h3>Step stages <span class="muted">steps in the same stage run concurrently</span></h3>
                   @if (validation()?.plan; as p) {
                     <ol class="stages">
                       @for (st of p.stages; track st.index) { <li>@for (id of st.steps; track id) { <span class="pill small good">{{ describe(id)?.name ?? id }}</span> }</li> }
@@ -170,6 +220,12 @@ const POLICIES: { value: StepFailurePolicy; label: string; hint: string }[] = [
     .step.disabled { opacity: .62; background: var(--mi-neutral-soft, #f3f4f7); }
     .step.blocked { border-color: var(--mi-bad); }
     .step.required { border-left: 4px solid var(--mi-primary, #3f51b5); }
+    .agents { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin-bottom: 8px; }
+    .agent { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border: 1px solid var(--mi-border, #e0e3ea); border-left: 4px solid var(--mi-primary, #3f51b5); border-radius: 10px; background: var(--mi-surface, #fff); }
+    .agent.disabled { opacity: .62; background: var(--mi-neutral-soft, #f3f4f7); border-left-color: var(--mi-text-2); }
+    .agent-head { display: flex; gap: 10px; align-items: flex-start; } .agent-head > mat-icon { color: var(--mi-primary, #3f51b5); margin-top: 2px; }
+    .agent-title { flex: 1; min-width: 0; } .small { font-size: 12px; }
+    .pill mat-icon[inline] { font-size: 14px; width: 14px; height: 14px; vertical-align: -2px; }
     .handle { display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: grab; color: var(--mi-text-2); padding-top: 4px; }
     .handle .num { font-size: 12px; font-weight: 700; }
     .title-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 2px; }
@@ -191,6 +247,7 @@ export class WorkflowsComponent {
   comment = '';
 
   readonly catalog = signal<Record<string, WorkflowStepDescriptor>>({});
+  readonly agentCatalog = signal<Record<string, WorkflowAgentDescriptor>>({});
   readonly draft = signal<WorkflowDefinition | null>(null);
   readonly source = signal('active');
   readonly validation = signal<{ valid: boolean; error?: string | null; plan?: WorkflowPlan | null } | null>(null);
@@ -199,6 +256,11 @@ export class WorkflowsComponent {
   readonly error = signal<string | null>(null);
   readonly message = signal<{ ok: boolean; text: string } | null>(null);
   readonly enabledCount = computed(() => this.draft()?.steps.filter(s => s.enabled).length ?? 0);
+  readonly unowned = computed(() => {
+    const d = this.draft(); if (!d) return [];
+    const owned = new Set((d.agents ?? []).flatMap(a => a.steps));
+    return d.steps.map(s => s.id).filter(id => !owned.has(id));
+  });
 
   private readonly validate$ = new Subject<WorkflowDefinition>();
 
@@ -210,9 +272,10 @@ export class WorkflowsComponent {
 
   load(): void {
     this.loading.set(true); this.error.set(null); this.message.set(null);
-    forkJoin({ catalog: this.api.workflowCatalog(), active: this.api.workflowActive(), history: this.api.workflowHistory() }).subscribe({
+    forkJoin({ catalog: this.api.workflowCatalog(), agents: this.api.workflowAgents(), active: this.api.workflowActive(), history: this.api.workflowHistory() }).subscribe({
       next: r => {
         this.catalog.set(Object.fromEntries(r.catalog.map(c => [c.id, c])));
+        this.agentCatalog.set(Object.fromEntries(r.agents.map(a => [a.id, a])));
         this.history.set(r.history);
         this.setDraft(r.active, `active (v${r.active.version})`);
         this.loading.set(false);
@@ -226,7 +289,10 @@ export class WorkflowsComponent {
   }
 
   private setDraft(def: WorkflowDefinition, source: string): void {
-    this.draft.set(structuredClone(def));
+    const copy = structuredClone(def);
+    // older versions have no agent section: materialise the catalog defaults so ownership is visible and editable
+    copy.agents ??= Object.values(this.agentCatalog()).map<WorkflowAgentConfig>(a => ({ id: a.id, enabled: true, steps: [...a.defaultSteps] }));
+    this.draft.set(copy);
     this.source.set(source);
     this.changed();
   }
@@ -238,15 +304,28 @@ export class WorkflowsComponent {
   }
 
   describe(id: string): WorkflowStepDescriptor | undefined { return this.catalog()[id]; }
+  agentDesc(id: string): WorkflowAgentDescriptor | undefined { return this.agentCatalog()[id]; }
+  agentIcon(id: string): string { return AGENT_ICONS[id] ?? 'smart_toy'; }
+  agentOf(stepId: string): string | null { return this.draft()?.agents?.find(a => a.steps.includes(stepId))?.id ?? null; }
+  agentOn(agentId: string): boolean { return this.draft()?.agents?.find(a => a.id === agentId)?.enabled ?? false; }
+  agentPlan(agentId: string) { return this.validation()?.plan?.agents?.find(a => a.id === agentId) ?? null; }
+
+  assign(stepId: string, agentId: string): void {
+    const d = this.draft(); if (!d?.agents) return;
+    for (const a of d.agents) a.steps = a.steps.filter(s => s !== stepId);
+    d.agents.find(a => a.id === agentId)?.steps.push(stepId);
+    this.changed();
+  }
 
   isOn(id: string): boolean { return this.draft()?.steps.find(s => s.id === id)?.enabled ?? false; }
+  private active(id: string): boolean { const ag = this.agentOf(id); return this.isOn(id) && (ag === null || this.agentOn(ag)); }
 
   /** True when an enabled step has a dependency that is disabled or listed after it. */
   blocked(id: string): boolean {
     const d = this.draft(); const desc = this.describe(id); if (!d || !desc) return false;
     const me = d.steps.find(s => s.id === id); if (!me?.enabled) return false;
     const pos = (x: string) => d.steps.findIndex(s => s.id === x);
-    return (me.dependsOn ?? desc.dependsOn).some(dep => !this.isOn(dep) || pos(dep) > pos(id));
+    return (me.dependsOn ?? desc.dependsOn).some(dep => !this.active(dep) || pos(dep) > pos(id));
   }
 
   stageOf(id: string): number | null {

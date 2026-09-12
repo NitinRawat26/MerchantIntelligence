@@ -7,6 +7,23 @@
 .progress-card { border-left: 6px solid var(--mi-primary); }
 .progress-head { display: flex; gap: 14px; align-items: center; margin-bottom: 12px; }
 .step-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.agent-lanes { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+.agent-lane { border: 1px solid var(--mi-border, #e0e3ea); border-left: 4px solid var(--mi-text-3); border-radius: 10px; padding: 12px; background: var(--mi-surface, #fff); display: flex; flex-direction: column; gap: 8px;
+  &.running { border-left-color: var(--mi-primary); background: var(--mi-primary-soft); }
+  &.succeeded { border-left-color: var(--mi-good); }
+  &.failed { border-left-color: var(--mi-bad); }
+  &.skipped { opacity: .7; }
+  .lane-head { display: flex; gap: 10px; align-items: flex-start; > mat-icon { color: var(--mi-primary); margin-top: 2px; } }
+  .lane-title { flex: 1; min-width: 0; } .lane-mandate { font-size: 12px; }
+  .lane-summary { margin: 0; font-size: 13px; color: var(--mi-text-2); }
+  .deps { display: flex; gap: 6px; flex-wrap: wrap; }
+  .findings { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 13px;
+    .finding { padding: 6px 8px; border-radius: var(--mi-radius-sm); background: var(--mi-neutral-soft, #f3f4f7); mat-icon { font-size: 16px; width: 16px; height: 16px; vertical-align: -3px; } }
+    .advisory { background: var(--mi-medium-soft, #fff4e0); mat-icon { color: var(--mi-medium, #e0951c); } }
+    .action { background: var(--mi-primary-soft); mat-icon { color: var(--mi-primary); } }
+    .impact { font-size: 12px; margin-top: 2px; }
+  }
+}
 .step { display: grid; grid-template-columns: 28px 1fr auto; gap: 10px; align-items: start; padding: 8px 10px; border-radius: var(--mi-radius-sm); font-size: 14px;
   mat-icon { font-size: 20px; width: 20px; height: 20px; color: var(--mi-text-3); }
   &.running { background: var(--mi-primary-soft); mat-icon { color: var(--mi-primary); } .step-name { font-weight: 600; color: var(--mi-primary-deep); } }

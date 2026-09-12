@@ -53,6 +53,10 @@ public static class PlatformServiceCollectionExtensions
         services.AddSingleton<IAssessmentStep, TermsStep>();
         services.AddSingleton<IAssessmentStep, ScoreStep>();
         services.AddSingleton<IAssessmentStep, CaseStep>();
+        services.AddSingleton<IAssessmentAgent, PreCheckAgent>();
+        services.AddSingleton<IAssessmentAgent, KybAgent>();
+        services.AddSingleton<IAssessmentAgent, FinancialAgent>();
+        services.AddSingleton<IAssessmentAgent, DecisionAgent>();
         services.AddSingleton<WorkflowPlanner>();
         services.AddSingleton<WorkflowRepository>();
         services.AddSingleton<WorkflowRunner>();

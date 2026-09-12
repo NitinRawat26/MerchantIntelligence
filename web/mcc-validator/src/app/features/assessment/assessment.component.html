@@ -122,21 +122,59 @@
           @if (running()) { <mat-spinner diameter="28"></mat-spinner> }
           <div>
             <strong>{{ running() ? (currentStep()?.name ?? 'Starting…') : 'Stopped' }}</strong>
-            <div class="muted">{{ progress() }}% · {{ stepList().length }} checks</div>
+            <div class="muted">{{ progress() }}% · {{ stepList().length }} checks @if (agentLanes().length) { · {{ agentLanes().length }} agents }</div>
           </div>
         </div>
-        <ol class="step-list">
-          @for (s of stepList(); track s.id) {
-            <li [class]="'step ' + s.status.toLowerCase()">
-              <mat-icon [class.spin]="s.status === 'Running'">{{ stepIcon(s.status) }}</mat-icon>
-              <div>
-                <div class="step-name">{{ s.name }}</div>
-                @if (s.summary) { <div class="step-summary">{{ s.summary }} @if (s.error) { <span class="text-high">{{ s.error }}</span> }</div> }
-              </div>
-              @if (s.durationMs) { <span class="muted duration">{{ s.durationMs | number }} ms</span> }
-            </li>
-          }
-        </ol>
+        @if (agentLanes().length) {
+          <div class="agent-lanes">
+            @for (lane of agentLanes(); track lane.id) {
+              <section [class]="'agent-lane ' + lane.status.toLowerCase()">
+                <header class="lane-head">
+                  <mat-icon [class.spin]="lane.status === 'Running'">{{ agentIcon(lane.id) }}</mat-icon>
+                  <div class="lane-title">
+                    <strong>{{ lane.name }}</strong> <span class="pill small" [class]="agentPillClass(lane.status)">{{ lane.status }}</span>
+                    <div class="muted lane-mandate">{{ lane.mandate }}</div>
+                  </div>
+                </header>
+                <ol class="step-list">
+                  @for (s of lane.steps; track s.id) {
+                    <li [class]="'step ' + s.status.toLowerCase()">
+                      <mat-icon [class.spin]="s.status === 'Running'">{{ stepIcon(s.status) }}</mat-icon>
+                      <div>
+                        <div class="step-name">{{ s.name }}</div>
+                        @if (s.summary) { <div class="step-summary">{{ s.summary }} @if (s.error) { <span class="text-high">{{ s.error }}</span> }</div> }
+                      </div>
+                      @if (s.durationMs) { <span class="muted duration">{{ s.durationMs | number }} ms</span> }
+                    </li>
+                  }
+                </ol>
+                @if (lane.report; as rep) {
+                  @if (rep.summary && rep.status !== 'Running') { <p class="lane-summary">{{ rep.summary }}</p> }
+                  @if (rep.findings.length) {
+                    <ul class="findings">
+                      @for (f of rep.findings; track f.code + f.message) {
+                        <li [class]="'finding ' + f.kind.toLowerCase()"><mat-icon inline>{{ findingIcon(f.kind) }}</mat-icon> <code>{{ f.code }}</code> {{ f.message }} @if (f.impact) { <span class="muted">— {{ f.impact }}</span> }</li>
+                      }
+                    </ul>
+                  }
+                }
+              </section>
+            }
+          </div>
+        } @else {
+          <ol class="step-list">
+            @for (s of stepList(); track s.id) {
+              <li [class]="'step ' + s.status.toLowerCase()">
+                <mat-icon [class.spin]="s.status === 'Running'">{{ stepIcon(s.status) }}</mat-icon>
+                <div>
+                  <div class="step-name">{{ s.name }}</div>
+                  @if (s.summary) { <div class="step-summary">{{ s.summary }} @if (s.error) { <span class="text-high">{{ s.error }}</span> }</div> }
+                </div>
+                @if (s.durationMs) { <span class="muted duration">{{ s.durationMs | number }} ms</span> }
+              </li>
+            }
+          </ol>
+        }
       </mat-card-content>
     </mat-card>
   }
@@ -364,10 +402,39 @@
             } @else { <p class="muted">Terms recommendation did not run.</p> }
           </mat-tab>
 
+          @if (r.agents?.length) {
+            <mat-tab label="Agents">
+              <p class="muted">Four rule-based agents (Microsoft Agent Framework executors, no model) each ran their checks and reviewed the results. Advisories explain how missing evidence affects the decision without stopping the run; actions are extra work an agent did on its own; observations are cross-checks between results. The score, policy rules and hard stops above remain the deciding authority.</p>
+              <div class="agent-lanes">
+                @for (a of r.agents; track a.id) {
+                  <section [class]="'agent-lane ' + a.status.toLowerCase()">
+                    <header class="lane-head">
+                      <mat-icon>{{ agentIcon(a.id) }}</mat-icon>
+                      <div class="lane-title">
+                        <strong>{{ a.name }}</strong> <span class="pill small" [class]="agentPillClass(a.status)">{{ a.status }}</span> <span class="muted">{{ a.durationMs | number }} ms</span>
+                        <div class="muted lane-mandate">{{ a.mandate }}</div>
+                      </div>
+                    </header>
+                    <div class="deps">@for (id of a.steps; track id) { <span class="pill small" [class]="stepPillClass(r, id)">{{ stepName(r, id) }}</span> }</div>
+                    <p class="lane-summary">{{ a.summary }}</p>
+                    @if (a.findings.length) {
+                      <ul class="findings">
+                        @for (f of a.findings; track f.code + f.message) {
+                          <li [class]="'finding ' + f.kind.toLowerCase()"><mat-icon inline>{{ findingIcon(f.kind) }}</mat-icon> <span class="pill small neutral">{{ f.kind }}</span> <code>{{ f.code }}</code> {{ f.message }} @if (f.impact) { <div class="muted impact">Impact: {{ f.impact }}</div> }</li>
+                        }
+                      </ul>
+                    } @else { <p class="muted">No findings.</p> }
+                  </section>
+                }
+              </div>
+            </mat-tab>
+          }
+
           <mat-tab label="Run log & raw">
             <table mat-table [dataSource]="r.steps" class="full">
               <ng-container matColumnDef="status"><th mat-header-cell *matHeaderCellDef>Status</th><td mat-cell *matCellDef="let s"><span class="pill small" [class]="s.status === 'Succeeded' ? 'good' : s.status === 'Failed' ? 'bad' : 'neutral'">{{ s.status }}</span></td></ng-container>
               <ng-container matColumnDef="name"><th mat-header-cell *matHeaderCellDef>Check</th><td mat-cell *matCellDef="let s">{{ s.name }}</td></ng-container>
+              <ng-container matColumnDef="agent"><th mat-header-cell *matHeaderCellDef>Agent</th><td mat-cell *matCellDef="let s">{{ ownerName(r, s.id) }}</td></ng-container>
               <ng-container matColumnDef="summary"><th mat-header-cell *matHeaderCellDef>Summary</th><td mat-cell *matCellDef="let s" class="detail">{{ s.summary }} @if (s.error) { <span class="text-high">{{ s.error }}</span> }</td></ng-container>
               <ng-container matColumnDef="duration"><th mat-header-cell *matHeaderCellDef>Duration</th><td mat-cell *matCellDef="let s">{{ s.durationMs | number }} ms</td></ng-container>
               <tr mat-header-row *matHeaderRowDef="stepColumns"></tr>

@@ -36,9 +36,30 @@ public sealed class WorkflowDefinition
     /// <summary>Once a hard stop (sanctions / MATCH / prohibited) is established, skip the remaining evidence steps.</summary>
     public bool HaltOnHardStop { get; set; }
     public List<WorkflowStepConfig> Steps { get; set; } = new();
+    /// <summary>Which agent owns each step. Null keeps the catalogue grouping.</summary>
+    public List<WorkflowAgentConfig>? Agents { get; set; }
 
     public WorkflowStepConfig? Step(string id) => Steps.FirstOrDefault(s => s.Id == id);
 }
+
+/// <summary>An agent as configured by the operator: which steps (tools) it owns and whether it takes part in the run.</summary>
+public sealed class WorkflowAgentConfig
+{
+    public string Id { get; set; } = string.Empty;
+    public bool Enabled { get; set; } = true;
+    public List<string> Steps { get; set; } = new();
+}
+
+/// <summary>Static description of an agent: its mandate and the steps it owns by default.</summary>
+public sealed record WorkflowAgentDescriptor(
+    string Id,
+    string Name,
+    string Mandate,
+    string Description,
+    IReadOnlyList<string> DefaultSteps);
+
+/// <summary>Where an agent sits in the run: which stage it executes in and which agents it waits for.</summary>
+public sealed record WorkflowAgentPlan(string Id, string Name, bool Enabled, int Stage, IReadOnlyList<string> Steps, IReadOnlyList<string> WaitsFor);
 
 public sealed record WorkflowVersion(int Version, string Name, string Author, string? Comment, DateTimeOffset CreatedAt, bool Active, int EnabledSteps, int TotalSteps);
 
@@ -59,7 +80,8 @@ public sealed record WorkflowPlan(
     IReadOnlyList<WorkflowStage> Stages,
     IReadOnlyList<string> Warnings,
     IReadOnlyList<string> Disabled,
-    string Mermaid);
+    string Mermaid,
+    IReadOnlyList<WorkflowAgentPlan> Agents);
 
 public sealed record WorkflowStage(int Index, IReadOnlyList<string> Steps);
 

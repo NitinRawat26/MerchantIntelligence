@@ -34,14 +34,17 @@ public sealed class StepAbortedException(string stepId, Exception inner) : Excep
 public sealed class AssessmentContext
 {
     private readonly List<AssessmentStep> _steps = new();
+    private readonly List<AgentReport> _agents = new();
     private readonly Func<AssessmentStep, Task> _report;
+    private readonly Func<AgentReport, Task> _reportAgent;
     private readonly AsyncLocal<Func<AssessmentStep, Task>?> _sink = new();
     private readonly ILogger _logger;
     private int _forcedRefer;
 
     public AssessmentContext(string assessmentId, AssessmentIntake intake, UploadedDocument? bankStatement, UploadedDocument? financialStatement,
-        WorkflowDefinition workflow, Func<AssessmentStep, Task> report, ILogger logger, CancellationToken ct)
+        WorkflowDefinition workflow, Func<AssessmentStep, Task> report, ILogger logger, CancellationToken ct, Func<AgentReport, Task>? reportAgent = null)
     {
+        _reportAgent = reportAgent ?? (_ => Task.CompletedTask);
         AssessmentId = assessmentId;
         Intake = intake;
         BankStatementDocument = bankStatement;
@@ -101,6 +104,25 @@ public sealed class AssessmentContext
             var position = Workflow.Steps.Select((s, i) => (s.Id, i)).ToDictionary(x => x.Id, x => x.i);
             lock (_steps) return _steps.OrderBy(s => position.GetValueOrDefault(s.Id, int.MaxValue)).ToList();
         }
+    }
+
+    /// <summary>Agent ids in planned order; set by the runner so reports come back in a stable order.</summary>
+    public IReadOnlyList<string> AgentOrder { get; set; } = [];
+
+    /// <summary>Agent reports in planned order (agents of one stage finish in arbitrary order).</summary>
+    public IReadOnlyList<AgentReport> Agents
+    {
+        get
+        {
+            var position = AgentOrder.Select((id, i) => (id, i)).ToDictionary(x => x.id, x => x.i);
+            lock (_agents) return _agents.OrderBy(a => position.GetValueOrDefault(a.Id, int.MaxValue)).ToList();
+        }
+    }
+
+    public IReadOnlyList<AssessmentStep> StepsOf(IEnumerable<string> ids)
+    {
+        var set = ids.ToHashSet();
+        return Steps.Where(s => set.Contains(s.Id)).ToList();
     }
 
     /// <summary>Set when a step failed under the <see cref="StepFailurePolicy.Refer"/> policy.</summary>
@@ -170,6 +192,19 @@ public sealed class AssessmentContext
 
     /// <summary>Delivers a progress update to the caller's callback (the runner uses this for events it drains from the graph).</summary>
     public Task ReportAsync(AssessmentStep step) => _report(step);
+
+    public Task ReportAgentAsync(AgentReport report) => _reportAgent(report);
+
+    /// <summary>Records an agent's final report (a Running report is progress only and is not kept).</summary>
+    public void AddAgent(AgentReport report)
+    {
+        if (report.Status == StepStatus.Running) return;
+        lock (_agents)
+        {
+            _agents.RemoveAll(a => a.Id == report.Id);
+            _agents.Add(report);
+        }
+    }
 
     /// <summary>Routes progress raised on the current async flow through <paramref name="sink"/> until disposed.</summary>
     public IDisposable Capture(Func<AssessmentStep, Task> sink)

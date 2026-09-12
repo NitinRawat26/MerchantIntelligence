@@ -27,6 +27,10 @@ public sealed class WorkflowController(WorkflowRepository workflows, WorkflowPla
     [HttpGet("catalog")]
     public ActionResult<IReadOnlyList<WorkflowStepDescriptor>> Catalog() => Ok(planner.Catalog);
 
+    /// <summary>Every agent the engine knows, with its mandate and the steps it owns by default.</summary>
+    [HttpGet("agents")]
+    public ActionResult<IReadOnlyList<WorkflowAgentDescriptor>> Agents() => Ok(planner.AgentCatalog);
+
     /// <summary>The built-in default definition, for "reset to default" in the editor.</summary>
     [HttpGet("default")]
     public ActionResult<WorkflowDefinition> Default() => Ok(WorkflowRepository.LoadDefault());
