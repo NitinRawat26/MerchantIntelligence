@@ -7,7 +7,7 @@ COPY web/mcc-validator/ ./
 RUN npm run build -- --configuration production
 
 # Stage 2: .NET API
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 COPY MerchantIntelligence.sln ./
 COPY src/ src/
@@ -17,7 +17,7 @@ RUN dotnet publish src/MerchantIntelligence.Api/MerchantIntelligence.Api.csproj 
     -c Release -o /app --no-restore
 
 # Stage 3: runtime
-FROM mcr.microsoft.com/dotnet/aspnet:8.0
+FROM mcr.microsoft.com/dotnet/aspnet:10.0
 RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
