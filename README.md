@@ -1,7 +1,7 @@
 
 # MerchantIntelligence
 
-A suite of tools for merchant acquiring pre-checks and credit checks, built in C# / .NET 8.
+A suite of tools for merchant acquiring pre-checks and credit checks, built in C# / .NET 10.
 
 #### Working [Merchant Intel](https://merchant-intelligence-3gtq.onrender.com/assess)
 
@@ -190,7 +190,7 @@ models/
 
 ## Getting started
 
-Requires the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0).
+Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
 
 ```bash
 # Train (or retrain) the model. Uses synthetic data by default.
