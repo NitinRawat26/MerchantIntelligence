@@ -118,14 +118,14 @@ steps. Every step is isolated: a failure is recorded on that step and the run co
 | Downstream systems | Case queue (`/cases`), audit trail (`/audit`), webhooks (`case.*`) | Case with the decision payload, hash-chained audit events |
 
 Code: `src/MerchantIntelligence.Api/Controllers/AssessmentController.cs`,
-`web/mcc-validator/src/app/features/assessment/`.
+`web/workbench/src/app/features/assessment/`.
 
 ## 4. Intake – what is collected and why
 
 The intake form is grouped into six sections. Every field has an **ⓘ hover hint** on `/assess`
 stating exactly where the value is used; the same information is consolidated in
 [Appendix A](#appendix-a--field-to-check-matrix). Full hint text lives in
-`web/mcc-validator/src/app/features/assessment/field-hints.ts`.
+`web/workbench/src/app/features/assessment/field-hints.ts`.
 
 ### 4.1 Business identity
 Legal name (required), trading name / DBA, registration number / LEI, tax ID, address, city,

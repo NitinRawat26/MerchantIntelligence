@@ -226,7 +226,7 @@ src/
       Decision/                                   #     DecisionAgent + terms, score, case
   MerchantIntelligence.Api/                       # ASP.NET Core Web API (all tools)
 web/
-  mcc-validator/                                  # Angular 18 + Material UI for the whole suite
+  workbench/                                      # Angular 18 + Material UI for the whole suite
 tests/
   MerchantIntelligence.Tests/                     # xUnit unit + integration tests
 models/
