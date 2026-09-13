@@ -1,4 +1,8 @@
 using MerchantIntelligence.CreditDecision;
+using MerchantIntelligence.Platform.Agents.Decision;
+using MerchantIntelligence.Platform.Agents.Financial;
+using MerchantIntelligence.Platform.Agents.Kyb;
+using MerchantIntelligence.Platform.Agents.PreCheck;
 using MerchantIntelligence.Platform.Assessment;
 using MerchantIntelligence.Platform.Cases;
 using MerchantIntelligence.Platform.Integrations;
