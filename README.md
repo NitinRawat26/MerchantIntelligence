@@ -108,9 +108,20 @@ Pre-boarding checks built entirely on free / public data sources. Everything wor
 API keys; OpenCorporates and UK Companies House are enabled automatically if a key is
 configured (`Kyb:OpenCorporatesApiToken`, `Kyb:CompaniesHouseApiKey`).
 
+Small merchants (a local restaurant, a sole-trader shop) hold no LEI and file nothing with the SEC, so
+registry verification alone reports them as not found. Verification therefore also runs a **local
+presence** check: the declared address is geocoded (US Census, else OpenStreetMap Nominatim) and
+places sources are searched around it for a business with that name — **OpenStreetMap Overpass**
+always (free, no key), plus **Foursquare Places** (`Kyb:FoursquareApiKey`) and **Google Places**
+(`Kyb:GooglePlacesApiKey`) when a key is configured. A confirmed presence raises identity to
+`PartialMatch` (confidence capped at 70% — it proves trading at that location, not legal registration)
+and adds `LOCAL_PRESENCE_CONFIRMED`; a near miss adds `LOCAL_PRESENCE_PARTIAL`; nothing nearby adds
+`LOCAL_PRESENCE_NOT_FOUND` (Low — with OpenStreetMap alone, absence is weak evidence).
+`Kyb:LocalPresenceEnabled=false` turns the lookup off.
+
 | Endpoint | What it does | Sources |
 |----------|--------------|---------|
-| `POST verify-business` | Matches the declared legal name / address / registration number against corporate registries; flags `NEW_ENTITY`, `NAME_MISMATCH`, `REGISTERED_ADDRESS_MISMATCH`, `INACTIVE_ENTITY`, `VIRTUAL_OFFICE_ADDRESS`, `ENTITY_NOT_FOUND` | GLEIF LEI, SEC EDGAR, US Census geocoder, (OpenCorporates, Companies House) |
+| `POST verify-business` | Matches the declared legal name / address / registration number against corporate registries; flags `NEW_ENTITY`, `NAME_MISMATCH`, `REGISTERED_ADDRESS_MISMATCH`, `INACTIVE_ENTITY`, `VIRTUAL_OFFICE_ADDRESS`, `ENTITY_NOT_FOUND`, `LOCAL_PRESENCE_CONFIRMED` / `_PARTIAL` / `_NOT_FOUND` | GLEIF LEI, SEC EDGAR, US Census geocoder, OpenStreetMap Nominatim + Overpass, (OpenCorporates, Companies House, Foursquare Places, Google Places) |
 | `POST screen` | Fuzzy sanctions / PEP screening of the business and its beneficial owners (aliases, DOB, nationality aware) plus adverse-media search | OpenSanctions consolidated list (OFAC, EU, UN, UK HMT, …), OFAC SDN, UN Security Council, GDELT news |
 | `GET screen/lists` | Status / row counts of the loaded sanctions lists | |
 | `POST website-compliance` | Card-brand website requirements: TLS, privacy / terms / refund / delivery policies, contact details, currency, payment marks, checkout, legal-name disclosure, placeholder detection, domain age & expiry, prohibited content → score 0-100 and grade A-F | Site crawl, RDAP |
@@ -369,7 +380,7 @@ service that redeploys on every push to `base`. Free-tier caveats:
 
 Configuration is via `Section__Key` environment variables (see `render.yaml` for the defaults), e.g.
 `Cors__AllowedOrigins__0` if the UI is hosted on another origin, `Kyb__OpenCorporatesApiToken`,
-`Kyb__CompaniesHouseApiKey`.
+`Kyb__CompaniesHouseApiKey`, `Kyb__FoursquareApiKey`, `Kyb__GooglePlacesApiKey`.
 
 ## Training data
 

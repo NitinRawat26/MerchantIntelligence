@@ -30,6 +30,11 @@ public static class KybServiceCollectionExtensions
         services.AddSingleton<IBusinessRegistryProvider, OpenCorporatesRegistryProvider>();
         services.AddSingleton<IBusinessRegistryProvider, CompaniesHouseRegistryProvider>();
         services.AddSingleton<IAddressGeocoder, CensusAddressGeocoder>();
+        services.AddSingleton<NominatimGeocoder>();
+        services.AddSingleton<ILocalPresenceProvider, OsmLocalPresenceProvider>();
+        services.AddSingleton<ILocalPresenceProvider, FoursquareLocalPresenceProvider>();
+        services.AddSingleton<ILocalPresenceProvider, GooglePlacesLocalPresenceProvider>();
+        services.AddSingleton<LocalPresenceService>();
         services.AddSingleton<BusinessVerificationService>();
 
         services.AddSingleton<ISanctionsListSource>(new OpenSanctionsSource("sanctions"));

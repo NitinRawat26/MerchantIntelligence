@@ -69,4 +69,5 @@ public sealed record BusinessVerificationResult(
     int? EntityAgeMonths,
     AddressVerification? Address,
     IReadOnlyList<RegistrySourceResult> Sources,
-    IReadOnlyList<KybFlag> Flags);
+    IReadOnlyList<KybFlag> Flags,
+    LocalPresenceResult? LocalPresence = null);

@@ -19,14 +19,29 @@ public sealed class KybOptions
 {
     public const string HttpClientName = "KybRegistry";
 
-    /// <summary>Contact identity sent in the User-Agent; SEC and public registries require one.</summary>
-    public string UserAgent { get; set; } = "MerchantIntelligence KYB contact@example.com";
+    /// <summary>Contact identity sent in the User-Agent; SEC and public registries require one. Nominatim rejects placeholder addresses such as example.com.</summary>
+    public string UserAgent { get; set; } = "MerchantIntelligence/1.0 (+https://github.com/NitinRawat26/MerchantIntelligence)";
 
     /// <summary>Optional. https://opencorporates.com/api_accounts/new (free tier available).</summary>
     public string? OpenCorporatesApiToken { get; set; }
 
     /// <summary>Optional. Free key from https://developer.company-information.service.gov.uk/.</summary>
     public string? CompaniesHouseApiKey { get; set; }
+
+    /// <summary>Optional. Foursquare Places service key (https://foursquare.com/developers, free tier). Without it only OpenStreetMap is searched for local presence.</summary>
+    public string? FoursquareApiKey { get; set; }
+
+    /// <summary>Optional. Google Places API (New) key. Without it only OpenStreetMap is searched for local presence.</summary>
+    public string? GooglePlacesApiKey { get; set; }
+
+    /// <summary>Set false to skip the places / map lookup entirely.</summary>
+    public bool LocalPresenceEnabled { get; set; } = true;
+
+    /// <summary>Search radius around a geocoded street address.</summary>
+    public int LocalPresenceRadiusMeters { get; set; } = 250;
+
+    /// <summary>Search radius when only a city / postcode is known.</summary>
+    public int LocalPresenceLocalityRadiusMeters { get; set; } = 5000;
 
     public int MaxResultsPerSource { get; set; } = 5;
 

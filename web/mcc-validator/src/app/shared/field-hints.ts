@@ -11,7 +11,7 @@ export const FIELD_HINTS: Record<string, string> = {
     'MATCH / TMF inquiry, website scan (company-name match) and case title.\n' +
     'Feeds unified score via KYB (20%) and Screening (15%) components; a sanctions hit is a hard stop.',
   tradingName:
-    'Business identity verification: an alternative name for the registry match (scored at 95% of a legal-name match).\n' +
+    'Business identity verification: an alternative name for the registry match (scored at 95% of a legal-name match); preferred over the legal name when searching places sources (OpenStreetMap / Foursquare / Google) for local presence.\n' +
     'Screening: screened as a second organisation subject when it differs from the legal name.\n' +
     'MATCH / TMF inquiry (DBA field).',
   registrationNumber:
@@ -19,7 +19,8 @@ export const FIELD_HINTS: Record<string, string> = {
   taxId:
     'Only sent to the MATCH / terminated-merchant inquiry (not run without MATCH credentials or a local list). Not used by the credit model or scoring.',
   addressLine:
-    'Business identity verification: compared with the registry address (<50% similarity → REGISTERED_ADDRESS_MISMATCH), geocoded via the Census geocoder (US), and checked for virtual-office / mail-drop patterns.\n' +
+    'Business identity verification: compared with the registry address (<50% similarity → REGISTERED_ADDRESS_MISMATCH), geocoded via the Census geocoder (US) / OpenStreetMap, and checked for virtual-office / mail-drop patterns.\n' +
+    'Local presence: places sources are searched within 250 m of the geocoded address for a business with this name → LOCAL_PRESENCE_CONFIRMED lifts an unregistered small merchant to PartialMatch (≤70%).\n' +
     'MATCH / TMF inquiry.\n' +
     'Affects KYB risk tier → KYB component (20%).',
   city:

@@ -89,6 +89,29 @@
                   </mat-expansion-panel>
                 }
               </mat-accordion>
+
+              @if (r.verification.localPresence; as lp) {
+                <h4>Local presence
+                  <span class="pill small" [class]="lp.status === 'Confirmed' ? 'good' : lp.status === 'PartialMatch' ? 'warn' : lp.status === 'NotFound' ? 'bad' : 'neutral'">{{ lp.status }}@if (lp.bestMatch) { · {{ lp.confidencePercent | number:'1.0-0' }}% }</span>
+                </h4>
+                <p class="muted">Does a business with this name operate at or near the declared address? Places sources (OpenStreetMap always; Foursquare / Google when a key is configured) complement, not replace, registry verification — a match proves trading presence, not legal registration, and with OpenStreetMap alone absence is weak evidence.</p>
+                @if (lp.bestMatch; as pm) {
+                  <p><strong>Best match</strong> from {{ pm.record.source }} · <strong>{{ pm.record.name }}</strong> · name {{ pm.nameScore | percent:'1.0-0' }}@if (pm.distanceMeters != null) { · {{ pm.distanceMeters | number:'1.0-0' }} m away } · overall {{ pm.overallScore | percent:'1.0-0' }}</p>
+                  <p class="muted">{{ placeSummary(pm.record) }} @if (pm.record.sourceUrl) { · <a [href]="pm.record.sourceUrl" target="_blank" rel="noopener">source</a> }</p>
+                }
+                @if (lp.note) { <p class="muted">{{ lp.note }}</p> }
+                <mat-accordion>
+                  @for (s of lp.sources; track s.source) {
+                    <mat-expansion-panel>
+                      <mat-expansion-panel-header>
+                        <mat-panel-title><mat-icon [class]="s.succeeded ? 'text-low' : 'text-high'">{{ s.succeeded ? 'check_circle' : 'error' }}</mat-icon>&nbsp;{{ s.source }}</mat-panel-title>
+                        <mat-panel-description>{{ s.succeeded ? s.matches.length + ' candidate(s)' : (s.error || 'failed') }}</mat-panel-description>
+                      </mat-expansion-panel-header>
+                      @for (m of s.matches; track $index) { <p><strong>{{ m.overallScore | percent:'1.0-0' }}</strong> {{ m.record.name }} <span class="muted">— {{ placeSummary(m.record) }}@if (m.distanceMeters != null) { · {{ m.distanceMeters | number:'1.0-0' }} m }</span></p> } @empty { <p class="muted">No candidates.</p> }
+                    </mat-expansion-panel>
+                  }
+                </mat-accordion>
+              }
             </div>
           </mat-tab>
 
