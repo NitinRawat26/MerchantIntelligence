@@ -4,7 +4,7 @@ services:
     runtime: docker
     plan: free
     region: oregon
-    branch: raw-zero
+    branch: base
     dockerfilePath: ./Dockerfile
     healthCheckPath: /health
     autoDeploy: true
