@@ -1,0 +1,127 @@
+<div class="page">
+  <mat-card appearance="outlined">
+    <mat-card-header>
+      <mat-icon mat-card-avatar>shield</mat-icon>
+      <mat-card-title>Pre-check</mat-card-title>
+      <mat-card-subtitle>Standalone runs of the Pre-check agent's website compliance scan and prohibited &amp; restricted business check — the same deterministic services Full assessment uses (WebsiteCompliance 10% · BusinessPolicy 10% of the unified score)</mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-content>
+      <mat-tab-group [selectedIndex]="tab()" (selectedIndexChange)="selectTab($event)">
+
+        <mat-tab label="Website compliance">
+          <div class="tab">
+            <form [formGroup]="websiteForm" (ngSubmit)="scanWebsite()">
+              <h3><mat-icon>language</mat-icon> Merchant website</h3>
+              <div class="grid-4">
+                <mat-form-field appearance="outline" class="wide"><mat-label>Website URL</mat-label><input matInput formControlName="websiteUrl" placeholder="https://" required><mi-field-hint matSuffix for="precheckWebsiteUrl"></mi-field-hint></mat-form-field>
+                <mat-form-field appearance="outline"><mat-label>Legal name</mat-label><input matInput formControlName="legalName"><mi-field-hint matSuffix for="precheckLegalName"></mi-field-hint></mat-form-field>
+                <mat-form-field appearance="outline"><mat-label>Declared MCC</mat-label><input matInput type="number" formControlName="declaredMcc"><mi-field-hint matSuffix for="precheckDeclaredMcc"></mi-field-hint></mat-form-field>
+                <mat-form-field appearance="outline" class="wide"><mat-label>Business description</mat-label><textarea matInput rows="2" formControlName="businessDescription"></textarea><mi-field-hint matSuffix for="precheckBusinessDescription"></mi-field-hint></mat-form-field>
+              </div>
+              <div class="actions">
+                <button mat-flat-button color="primary" type="submit" [disabled]="websiteForm.invalid || websiteLoading()"><mat-icon>travel_explore</mat-icon> Scan website</button>
+                <span class="muted">Fetches the site live (home + policy pages, RDAP); typically 5–20 s.</span>
+              </div>
+            </form>
+
+            <mi-status [loading]="websiteLoading()" [error]="websiteError()" loadingText="Fetching pages and domain record…"></mi-status>
+
+            @if (website(); as w) {
+              <mat-card appearance="outlined" class="result-card" [class]="w.score >= 80 ? 'good' : w.score >= 60 ? 'warn' : 'bad'">
+                <mat-card-content class="summary">
+                  <mi-gauge [value]="w.score" suffix="/100" [percent]="w.score" [label]="'Grade ' + w.grade"></mi-gauge>
+                  <div class="summary-text">
+                    <div class="headline">
+                      <span class="pill" [class]="w.reachable ? 'good' : 'bad'">{{ w.reachable ? 'Reachable' : 'Unreachable' }}</span>
+                      <span class="pill neutral">{{ w.pagesAnalyzed.length }} page(s) analysed</span>
+                      <span class="pill" [class]="failing(w) ? 'bad' : 'good'">{{ failing(w) }} fail</span>
+                      <span class="pill" [class]="warning(w) ? 'warn' : 'good'">{{ warning(w) }} warn</span>
+                      <span class="pill" [class]="verdictClass(w.prohibitedBusiness.verdict)">Content: {{ w.prohibitedBusiness.verdict }}</span>
+                    </div>
+                    <p><strong>{{ w.websiteUrl }}</strong></p>
+                    @if (w.domain; as d) { <p class="muted">Domain {{ d.domain }} · registered {{ d.registered || '?' }} · expires {{ d.expires || '?' }} {{ d.registrar ? '· ' + d.registrar : '' }} {{ d.error ? '· ' + d.error : '' }}</p> }
+                    <p class="muted"><mat-icon inline>calculate</mat-icon> {{ websiteEffect(w.score) }}</p>
+                  </div>
+                </mat-card-content>
+              </mat-card>
+
+              <h4>Checks</h4>
+              <table mat-table [dataSource]="w.checks" class="full">
+                <ng-container matColumnDef="status"><th mat-header-cell *matHeaderCellDef>Status</th><td mat-cell *matCellDef="let c"><span class="pill small" [class]="outcomeClass(c.status)">{{ c.status }}</span></td></ng-container>
+                <ng-container matColumnDef="title"><th mat-header-cell *matHeaderCellDef>Check</th><td mat-cell *matCellDef="let c">{{ c.title }}<br><span class="muted">{{ c.code }} · {{ c.severity }}</span></td></ng-container>
+                <ng-container matColumnDef="detail"><th mat-header-cell *matHeaderCellDef>Detail</th><td mat-cell *matCellDef="let c" class="detail">{{ c.detail }} @if (c.evidence) { <br><em>{{ c.evidence }}</em> }</td></ng-container>
+                <tr mat-header-row *matHeaderRowDef="checkColumns"></tr>
+                <tr mat-row *matRowDef="let row; columns: checkColumns"></tr>
+              </table>
+
+              <h4>Prohibited / restricted content found on the site</h4>
+              <p><span class="pill" [class]="verdictClass(w.prohibitedBusiness.verdict)">{{ w.prohibitedBusiness.verdict }}</span> <span class="muted">{{ policyEffect(w.prohibitedBusiness.verdict) }}</span></p>
+              @for (m of w.prohibitedBusiness.matches; track m.category.code) { <p><strong>{{ m.category.name }}</strong> ({{ m.category.policy }}, score {{ m.score | number:'1.2-2' }}) — keywords: {{ m.matchedKeywords.join(', ') }} @if (m.declaredMccInCategory) { · <em>declared MCC is in this category</em> }</p> } @empty { <p class="muted">No restricted-category keywords found in the scanned pages.</p> }
+              <mi-flags [flags]="w.prohibitedBusiness.flags" emptyText=""></mi-flags>
+              @if (w.pagesAnalyzed.length) { <p class="muted">Pages: {{ w.pagesAnalyzed.join(' · ') }}</p> }
+
+              <mi-json [data]="w" title="Raw website compliance result"></mi-json>
+            }
+          </div>
+        </mat-tab>
+
+        <mat-tab label="Prohibited &amp; restricted business">
+          <div class="tab">
+            <form [formGroup]="prohibitedForm" (ngSubmit)="checkProhibited()">
+              <h3><mat-icon>gavel</mat-icon> Business activity</h3>
+              <div class="grid-4">
+                <mat-form-field appearance="outline" class="wide"><mat-label>Business description</mat-label><textarea matInput rows="3" formControlName="businessDescription" required></textarea><mi-field-hint matSuffix for="prohibitedDescription"></mi-field-hint></mat-form-field>
+                <mat-form-field appearance="outline"><mat-label>Declared MCC</mat-label><input matInput type="number" formControlName="declaredMcc"><mi-field-hint matSuffix for="prohibitedDeclaredMcc"></mi-field-hint></mat-form-field>
+                <mat-form-field appearance="outline" class="wide"><mat-label>Additional text (website copy, product list, application notes)</mat-label><textarea matInput rows="3" formControlName="text"></textarea><mi-field-hint matSuffix for="prohibitedText"></mi-field-hint></mat-form-field>
+              </div>
+              <div class="actions">
+                <button mat-flat-button color="primary" type="submit" [disabled]="prohibitedForm.invalid || prohibitedLoading()"><mat-icon>rule</mat-icon> Classify</button>
+                <span class="muted">Offline keyword / category classification; instant. No network calls.</span>
+              </div>
+            </form>
+
+            <mi-status [loading]="prohibitedLoading()" [error]="prohibitedError()" loadingText="Classifying…"></mi-status>
+
+            @if (prohibited(); as p) {
+              <mat-card appearance="outlined" class="result-card" [class]="p.verdict === 'Acceptable' ? 'good' : p.verdict === 'Prohibited' ? 'bad' : 'warn'">
+                <mat-card-content class="summary">
+                  <mi-gauge [value]="policyScore(p.verdict)" suffix="/100" [percent]="policyScore(p.verdict)" label="BusinessPolicy component"></mi-gauge>
+                  <div class="summary-text">
+                    <div class="headline">
+                      <span class="pill" [class]="verdictClass(p.verdict)">Verdict: {{ p.verdict }}</span>
+                      <span class="pill neutral">{{ p.matches.length }} categor{{ p.matches.length === 1 ? 'y' : 'ies' }} matched</span>
+                    </div>
+                    <p class="muted"><mat-icon inline>calculate</mat-icon> {{ policyEffect(p.verdict) }}</p>
+                    <mi-flags [flags]="p.flags" emptyText="No policy flags."></mi-flags>
+                  </div>
+                </mat-card-content>
+              </mat-card>
+
+              <h4>Matched categories</h4>
+              @for (m of p.matches; track m.category.code) {
+                <p><span class="pill small" [class]="verdictClass(m.category.policy)">{{ m.category.policy }}</span> <strong>{{ m.category.name }}</strong> <span class="muted">({{ m.category.code }}, score {{ m.score | number:'1.2-2' }})</span><br>
+                  <span class="muted">Matched: {{ m.matchedKeywords.join(', ') }} @if (m.declaredMccInCategory) { · <em>declared MCC {{ prohibitedForm.controls.declaredMcc.value }} belongs to this category</em> } @if (m.category.notes) { · {{ m.category.notes }} }</span></p>
+              } @empty { <p class="muted">No restricted-category keywords matched; the strictest matched policy would set the verdict.</p> }
+
+              <mi-json [data]="p" title="Raw prohibited-business result"></mi-json>
+            }
+
+            @if (categories().length) {
+              <h4>Policy taxonomy ({{ categories().length }} categories)</h4>
+              <p class="muted">The verdict is the strictest policy among matched categories: Prohibited &gt; Restricted &gt; HighRisk &gt; Acceptable.</p>
+              <table mat-table [dataSource]="categories()" class="full">
+                <ng-container matColumnDef="policy"><th mat-header-cell *matHeaderCellDef>Policy</th><td mat-cell *matCellDef="let c"><span class="pill small" [class]="verdictClass(c.policy)">{{ c.policy }}</span></td></ng-container>
+                <ng-container matColumnDef="name"><th mat-header-cell *matHeaderCellDef>Category</th><td mat-cell *matCellDef="let c">{{ c.name }}<br><span class="muted">{{ c.code }}</span></td></ng-container>
+                <ng-container matColumnDef="mccs"><th mat-header-cell *matHeaderCellDef>MCCs</th><td mat-cell *matCellDef="let c">{{ c.mccs.join(', ') || '—' }}</td></ng-container>
+                <ng-container matColumnDef="keywords"><th mat-header-cell *matHeaderCellDef>Keywords</th><td mat-cell *matCellDef="let c" class="detail">{{ c.keywords.join(', ') }}</td></ng-container>
+                <tr mat-header-row *matHeaderRowDef="categoryColumns"></tr>
+                <tr mat-row *matRowDef="let row; columns: categoryColumns"></tr>
+              </table>
+            }
+          </div>
+        </mat-tab>
+
+      </mat-tab-group>
+    </mat-card-content>
+  </mat-card>
+</div>

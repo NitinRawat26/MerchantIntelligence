@@ -199,6 +199,24 @@ export const FIELD_HINTS: Record<string, string> = {
   webhookEvents:
     'Which platform events are pushed to this endpoint.',
 
+  // ---- Pre-check ------------------------------------------------------------------------
+  precheckWebsiteUrl:
+    'Website compliance scan: fetches the home page and linked policy pages, checks TLS, refund / privacy / terms pages, contact details, company-name match and domain age (RDAP) → 0–100 score.\n' +
+    'That score is the WebsiteCompliance component (10%) of the unified score; <60 raises WEBSITE_NON_COMPLIANT and adds up to +0.15 pricing risk. Page text is also run through the prohibited-business classifier.',
+  precheckLegalName:
+    'Website compliance scan: the site is searched for this name (LEGAL_NAME_DISCLOSED check); mismatch is a Warn, not a hard stop.',
+  precheckDeclaredMcc:
+    'Website compliance scan: passed to the prohibited-business classifier as a category hint (a category whose MCC list contains it scores ×1.5 and is kept even below the usual threshold).',
+  precheckBusinessDescription:
+    'Website compliance scan: cross-checked against page content and classified for prohibited / restricted keywords alongside the site text.',
+  prohibitedDescription:
+    'Prohibited & restricted business check: keyword / regex classification against the policy taxonomy → verdict.\n' +
+    'Verdict drives the BusinessPolicy component (10%): Acceptable 100 · HighRisk 60 (HIGH_RISK_BUSINESS) · Restricted 35 (RESTRICTED_BUSINESS) · Prohibited 0 + hard stop PROHIBITED_BUSINESS → Decline.',
+  prohibitedDeclaredMcc:
+    'Prohibited & restricted business check: category hint — when the declared MCC is in a category\'s MCC list that category scores ×1.5 and is marked "declared MCC in category".',
+  prohibitedText:
+    'Prohibited & restricted business check: any extra text (website copy, catalogue, application notes) is classified together with the description. In Full assessment this is the scanned website content.',
+
   // ---- Workflows -----------------------------------------------------------------------
   workflowName:
     'Label shown in the assessment report and audit trail for every run made with this version.',

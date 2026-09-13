@@ -7,6 +7,7 @@ export const routes: Routes = [
   { path: 'score', title: 'Risk Score', loadComponent: () => import('./features/platform/score.component').then(m => m.ScoreComponent) },
   { path: 'kyb', title: 'KYB', loadComponent: () => import('./features/kyb/kyb.component').then(m => m.KybComponent) },
   { path: 'underwriting', title: 'Underwriting', loadComponent: () => import('./features/underwriting/underwriting.component').then(m => m.UnderwritingComponent) },
+  { path: 'precheck', title: 'Pre-check', loadComponent: () => import('./features/precheck/precheck.component').then(m => m.PrecheckComponent) },
   { path: 'mcc', title: 'MCC Validator', loadComponent: () => import('./features/mcc/mcc-validator.component').then(m => m.MccValidatorComponent) },
   { path: 'cases', title: 'Cases', loadComponent: () => import('./features/platform/cases.component').then(m => m.CasesComponent) },
   { path: 'cases/:id', title: 'Case', loadComponent: () => import('./features/platform/case-detail.component').then(m => m.CaseDetailComponent) },
