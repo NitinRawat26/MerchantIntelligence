@@ -122,7 +122,12 @@ public sealed class KybAgent(SanctionsScreeningService screening) : IAssessmentA
                 findings.Add(new(AgentFindingKind.Observation, "REGISTRY_STATUS", $"Registry status is \"{status}\".", "Confirm the entity is trading before onboarding."));
         }
         else if (v is not null && AssessmentComposer.RegistriesReachable(v))
-            findings.Add(new(AgentFindingKind.Observation, "NOT_IN_REGISTRIES", $"No registry record found for \"{b.LegalName}\" ({v.Status}).", "Ask for a certificate of incorporation."));
+        {
+            if (v.LocalPresence is { Status: LocalPresenceStatus.Confirmed, BestMatch: { } pm })
+                findings.Add(new(AgentFindingKind.Observation, "LOCAL_PRESENCE_ONLY", $"No registry record for \"{b.LegalName}\", but {pm.Record.Source} lists \"{pm.Record.Name}\"{(pm.DistanceMeters is { } d ? $" {d:F0} m from the declared address" : "")}; identity is {v.Status} on trading evidence alone.", "Ask for a certificate of formation / state registration to confirm the legal entity."));
+            else
+                findings.Add(new(AgentFindingKind.Observation, "NOT_IN_REGISTRIES", $"No registry record found for \"{b.LegalName}\" ({v.Status}){(v.LocalPresence is { Status: LocalPresenceStatus.NotFound } ? " and no matching business near the declared address" : "")}.", "Ask for a certificate of incorporation."));
+        }
 
         if (ctx.Screening is { } s)
         {

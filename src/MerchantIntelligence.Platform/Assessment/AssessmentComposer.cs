@@ -126,9 +126,14 @@ internal static class AssessmentComposer
                 ? $"No registry record matched '{intake.Business.LegalName}' across {v.Sources.Count} source(s) ({string.Join(", ", v.Sources.Select(x => x.Source + (x.Succeeded ? "" : " – failed")))})."
                 : $"Best match '{v.BestMatch.Record.LegalName}' from {v.BestMatch.Record.Source} (name {v.BestMatch.NameScore:P0}, address {v.BestMatch.AddressScore:P0}, overall {v.BestMatch.OverallScore:P0})"
                   + (v.EntityAgeMonths is { } age ? $"; entity age {age} months" : "") + (v.Address is { } a ? $"; address {(a.Verified ? "verified" : "not verified")} via {a.Provider}" : "") + ".";
+            if (v.LocalPresence is { Status: not LocalPresenceStatus.NotChecked } lp)
+                detail += lp.BestMatch is { } pm
+                    ? $" Local presence {lp.Status}: '{pm.Record.Name}' via {pm.Record.Source}{(pm.DistanceMeters is { } dm ? $" {dm:F0} m from the declared address" : "")}{(pm.Record.Category is null ? "" : $" ({pm.Record.Category})")}."
+                    : $" Local presence {lp.Status}: {lp.Note ?? "no matching business found near the declared address"}";
             outcomes.Add(new("Business identity", $"{v.Status} ({v.ConfidencePercent:F0}%)", detail, sev, true));
             narrative.Add($"Identity: the legal entity is {v.Status.ToString().ToLowerInvariant()} with {v.ConfidencePercent:F0}% confidence. {detail}");
             if (v.Status is VerificationStatus.NotFound or VerificationStatus.Inconclusive) next.Add("Request registration documents; public registry coverage (GLEIF / SEC EDGAR) is limited for small private companies.");
+            else if (v.BestMatch is null && v.LocalPresence?.Status == LocalPresenceStatus.Confirmed) next.Add("Identity rests on local-presence evidence only; request a certificate of formation or state registration to confirm the legal entity.");
         }
 
         // Screening
