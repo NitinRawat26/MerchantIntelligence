@@ -100,7 +100,7 @@ and an aggregator combines them into an explainable verdict:
 `suggestedMccs`, `riskFlags` (e.g. `HIDDEN_HIGH_RISK`, `MCC_MISMATCH`) and per-provider
 `evidence`. `GET /api/mcc-validation/catalog` lists the MCC catalog for autocomplete.
 
-The MCC validator is one page of the Angular workspace in `web/mcc-validator` (see [Web UI](#web-ui)).
+The MCC validator is one page of the Angular workspace in `web/workbench` (see [Web UI](#web-ui)).
 
 ### KYB & Compliance (`/api/kyb`)
 
@@ -218,7 +218,12 @@ src/
   MerchantIntelligence.Underwriting/              # Decision explainability, reserve/pricing recommender, volume plausibility, statement parsing
   MerchantIntelligence.Platform/                  # Unified score, rules engine, cases + audit (SQLite), webhooks, model ops, MATCH boundary
     Assessment/                                   #   Full-assessment service, composer (decision/explainability), PDF
-    Workflows/                                    #   IAssessmentStep implementations, the four IAssessmentAgents, planner, Agent Framework runner, workflow repository
+    Workflows/                                    #   Engine: IAssessmentStep / IAssessmentAgent contracts, context, planner, runner, workflow repository
+    Agents/                                       #   One folder per agent with the steps (tools) it owns by default
+      PreCheck/                                   #     PreCheckAgent + website, prohibited, mcc
+      Kyb/                                        #     KybAgent + verification, screening, match
+      Financial/                                  #     FinancialAgent + bank, financials, plausibility, credit
+      Decision/                                   #     DecisionAgent + terms, score, case
   MerchantIntelligence.Api/                       # ASP.NET Core Web API (all tools)
 web/
   mcc-validator/                                  # Angular 18 + Material UI for the whole suite
@@ -308,7 +313,7 @@ The first call downloads ~100 MB of sanctions data (30-60 s); subsequent calls a
 ### Web UI
 
 ```bash
-cd web/mcc-validator
+cd web/workbench
 npm install
 npm start          # http://localhost:4200, proxies /api to the .NET API on :5292
 npm run build      # production bundle in dist/
@@ -332,7 +337,7 @@ your own labelled merchant records to it before running `train` to improve cover
 
 ## Web UI
 
-`web/mcc-validator` is an Angular 18 + Material single-page app with a page per capability, grouped in
+`web/workbench` is an Angular 18 + Material single-page app with a page per capability, grouped in
 the sidebar the same way the assessment runs: *Agentic* (Full assessment, Workflows) → *Pre-check* →
 *KYB & Screening* → *Financial & Credit* → *Decision* → *Review* (Case queue) → *Operations*. Each
 sidebar section collapses by clicking its heading (remembered per browser; the section of the current
