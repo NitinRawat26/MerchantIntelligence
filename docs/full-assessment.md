@@ -15,6 +15,7 @@ it, so the document can be used as a reference by analysts, product owners and d
 - [5. Execution model](#5-execution-model)
 - [6. The thirteen steps](#6-the-thirteen-steps)
   - [6.1 Business identity verification](#61-business-identity-verification)
+  - [6.1a Local business presence](#61a-local-business-presence)
   - [6.2 Sanctions / PEP / adverse-media screening](#62-sanctions--pep--adverse-media-screening)
   - [6.3 Website compliance scan](#63-website-compliance-scan)
   - [6.4 Prohibited & restricted business check](#64-prohibited--restricted-business-check)
@@ -168,7 +169,7 @@ average ticket, uploads ≤ configured size, the credit model must be loaded. In
 `AssessmentService.RunAsync` (`src/MerchantIntelligence.Platform/Assessment/AssessmentService.cs`):
 
 1. Generates an assessment id (`ASMT-…`) and records `startedAt`.
-2. Emits the ordered **step catalogue** (13 steps, all `Pending`).
+2. Emits the ordered **step catalogue** (14 steps, all `Pending`).
 3. For each step in order: mark `Running` → invoke the underlying service → mark `Succeeded`
    (with a one-line summary and duration) or `Failed` (with the error message). Steps whose input
    is absent are marked `Skipped` with the reason (e.g. "No website supplied").
@@ -182,7 +183,7 @@ UI: the **progress card** on `/assess` shows each step with Pending / Running / 
 Failed / Skipped status, its summary and duration; the same list appears in the **Run log & raw**
 tab and in the PDF "Check execution log".
 
-## 6. The thirteen steps
+## 6. The fourteen steps
 
 Each subsection states: inputs → processing → outputs → how it feeds the decision → where to see it.
 
@@ -205,6 +206,24 @@ Each subsection states: inputs → processing → outputs → how it feeds the d
   excluded from the score and listed as a coverage gap (not treated as unverified).
 - **See:** `/assess` → **Identity & screening** tab → "Business verification"; PDF "Check outcomes"
   row *Business identity*.
+
+### 6.1a Local business presence
+*Step id `presence` · `LocalPresenceService` (`MerchantIntelligence.Kyb/Registry/LocalPresence.cs`) · depends on `verification`*
+
+- **Inputs:** legal / trading name and address fields; the verified address coordinates from 6.1 when available.
+- **Processing:** geocodes the address (US Census result reused, else OpenStreetMap Nominatim) and searches
+  places sources within 250 m (5 km when only a locality is known) for a business with a similar name:
+  **OpenStreetMap Overpass** always (no key), **Foursquare Places** and **Google Places** when
+  `Kyb:FoursquareApiKey` / `Kyb:GooglePlacesApiKey` are set (otherwise reported as *Not configured*).
+  Candidates score 65 % name similarity + 35 % location (distance / address); closed places are downweighted.
+- **Outputs:** status `Confirmed` (≥ 80 %) / `PartialMatch` (≥ 60 %) / `NotFound` / `Inconclusive`
+  (every source failed) / `NotChecked` (no address); best place, per-source results. Merged into the identity
+  result as `LOCAL_PRESENCE_CONFIRMED` / `_PARTIAL` / `_NOT_FOUND` (all Low). With no registry record, a
+  confirmed presence lifts identity to `PartialMatch` capped at 70 % — trading evidence, not legal registration.
+- **Feeds:** the KYB risk tier through the merged identity flags; the explainability row *Local presence*.
+- **Unavailable handling:** source outages (Overpass 429 / 504, no key) never fail the run; `Inconclusive`
+  is a coverage gap. Absence in OpenStreetMap alone is weak evidence and is worded as such.
+- **See:** `/assess` → **Identity & screening** tab → "Local presence"; `/kyb` → Registry verification tab.
 
 ### 6.2 Sanctions / PEP / adverse-media screening
 *Step id `screening` · `SanctionsScreeningService` (`MerchantIntelligence.Kyb/Sanctions`)*

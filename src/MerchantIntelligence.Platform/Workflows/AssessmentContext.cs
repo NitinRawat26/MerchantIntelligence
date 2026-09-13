@@ -68,6 +68,7 @@ public sealed class AssessmentContext
 
     // ---- result slots, one per step ----
     public BusinessVerificationResult? Verification { get; set; }
+    public LocalPresenceResult? LocalPresence { get; set; }
     public ScreeningReport? Screening { get; set; }
     public WebsiteComplianceResult? Website { get; set; }
     public ProhibitedBusinessResult? Prohibited { get; set; }

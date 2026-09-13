@@ -109,8 +109,8 @@ API keys; OpenCorporates and UK Companies House are enabled automatically if a k
 configured (`Kyb:OpenCorporatesApiToken`, `Kyb:CompaniesHouseApiKey`).
 
 Small merchants (a local restaurant, a sole-trader shop) hold no LEI and file nothing with the SEC, so
-registry verification alone reports them as not found. Verification therefore also runs a **local
-presence** check: the declared address is geocoded (US Census, else OpenStreetMap Nominatim) and
+registry verification alone reports them as not found. A separate **local presence** check (its own
+step, `presence`, owned by the KYB & screening agent) covers them: the declared address is geocoded (US Census, else OpenStreetMap Nominatim) and
 places sources are searched around it for a business with that name — **OpenStreetMap Overpass**
 always (free, no key), plus **Foursquare Places** (`Kyb:FoursquareApiKey`) and **Google Places**
 (`Kyb:GooglePlacesApiKey`) when a key is configured. A confirmed presence raises identity to
@@ -179,16 +179,16 @@ One intake, every check, one decision. Collects the business, owners, website, M
 
 Each step is isolated: a failing step is recorded as a coverage gap, never as clear. If every public registry fails, or no sanctions list could be downloaded, the result is reported as *Unavailable* and excluded from the unified score rather than being read as verified/clear. MATCH stays `NotConfigured` without credentials. **Missing evidence never stops a run**: the Pre-check agent tells the analyst what is missing and how it degrades coverage/confidence, and the assessment continues over the evidence that is there.
 
-The complete functional specification — every intake field, each of the 13 checks (inputs, processing, outputs, how it feeds the score), decision derivation, coverage semantics, the explainability report, the PDF memo, presets and a field-to-check matrix — is in **[docs/full-assessment.md](docs/full-assessment.md)**.
+The complete functional specification — every intake field, each of the 14 checks (inputs, processing, outputs, how it feeds the score), decision derivation, coverage semantics, the explainability report, the PDF memo, presets and a field-to-check matrix — is in **[docs/full-assessment.md](docs/full-assessment.md)**.
 
 ### Agentic workflow (`/api/workflows`, UI `/workflows`)
 
-The assessment is not a hard-coded pipeline. Each of the 13 checks is an `IAssessmentStep` (id, display name, `dependsOn`, parameters) and each agent is an `IAssessmentAgent` (id, name, mandate, default steps, a deterministic `ReviewAsync`). A **workflow definition** — JSON, versioned in SQLite with publish / rollback / audit events like policy rules — says which agents are enabled, which steps each agent owns, the step order, per-step parameters and the on-failure policy (`Skip` → coverage gap, `Refer` → force Refer, `Abort`). `WorkflowPlanner` validates it (unknown / duplicate / unowned steps, unknown parameters, dependency cycles, degraded checks whose dependency is disabled) and computes the stages; `WorkflowRunner` compiles the plan into a `Microsoft.Agents.AI.Workflows` graph — one executor per enabled agent, fan-out inside a stage, a gate between stages — and streams executor events back to the API.
+The assessment is not a hard-coded pipeline. Each of the 14 checks is an `IAssessmentStep` (id, display name, `dependsOn`, parameters) and each agent is an `IAssessmentAgent` (id, name, mandate, default steps, a deterministic `ReviewAsync`). A **workflow definition** — JSON, versioned in SQLite with publish / rollback / audit events like policy rules — says which agents are enabled, which steps each agent owns, the step order, per-step parameters and the on-failure policy (`Skip` → coverage gap, `Refer` → force Refer, `Abort`). `WorkflowPlanner` validates it (unknown / duplicate / unowned steps, unknown parameters, dependency cycles, degraded checks whose dependency is disabled) and computes the stages; `WorkflowRunner` compiles the plan into a `Microsoft.Agents.AI.Workflows` graph — one executor per enabled agent, fan-out inside a stage, a gate between stages — and streams executor events back to the API.
 
 | Agent | Owns (default) | Deterministic review it adds |
 |-------|----------------|------------------------------|
 | **Pre-check** | website, prohibited, mcc | Application completeness and internal consistency. Advisories `NO_WEBSITE`, `WEBSITE_UNREACHABLE`, `NO_BANK_STATEMENT`, `NO_FINANCIALS`, `NO_OWNERS`, `THIN_DESCRIPTION`, `THIN_PROFILE`, each stating the effect on coverage or confidence; observations for MCC inconsistency and non-acceptable business classification |
-| **KYB & screening** | verification, screening, match | Compares registry legal / trading names with the declared ones and **re-screens any new alias** against the sanctions lists (`ALIAS_RESCREENED`, merged into the screening result); reports registry status, sanctions / PEP hits and MATCH availability (`MATCH_UNAVAILABLE`) as coverage, never as clear |
+| **KYB & screening** | verification, screening, match, presence | Compares registry legal / trading names with the declared ones and **re-screens any new alias** against the sanctions lists (`ALIAS_RESCREENED`, merged into the screening result); reports registry status, sanctions / PEP hits and MATCH availability (`MATCH_UNAVAILABLE`) as coverage, never as clear |
 | **Financial & credit** | bank, financials, plausibility, credit | Reconciles bank-statement implied card volume with the declared volume (`STATEMENT_VS_DECLARED`), flags `NSF_EVENTS`, `MULTIPLE_PROCESSORS`, `VOLUME_EXCEEDS_REVENUE`, `LOSS_MAKING`, and disagreement between the plausibility check and the credit model (`MODEL_VS_PLAUSIBILITY`) |
 | **Decision & case** | terms, score, case | Runs the deterministic unified score + policy rules and reports hard stops, forced Refer, `COVERAGE_GAPS` and a `BRIEF` of all upstream findings. It cannot override score, hard stops, rules or case creation |
 

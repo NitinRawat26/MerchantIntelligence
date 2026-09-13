@@ -87,8 +87,8 @@ public sealed class KybAgent(SanctionsScreeningService screening) : IAssessmentA
 {
     public WorkflowAgentDescriptor Descriptor { get; } = new("kyb", "KYB & screening agent",
         "Establish identity: registries, sanctions / PEP / adverse media and MATCH for the business and its people.",
-        "Runs registry verification, screening and the MATCH inquiry. When the registry returns a legal name that differs from the application it re-screens that alias on its own initiative and folds the result into the screening report.",
-        ["verification", "screening", "match"]);
+        "Runs registry verification, the local-presence (places) check, screening and the MATCH inquiry. When the registry returns a legal name that differs from the application it re-screens that alias on its own initiative and folds the result into the screening report.",
+        ["verification", "screening", "match", "presence"]);
 
     public async Task<AgentReview> ReviewAsync(AssessmentContext ctx, IReadOnlyList<string> ownedSteps)
     {

@@ -31,12 +31,14 @@ public sealed class KybReportService
     private readonly BusinessVerificationService _verification;
     private readonly SanctionsScreeningService _screening;
     private readonly WebsiteComplianceScanner _website;
+    private readonly LocalPresenceService? _localPresence;
 
-    public KybReportService(BusinessVerificationService verification, SanctionsScreeningService screening, WebsiteComplianceScanner website)
+    public KybReportService(BusinessVerificationService verification, SanctionsScreeningService screening, WebsiteComplianceScanner website, LocalPresenceService? localPresence = null)
     {
         _verification = verification;
         _screening = screening;
         _website = website;
+        _localPresence = localPresence;
     }
 
     public async Task<KybReport> RunAsync(KybRequest request, CancellationToken ct = default)
@@ -61,6 +63,8 @@ public sealed class KybReportService
         }
 
         var verification = await verifyTask;
+        if (_localPresence is { IsEnabled: true })
+            verification = BusinessVerificationService.WithLocalPresence(verification, await _localPresence.CheckAsync(verification, ct));
         var screening = await screenTask;
         var site = siteTask is null ? null : await siteTask;
 

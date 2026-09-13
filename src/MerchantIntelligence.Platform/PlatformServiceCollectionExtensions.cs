@@ -41,6 +41,7 @@ public static class PlatformServiceCollectionExtensions
         services.AddSingleton<IDecisionPredictor>(sp => sp.GetRequiredService<ModelRegistry>());
         services.AddSingleton<ModelOpsService>();
         services.AddSingleton<IAssessmentStep, VerificationStep>();
+        services.AddSingleton<IAssessmentStep, LocalPresenceStep>();
         services.AddSingleton<IAssessmentStep, ScreeningStep>();
         services.AddSingleton<IAssessmentStep, WebsiteStep>();
         services.AddSingleton<IAssessmentStep, ProhibitedStep>();

@@ -216,6 +216,27 @@ public sealed class LocalPresenceTests
     }
 
     [Fact]
+    public void Confirmed_presence_lifts_unregistered_entity_to_partial_match_capped_at_70()
+    {
+        var registryOnly = new BusinessVerificationResult(Restaurant, VerificationStatus.NotFound, 0, null, null, null,
+            [new RegistrySourceResult("GLEIF LEI", true, [])], [new KybFlag("ENTITY_NOT_FOUND", "none", RiskTier.Medium)]);
+        var match = LocalPresenceService.Score(Restaurant, Place("Blue Ocean Bakery", Centre.Latitude, Centre.Longitude), Centre, 250);
+        var presence = new LocalPresenceResult(LocalPresenceStatus.Confirmed, 100, match, [new PlaceSourceResult("OpenStreetMap (Overpass)", true, [match])]);
+
+        var merged = BusinessVerificationService.WithLocalPresence(registryOnly, presence);
+
+        Assert.Equal(VerificationStatus.PartialMatch, merged.Status);
+        Assert.InRange(merged.ConfidencePercent, 1, 70);
+        Assert.Contains(merged.Flags, f => f.Code == "ENTITY_NOT_FOUND");
+        Assert.Contains(merged.Flags, f => f.Code == "LOCAL_PRESENCE_CONFIRMED");
+        Assert.Same(presence, merged.LocalPresence);
+
+        var notFound = BusinessVerificationService.WithLocalPresence(registryOnly, new LocalPresenceResult(LocalPresenceStatus.NotFound, 0, null, [new PlaceSourceResult("OpenStreetMap (Overpass)", true, [])], "OSM only"));
+        Assert.Equal(VerificationStatus.NotFound, notFound.Status);
+        Assert.Contains(notFound.Flags, f => f.Code == "LOCAL_PRESENCE_NOT_FOUND" && f.Severity == RiskTier.Low);
+    }
+
+    [Fact]
     public void Single_letter_map_labels_do_not_match_by_initial() =>
         Assert.Equal(0, LocalPresenceService.Score(new BusinessIdentity("The Eagle"), Place("E", Centre.Latitude, Centre.Longitude), Centre, 250).NameScore);
 
