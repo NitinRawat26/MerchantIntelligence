@@ -26,6 +26,17 @@ export interface RegistrySourceResult { source: string; succeeded: boolean; erro
 export interface BusinessVerificationResult {
   status: string; confidencePercent: number; bestMatch?: RegistryMatch | null; entityAgeMonths?: number | null;
   address?: { provider: string; verified: boolean; [k: string]: unknown } | null; sources: RegistrySourceResult[]; flags: Flag[];
+  localPresence?: LocalPresenceResult | null;
+}
+export interface PlaceRecord {
+  source: string; sourceId: string; name: string; address?: string | null; latitude?: number | null; longitude?: number | null;
+  category?: string | null; website?: string | null; phone?: string | null; status?: string | null; sourceUrl?: string | null;
+}
+export interface PlaceMatch { record: PlaceRecord; nameScore: number; addressScore: number; distanceMeters?: number | null; overallScore: number; }
+export interface PlaceSourceResult { source: string; succeeded: boolean; error?: string | null; matches: PlaceMatch[]; }
+export interface LocalPresenceResult {
+  status: 'Confirmed' | 'PartialMatch' | 'NotFound' | 'Inconclusive' | 'NotChecked' | string;
+  confidencePercent: number; bestMatch?: PlaceMatch | null; sources: PlaceSourceResult[]; note?: string | null;
 }
 export interface SanctionsHit {
   entity: { id: string; listName: string; type: string; name: string; aliases: string[]; countries: string[]; programs: string[]; remarks?: string | null; sourceUrl?: string | null };

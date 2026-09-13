@@ -12,7 +12,7 @@ import { MatTableModule } from '@angular/material/table';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { SuiteApiService, describeError } from '../../shared/suite-api.service';
-import { FullKybRequest, KybReport, RegistryRecord } from '../../shared/models';
+import { FullKybRequest, KybReport, PlaceRecord, RegistryRecord } from '../../shared/models';
 import { FieldHintComponent, FlagsComponent, GaugeComponent, JsonViewComponent, StatusComponent, outcomeClass, tierClass } from '../../shared/ui';
 
 @Component({
@@ -81,5 +81,9 @@ export class KybComponent {
   recordSummary(rec: RegistryRecord): string {
     return [rec.status, rec.entityType, rec.jurisdiction, rec.registrationNumber ? `reg ${rec.registrationNumber}` : null,
       rec.incorporationDate ? `inc. ${rec.incorporationDate}` : null, rec.address].filter(Boolean).join(' · ');
+  }
+
+  placeSummary(rec: PlaceRecord): string {
+    return [rec.category, rec.status, rec.address, rec.phone, rec.website].filter(Boolean).join(' · ');
   }
 }

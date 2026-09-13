@@ -179,3 +179,94 @@ public sealed class BusinessVerificationScoringTests
     public void Address_matcher_normalises_abbreviations() =>
         Assert.True(AddressMatcher.Similarity("100 North Main Street, Suite 4", "100 N Main St Ste 4") >= 0.9);
 }
+
+public sealed class LocalPresenceTests
+{
+    private static readonly BusinessIdentity Restaurant = new("Blue Ocean Bakery LLC", "Blue Ocean Bakery", AddressLine: "100 Main St", City: "Austin", Region: "TX", PostalCode: "78701", Country: "US");
+    private static readonly GeoPoint Centre = new(30.2672, -97.7431);
+
+    private sealed class FakeProvider(string name, bool enabled, Func<IReadOnlyList<PlaceRecord>> search) : ILocalPresenceProvider
+    {
+        public string Name => name;
+        public bool IsEnabled => enabled;
+        public Task<IReadOnlyList<PlaceRecord>> SearchAsync(BusinessIdentity identity, GeoPoint centre, int radiusMeters, CancellationToken ct) => Task.FromResult(search());
+    }
+
+    private sealed class NoHttp : IHttpClientFactory
+    {
+        public HttpClient CreateClient(string name) => throw new InvalidOperationException("network must not be used in this test");
+    }
+
+    private static LocalPresenceService Service(params ILocalPresenceProvider[] providers) =>
+        new(providers, new NominatimGeocoder(new NoHttp()), new KybOptions(), Microsoft.Extensions.Logging.Abstractions.NullLogger<LocalPresenceService>.Instance);
+
+    private static PlaceRecord Place(string name, double lat, double lon, string? status = null) =>
+        new("OpenStreetMap", "node/1", name, "100 Main St, Austin", lat, lon, "bakery", null, null, status, null);
+
+    [Fact]
+    public void Distance_is_haversine() =>
+        Assert.InRange(Geo.DistanceMeters(0, 0, 0, 0.001), 110, 112);
+
+    [Fact]
+    public void Same_name_at_same_spot_scores_confirmed()
+    {
+        var m = LocalPresenceService.Score(Restaurant, Place("Blue Ocean Bakery", Centre.Latitude + 0.0001, Centre.Longitude), Centre, 250);
+        Assert.True(m.OverallScore >= 0.8, m.OverallScore.ToString());
+        Assert.InRange(m.DistanceMeters!.Value, 5, 20);
+    }
+
+    [Fact]
+    public void Single_letter_map_labels_do_not_match_by_initial() =>
+        Assert.Equal(0, LocalPresenceService.Score(new BusinessIdentity("The Eagle"), Place("E", Centre.Latitude, Centre.Longitude), Centre, 250).NameScore);
+
+    [Fact]
+    public void Closed_places_are_downweighted()
+    {
+        var open = LocalPresenceService.Score(Restaurant, Place("Blue Ocean Bakery", Centre.Latitude, Centre.Longitude), Centre, 250);
+        var closed = LocalPresenceService.Score(Restaurant, Place("Blue Ocean Bakery", Centre.Latitude, Centre.Longitude, "closed"), Centre, 250);
+        Assert.True(closed.OverallScore < open.OverallScore * 0.6);
+    }
+
+    [Fact]
+    public async Task No_address_is_not_checked()
+    {
+        var r = await Service(new FakeProvider("OpenStreetMap", true, () => throw new Exception("must not run"))).CheckAsync(new BusinessIdentity("Acme"), null);
+        Assert.Equal(LocalPresenceStatus.NotChecked, r.Status);
+    }
+
+    [Fact]
+    public async Task Disabled_providers_are_reported_not_configured_and_osm_only_absence_is_noted()
+    {
+        var svc = Service(
+            new FakeProvider("OpenStreetMap", true, () => new[] { Place("Unrelated Hardware Store", Centre.Latitude, Centre.Longitude) }),
+            new FakeProvider("Foursquare", false, () => throw new Exception()),
+            new FakeProvider("Google Places", false, () => throw new Exception()));
+        var r = await svc.CheckAsync(Restaurant, Centre);
+        Assert.Equal(LocalPresenceStatus.NotFound, r.Status);
+        Assert.Null(r.BestMatch);
+        Assert.Equal(3, r.Sources.Count);
+        Assert.Equal(2, r.Sources.Count(s => s.Error == "Not configured (API key missing)."));
+        Assert.Contains("Only OpenStreetMap", r.Note);
+    }
+
+    [Fact]
+    public async Task Best_match_across_sources_confirms_presence()
+    {
+        var svc = Service(
+            new FakeProvider("OpenStreetMap", true, () => Array.Empty<PlaceRecord>()),
+            new FakeProvider("Foursquare", true, () => new[] { Place("Blue Ocean Bakery", Centre.Latitude, Centre.Longitude + 0.0002) with { Source = "Foursquare" } }));
+        var r = await svc.CheckAsync(Restaurant, Centre);
+        Assert.Equal(LocalPresenceStatus.Confirmed, r.Status);
+        Assert.Equal("Foursquare", r.BestMatch!.Record.Source);
+        Assert.Null(r.Note);
+    }
+
+    [Fact]
+    public async Task Provider_failure_is_a_source_error_not_an_exception()
+    {
+        var svc = Service(new FakeProvider("OpenStreetMap", true, () => throw new HttpRequestException("429 Too Many Requests")));
+        var r = await svc.CheckAsync(Restaurant, Centre);
+        Assert.Equal(LocalPresenceStatus.Inconclusive, r.Status);
+        Assert.Contains("429", r.Sources.Single().Error);
+    }
+}
