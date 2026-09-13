@@ -20,6 +20,7 @@ import { Subscription } from 'rxjs';
 import { SuiteApiService, describeError } from '../../shared/suite-api.service';
 import { AgentFindingKind, AgentReport, AssessmentAgentDescriptor, AssessmentListItem, AssessmentRequest, AssessmentResult, AssessmentStep, AssessmentStepDescriptor, Flag, StepStatus } from '../../shared/models';
 import { FieldHintComponent, FlagsComponent, GaugeComponent, JsonViewComponent, StatusComponent, outcomeClass, tierClass } from '../../shared/ui';
+import { PRESET_FINANCIALS } from './preset-financials';
 
 const AGENT_ICONS: Record<string, string> = { precheck: 'fact_check', kyb: 'verified_user', financial: 'account_balance', decision: 'gavel' };
 
@@ -79,8 +80,8 @@ export class AssessmentComponent {
     priorYearRevenue: ['' as string | number],
     websiteProductCount: ['' as string | number],
     hasPhysicalLocation: ['' as '' | 'true' | 'false'],
-    bankStatementCsv: [''],
-    financialStatementText: [''],
+    bankStatementCsv: [PRESET_FINANCIALS.clean.bankStatementCsv],
+    financialStatementText: [PRESET_FINANCIALS.clean.financialStatementText],
     externalRef: [''],
     actor: ['analyst', Validators.required],
     createCase: [true]
@@ -152,6 +153,9 @@ export class AssessmentComponent {
 
   preset(p: Preset): void {
     this.owners.clear();
+    this.bankFile.set(null); this.financialFile.set(null);
+    const fin = p === 'sanctioned' ? { bankStatementCsv: '', financialStatementText: '' } : PRESET_FINANCIALS[p];
+    this.form.patchValue(fin);
     switch (p) {
       case 'approved':
         this.form.patchValue({ legalName: 'Starbucks Corporation', tradingName: 'Starbucks', country: 'US', addressLine: '2401 Utah Avenue South', city: 'Seattle', region: 'WA', postalCode: '98134',
