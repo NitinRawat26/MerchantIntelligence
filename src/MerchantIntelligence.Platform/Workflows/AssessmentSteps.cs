@@ -30,6 +30,29 @@ public sealed class VerificationStep(BusinessVerificationService verification) :
             v => $"{v.Status} ({v.ConfidencePercent:F0}% confidence){(v.BestMatch is null ? "" : $" · best match {v.BestMatch.Record.LegalName} via {v.BestMatch.Record.Source}")}");
 }
 
+public sealed class LocalPresenceStep(LocalPresenceService presence) : IAssessmentStep
+{
+    public WorkflowStepDescriptor Descriptor { get; } = new("presence", "Local business presence",
+        "Looks for a business with the declared name at or near the declared address in OpenStreetMap (always) and Foursquare / Google Places (when keys are configured). Trading evidence for small merchants that no legal registry knows; it complements, never replaces, registry verification.",
+        ["verification"], ["verification"], false, []);
+
+    public async Task ExecuteAsync(AssessmentContext ctx)
+    {
+        var b = ctx.Intake.Business;
+        if (string.IsNullOrWhiteSpace(b.AddressLine) && string.IsNullOrWhiteSpace(b.City) && string.IsNullOrWhiteSpace(b.PostalCode))
+        { await ctx.SkipAsync(Descriptor, "No address or locality supplied to search around."); return; }
+        if (!presence.IsEnabled) { await ctx.SkipAsync(Descriptor, "Local presence disabled (Kyb:LocalPresenceEnabled=false)."); return; }
+
+        var verification = ctx.Verification ?? new BusinessVerificationResult(b, VerificationStatus.Inconclusive, 0, null, null, null, [], []);
+        ctx.LocalPresence = await ctx.RunAsync(Descriptor, () => presence.CheckAsync(verification, ctx.CancellationToken),
+            lp => lp.BestMatch is { } pm
+                ? $"{lp.Status} ({lp.ConfidencePercent:F0}%) · '{pm.Record.Name}' via {pm.Record.Source}{(pm.DistanceMeters is { } d ? $" · {d:F0} m away" : "")}"
+                : $"{lp.Status} · {lp.Note ?? $"no matching business in {string.Join(", ", lp.Sources.Where(s => s.Succeeded).Select(s => s.Source))}"}");
+        if (ctx.LocalPresence is { } result && ctx.Verification is { } v)
+            ctx.Verification = BusinessVerificationService.WithLocalPresence(v, result);
+    }
+}
+
 public sealed class ScreeningStep(SanctionsScreeningService screening) : IAssessmentStep
 {
     public WorkflowStepDescriptor Descriptor { get; } = new("screening", "Sanctions / PEP / adverse-media screening",
@@ -187,7 +210,7 @@ public sealed class TermsStep(ReservePricingRecommender pricing) : IAssessmentSt
 {
     public WorkflowStepDescriptor Descriptor { get; } = new("terms", "Reserve & pricing recommendation",
         "Recommends reserve, settlement delay and pricing from the KYB risk roll-up, website, plausibility and delivery profile.",
-        ["verification", "screening", "website", "plausibility", "credit"], ["verification", "screening", "website", "plausibility", "credit"], false, []);
+        ["verification", "presence", "screening", "website", "plausibility", "credit"], ["verification", "presence", "screening", "website", "plausibility", "credit"], false, []);
 
     public async Task ExecuteAsync(AssessmentContext ctx)
     {
@@ -205,8 +228,8 @@ public sealed class ScoreStep(UnifiedRiskScorer scorer, RulesEngine rules, RuleS
 {
     public WorkflowStepDescriptor Descriptor { get; } = new("score", "Unified risk score & policy rules",
         "Blends every upstream signal into the 0–1000 score, then evaluates the active policy rule set to reach Approve / Refer / Decline.",
-        ["verification", "screening", "website", "prohibited", "mcc", "match", "bank", "financials", "plausibility", "credit", "terms"],
-        ["verification", "screening", "website", "prohibited", "mcc", "match", "bank", "financials", "plausibility", "credit", "terms"], true, []);
+        ["verification", "presence", "screening", "website", "prohibited", "mcc", "match", "bank", "financials", "plausibility", "credit", "terms"],
+        ["verification", "presence", "screening", "website", "prohibited", "mcc", "match", "bank", "financials", "plausibility", "credit", "terms"], true, []);
 
     public async Task ExecuteAsync(AssessmentContext ctx)
     {

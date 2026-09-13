@@ -36,6 +36,41 @@ public sealed class WorkflowPlanner
     public IReadOnlyList<WorkflowAgentConfig> AgentsOf(WorkflowDefinition def) =>
         def.Agents ?? _agentOrder.Select(id => new WorkflowAgentConfig { Id = id, Enabled = true, Steps = _agents[id].DefaultSteps.ToList() }).ToList();
 
+    /// <summary>
+    /// Adds catalogue steps (and agents) that a stored definition predates: each new step is inserted right after the last
+    /// step it depends on, enabled with the default failure policy, and assigned to the agent that owns it by default.
+    /// Returns the same instance when nothing is missing.
+    /// </summary>
+    public WorkflowDefinition Upgrade(WorkflowDefinition def)
+    {
+        var known = def.Steps.Select(s => s.Id).ToHashSet();
+        var newSteps = _catalog.Keys.Where(k => !known.Contains(k)).ToList();
+        var newAgents = def.Agents is null ? [] : _agentOrder.Where(a => def.Agents.All(x => x.Id != a)).ToList();
+        if (newSteps.Count == 0 && newAgents.Count == 0) return def;
+
+        var steps = def.Steps.Select(s => new WorkflowStepConfig { Id = s.Id, Enabled = s.Enabled, OnFail = s.OnFail, DependsOn = s.DependsOn?.ToList(), Params = s.Params is null ? null : new(s.Params) }).ToList();
+        var agents = def.Agents?.Select(a => new WorkflowAgentConfig { Id = a.Id, Enabled = a.Enabled, Steps = a.Steps.ToList() }).ToList();
+        foreach (var id in newAgents)
+            agents!.Add(new WorkflowAgentConfig { Id = id, Enabled = true, Steps = [] });
+
+        foreach (var id in newSteps)
+        {
+            var deps = _catalog[id].DependsOn;
+            var after = steps.Select((s, i) => (s.Id, i)).Where(x => deps.Contains(x.Id)).Select(x => x.i).DefaultIfEmpty(-1).Max();
+            steps.Insert(after + 1, new WorkflowStepConfig { Id = id });
+
+            var owner = _agentOrder.FirstOrDefault(a => _agents[a].DefaultSteps.Contains(id)) ?? _agentOrder[0];
+            var cfg = agents?.FirstOrDefault(a => a.Id == owner);
+            if (cfg is not null && !cfg.Steps.Contains(id))
+            {
+                var pos = cfg.Steps.Select((s, i) => (s, i)).Where(x => deps.Contains(x.s)).Select(x => x.i).DefaultIfEmpty(-1).Max();
+                cfg.Steps.Insert(pos + 1, id);
+            }
+        }
+
+        return new WorkflowDefinition { Name = def.Name, Version = def.Version, Description = def.Description, HaltOnHardStop = def.HaltOnHardStop, Steps = steps, Agents = agents };
+    }
+
     /// <summary>Owner agent of each step.</summary>
     public IReadOnlyDictionary<string, string> OwnersOf(WorkflowDefinition def) =>
         AgentsOf(def).SelectMany(a => a.Steps.Select(s => (s, a.Id))).ToDictionary(x => x.s, x => x.Id);

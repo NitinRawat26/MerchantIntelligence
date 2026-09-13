@@ -115,6 +115,7 @@ public sealed class WorkflowRepository
         return Publish(def, author, $"Rollback to version {version}");
     }
 
-    private static WorkflowDefinition Parse(string json) =>
-        JsonSerializer.Deserialize<WorkflowDefinition>(json, RulesEngine.JsonOptions) ?? throw new InvalidOperationException("Stored workflow is not valid JSON.");
+    /// <summary>Stored definitions are upgraded on read so steps added to the catalogue since they were published still run.</summary>
+    private WorkflowDefinition Parse(string json) =>
+        _planner.Upgrade(JsonSerializer.Deserialize<WorkflowDefinition>(json, RulesEngine.JsonOptions) ?? throw new InvalidOperationException("Stored workflow is not valid JSON."));
 }

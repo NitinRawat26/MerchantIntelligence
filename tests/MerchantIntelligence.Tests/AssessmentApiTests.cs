@@ -76,7 +76,7 @@ public sealed class AssessmentApiTests : IClassFixture<WebApplicationFactory<Pro
     {
         var steps = await Json(await _client.GetAsync("/api/assessment/steps"));
         var ids = steps.EnumerateArray().Select(s => s.GetProperty("id").GetString()).ToList();
-        Assert.Equal(["verification", "screening", "website", "prohibited", "mcc", "match", "bank", "financials", "plausibility", "credit", "terms", "score", "case"], ids);
+        Assert.Equal(["verification", "screening", "website", "prohibited", "mcc", "match", "presence", "bank", "financials", "plausibility", "credit", "terms", "score", "case"], ids);
     }
 
     [Fact]
@@ -90,7 +90,7 @@ public sealed class AssessmentApiTests : IClassFixture<WebApplicationFactory<Pro
         Assert.StartsWith("ASMT-", id);
 
         var steps = root.GetProperty("steps").EnumerateArray().ToDictionary(s => s.GetProperty("id").GetString()!, s => s.GetProperty("status").GetString());
-        Assert.Equal(13, steps.Count);
+        Assert.Equal(14, steps.Count);
         Assert.Equal("Succeeded", steps["verification"]);
         Assert.Equal("Succeeded", steps["screening"]);
         Assert.Equal("Succeeded", steps["website"]);
@@ -186,7 +186,7 @@ public sealed class AssessmentApiTests : IClassFixture<WebApplicationFactory<Pro
         Assert.Equal("result", lines[^1].GetProperty("type").GetString());
         var stepEvents = lines.Where(l => l.GetProperty("type").GetString() == "step").Select(l => l.GetProperty("step")).ToList();
         Assert.Contains(stepEvents, s => s.GetProperty("status").GetString() == "Running");
-        Assert.Equal(13, stepEvents.Count(s => s.GetProperty("status").GetString() is "Succeeded" or "Failed" or "Skipped"));
+        Assert.Equal(14, stepEvents.Count(s => s.GetProperty("status").GetString() is "Succeeded" or "Failed" or "Skipped"));
         Assert.StartsWith("ASMT-", lines[^1].GetProperty("result").GetProperty("id").GetString());
     }
 

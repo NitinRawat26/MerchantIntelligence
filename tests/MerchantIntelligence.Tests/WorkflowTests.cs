@@ -70,7 +70,7 @@ public sealed class WorkflowTests : IClassFixture<WebApplicationFactory<Program>
         Assert.Empty(plan.Disabled);
         // Pre-check and KYB agents run concurrently; inside each, list order is monotonic (prohibited needs website)
         Assert.Equal(["verification", "screening", "website", "match"], plan.Stages[0].Steps);
-        Assert.Equal(["prohibited", "mcc"], plan.Stages[1].Steps);
+        Assert.Equal(["prohibited", "mcc", "presence"], plan.Stages[1].Steps);   // presence waits for verification
         Assert.Equal(["score"], plan.Stages[^2].Steps);
         Assert.Equal(["case"], plan.Stages[^1].Steps);
         Assert.Equal(["precheck", "kyb", "financial", "decision"], plan.Agents.Select(a => a.Id));
@@ -78,6 +78,23 @@ public sealed class WorkflowTests : IClassFixture<WebApplicationFactory<Program>
         Assert.Equal(["kyb"], plan.Agents.Single(a => a.Id == "financial").WaitsFor);       // credit needs match
         Assert.Equal(["financial", "kyb", "precheck"], plan.Agents.Single(a => a.Id == "decision").WaitsFor);
         Assert.StartsWith("flowchart LR", plan.Mermaid);
+    }
+
+    [Fact]
+    public void Stored_workflow_predating_a_step_is_upgraded_with_the_step_in_its_default_agent()
+    {
+        var old = Default();
+        old.Steps.RemoveAll(s => s.Id == "presence");
+        old.Agents!.Single(a => a.Id == "kyb").Steps.Remove("presence");
+        Assert.Contains("missing", Assert.Throws<WorkflowValidationException>(() => Planner.Validate(old)).Message);
+
+        var upgraded = Planner.Upgrade(old);
+        Assert.NotSame(old, upgraded);
+        Assert.Equal(14, upgraded.Steps.Count);
+        Assert.True(upgraded.Steps.FindIndex(s => s.Id == "presence") > upgraded.Steps.FindIndex(s => s.Id == "verification"));
+        Assert.Contains("presence", upgraded.Agents!.Single(a => a.Id == "kyb").Steps);
+        Assert.Empty(Planner.Plan(upgraded).Warnings);
+        Assert.Same(upgraded, Planner.Upgrade(upgraded));
     }
 
     [Fact]
@@ -159,10 +176,10 @@ public sealed class WorkflowTests : IClassFixture<WebApplicationFactory<Program>
     {
         var active = await Json(await _client.GetAsync("/api/workflows/active"));
         Assert.Equal("default", active.GetProperty("version").GetString());
-        Assert.Equal(13, active.GetProperty("steps").GetArrayLength());
+        Assert.Equal(14, active.GetProperty("steps").GetArrayLength());
 
         var catalog = await Json(await _client.GetAsync("/api/workflows/catalog"));
-        Assert.Equal(13, catalog.GetArrayLength());
+        Assert.Equal(14, catalog.GetArrayLength());
 
         var draft = Default();
         draft.Name = "No website scan";
@@ -229,7 +246,7 @@ public sealed class WorkflowTests : IClassFixture<WebApplicationFactory<Program>
         }));
 
         var steps = root.GetProperty("steps").EnumerateArray().Select(s => (Id: s.GetProperty("id").GetString()!, Status: s.GetProperty("status").GetString()!, Summary: s.GetProperty("summary").GetString()!)).ToList();
-        Assert.Equal(13, steps.Count);
+        Assert.Equal(14, steps.Count);
         Assert.Equal(def.Steps.Select(s => s.Id), steps.Select(s => s.Id));
         Assert.Equal("Skipped", steps.Single(s => s.Id == "website").Status);
         Assert.Contains("Disabled in workflow 'Lean'", steps.Single(s => s.Id == "website").Summary);

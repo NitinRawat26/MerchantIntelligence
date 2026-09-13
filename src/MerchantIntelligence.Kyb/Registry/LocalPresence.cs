@@ -91,6 +91,27 @@ public sealed class LocalPresenceService
         _logger = logger;
     }
 
+    public bool IsEnabled => _options.LocalPresenceEnabled;
+
+    /// <summary>
+    /// Runs the check for an already-verified identity, reusing the verified address coordinates as the search centre.
+    /// Never throws: source outages surface as an <see cref="LocalPresenceStatus.Inconclusive"/> result.
+    /// </summary>
+    public async Task<LocalPresenceResult> CheckAsync(BusinessVerificationResult verification, CancellationToken ct = default)
+    {
+        var a = verification.Address;
+        var known = a is { Verified: true, Latitude: { } la, Longitude: { } lo } ? new GeoPoint(la, lo) : null;
+        try
+        {
+            return await CheckAsync(verification.Input, known, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "Local presence check failed");
+            return new LocalPresenceResult(LocalPresenceStatus.Inconclusive, 0, null, Array.Empty<PlaceSourceResult>(), ex.Message);
+        }
+    }
+
     public async Task<LocalPresenceResult> CheckAsync(BusinessIdentity identity, GeoPoint? knownLocation, CancellationToken ct = default)
     {
         var hasStreet = !string.IsNullOrWhiteSpace(identity.AddressLine);

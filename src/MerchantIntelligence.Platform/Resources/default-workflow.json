@@ -5,7 +5,7 @@
   "haltOnHardStop": false,
   "agents": [
     { "id": "precheck", "enabled": true, "steps": ["website", "prohibited", "mcc"] },
-    { "id": "kyb", "enabled": true, "steps": ["verification", "screening", "match"] },
+    { "id": "kyb", "enabled": true, "steps": ["verification", "screening", "match", "presence"] },
     { "id": "financial", "enabled": true, "steps": ["bank", "financials", "plausibility", "credit"] },
     { "id": "decision", "enabled": true, "steps": ["terms", "score", "case"] }
   ],
@@ -16,6 +16,7 @@
     { "id": "prohibited", "enabled": true, "onFail": "Skip" },
     { "id": "mcc", "enabled": true, "onFail": "Skip" },
     { "id": "match", "enabled": true, "onFail": "Skip" },
+    { "id": "presence", "enabled": true, "onFail": "Skip" },
     { "id": "bank", "enabled": true, "onFail": "Skip" },
     { "id": "financials", "enabled": true, "onFail": "Skip" },
     { "id": "plausibility", "enabled": true, "onFail": "Skip" },

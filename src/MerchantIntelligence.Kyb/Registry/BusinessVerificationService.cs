@@ -22,7 +22,6 @@ public sealed class BusinessVerificationService
 
     private readonly IReadOnlyList<IBusinessRegistryProvider> _providers;
     private readonly IReadOnlyList<IAddressGeocoder> _geocoders;
-    private readonly LocalPresenceService? _localPresence;
     private readonly KybOptions _options;
     private readonly ILogger<BusinessVerificationService> _logger;
 
@@ -30,12 +29,10 @@ public sealed class BusinessVerificationService
         IEnumerable<IBusinessRegistryProvider> providers,
         IEnumerable<IAddressGeocoder> geocoders,
         KybOptions options,
-        ILogger<BusinessVerificationService> logger,
-        LocalPresenceService? localPresence = null)
+        ILogger<BusinessVerificationService> logger)
     {
         _providers = providers.ToList();
         _geocoders = geocoders.ToList();
-        _localPresence = localPresence;
         _options = options;
         _logger = logger;
     }
@@ -63,7 +60,6 @@ public sealed class BusinessVerificationService
             .Select(p => new RegistrySourceResult(p.Name, false, Array.Empty<RegistryMatch>(), "Not configured (API key missing)."));
 
         var address = await VerifyAddressAsync(identity, ct);
-        var presence = await CheckLocalPresenceAsync(identity, address, ct);
         var sources = (await Task.WhenAll(sourceTasks)).Concat(disabled).ToList();
 
         var best = sources.SelectMany(s => s.Matches).OrderByDescending(m => m.OverallScore).FirstOrDefault();
@@ -97,50 +93,46 @@ public sealed class BusinessVerificationService
         }
 
         var confidence = best is null ? 0 : Math.Round(best.OverallScore * 100, 1);
-        if (presence is not null)
-        {
-            var pm = presence.BestMatch;
-            switch (presence.Status)
-            {
-                case LocalPresenceStatus.Confirmed:
-                    flags.Add(new KybFlag("LOCAL_PRESENCE_CONFIRMED", $"Business found operating at the declared location: '{pm!.Record.Name}' via {pm.Record.Source}{(pm.DistanceMeters is { } d ? $", {d:F0} m from the declared address" : "")}{(pm.Record.Category is null ? "" : $" ({pm.Record.Category})")}. Confirms trading presence, not legal registration.", RiskTier.Low));
-                    if (best is null && status == VerificationStatus.NotFound)
-                    {
-                        status = VerificationStatus.PartialMatch;
-                        confidence = Math.Round(pm.OverallScore * 70, 1);
-                    }
-                    break;
-                case LocalPresenceStatus.PartialMatch:
-                    flags.Add(new KybFlag("LOCAL_PRESENCE_PARTIAL", $"A similar business was found near the declared address: '{pm!.Record.Name}' via {pm.Record.Source} (name {pm.NameScore:P0}{(pm.DistanceMeters is { } d2 ? $", {d2:F0} m away" : "")}). Confirm the trading name.", RiskTier.Low));
-                    if (best is null) confidence = Math.Max(confidence, Math.Round(pm.OverallScore * 50, 1));
-                    break;
-                case LocalPresenceStatus.NotFound when !string.IsNullOrWhiteSpace(identity.AddressLine):
-                    flags.Add(new KybFlag("LOCAL_PRESENCE_NOT_FOUND", $"No business matching '{identity.TradingName ?? identity.LegalName}' was found near the declared address in {string.Join(", ", presence.Sources.Where(s => s.Succeeded).Select(s => s.Source))}.{(presence.Note is null ? "" : " " + presence.Note)}", RiskTier.Low));
-                    break;
-            }
-        }
 
         if (!string.IsNullOrWhiteSpace(identity.AddressLine) && VirtualOfficeHint.IsMatch(identity.AddressLine))
             flags.Add(new KybFlag("VIRTUAL_OFFICE_ADDRESS", "Declared address looks like a PO box, mailbox service or registered-agent address.", RiskTier.Medium));
         if (address is { Verified: false, Error: not null } && !string.IsNullOrWhiteSpace(identity.AddressLine) && !address.Error.Contains("only covers", StringComparison.Ordinal))
             flags.Add(new KybFlag("ADDRESS_UNVERIFIED", $"Address could not be geocoded: {address.Error}", RiskTier.Low));
 
-        return new BusinessVerificationResult(identity, status, confidence, best, ageMonths, address, sources, flags, presence);
+        return new BusinessVerificationResult(identity, status, confidence, best, ageMonths, address, sources, flags);
     }
 
-    private async Task<LocalPresenceResult?> CheckLocalPresenceAsync(BusinessIdentity identity, AddressVerification? address, CancellationToken ct)
+    /// <summary>
+    /// Folds a local-presence (places) result into a registry verification: adds the LOCAL_PRESENCE_* flags and, when no
+    /// registry knows the entity but a business with that name trades at the address, lifts the identity to PartialMatch
+    /// (capped at 70% — trading evidence is not legal registration).
+    /// </summary>
+    public static BusinessVerificationResult WithLocalPresence(BusinessVerificationResult result, LocalPresenceResult presence)
     {
-        if (_localPresence is null || !_options.LocalPresenceEnabled) return null;
-        var known = address is { Verified: true, Latitude: { } la, Longitude: { } lo } ? new GeoPoint(la, lo) : null;
-        try
+        var identity = result.Input;
+        var flags = result.Flags.Where(f => !f.Code.StartsWith("LOCAL_PRESENCE_", StringComparison.Ordinal)).ToList();
+        var status = result.Status;
+        var confidence = result.ConfidencePercent;
+        var pm = presence.BestMatch;
+        switch (presence.Status)
         {
-            return await _localPresence.CheckAsync(identity, known, ct);
+            case LocalPresenceStatus.Confirmed:
+                flags.Add(new KybFlag("LOCAL_PRESENCE_CONFIRMED", $"Business found operating at the declared location: '{pm!.Record.Name}' via {pm.Record.Source}{(pm.DistanceMeters is { } d ? $", {d:F0} m from the declared address" : "")}{(pm.Record.Category is null ? "" : $" ({pm.Record.Category})")}. Confirms trading presence, not legal registration.", RiskTier.Low));
+                if (result.BestMatch is null && status == VerificationStatus.NotFound)
+                {
+                    status = VerificationStatus.PartialMatch;
+                    confidence = Math.Round(pm.OverallScore * 70, 1);
+                }
+                break;
+            case LocalPresenceStatus.PartialMatch:
+                flags.Add(new KybFlag("LOCAL_PRESENCE_PARTIAL", $"A similar business was found near the declared address: '{pm!.Record.Name}' via {pm.Record.Source} (name {pm.NameScore:P0}{(pm.DistanceMeters is { } d2 ? $", {d2:F0} m away" : "")}). Confirm the trading name.", RiskTier.Low));
+                if (result.BestMatch is null) confidence = Math.Max(confidence, Math.Round(pm.OverallScore * 50, 1));
+                break;
+            case LocalPresenceStatus.NotFound when !string.IsNullOrWhiteSpace(identity.AddressLine):
+                flags.Add(new KybFlag("LOCAL_PRESENCE_NOT_FOUND", $"No business matching '{identity.TradingName ?? identity.LegalName}' was found near the declared address in {string.Join(", ", presence.Sources.Where(s => s.Succeeded).Select(s => s.Source))}.{(presence.Note is null ? "" : " " + presence.Note)}", RiskTier.Low));
+                break;
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            _logger.LogWarning(ex, "Local presence check failed");
-            return new LocalPresenceResult(LocalPresenceStatus.Inconclusive, 0, null, Array.Empty<PlaceSourceResult>(), ex.Message);
-        }
+        return result with { Status = status, ConfidencePercent = confidence, Flags = flags, LocalPresence = presence };
     }
 
     private async Task<AddressVerification?> VerifyAddressAsync(BusinessIdentity identity, CancellationToken ct)

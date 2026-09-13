@@ -288,6 +288,19 @@
               <mi-flags [flags]="v.flags" emptyText="No verification flags."></mi-flags>
             } @else { <p class="muted">Business verification did not run.</p> }
 
+            @if (r.verification?.localPresence; as lp) {
+              <h3>Local presence <span class="pill small" [class]="lp.status === 'Confirmed' ? 'good' : lp.status === 'PartialMatch' ? 'warn' : lp.status === 'NotFound' ? 'bad' : 'neutral'">{{ lp.status }}@if (lp.status === 'Confirmed' || lp.status === 'PartialMatch') { · {{ lp.confidencePercent | number:'1.0-0' }}% }</span></h3>
+              @if (lp.bestMatch; as pm) {
+                <dl class="kv">
+                  <dt>Place</dt><dd>{{ pm.record.name }} <span class="muted">via {{ pm.record.source }}</span>@if (pm.record.sourceUrl) { · <a [href]="pm.record.sourceUrl" target="_blank" rel="noopener">open</a> }</dd>
+                  <dt>Match scores</dt><dd>name {{ pm.nameScore | percent }}@if (pm.distanceMeters != null) { · {{ pm.distanceMeters | number:'1.0-0' }} m from declared address } · overall {{ pm.overallScore | percent }}</dd>
+                  @if (pm.record.category) { <dt>Category</dt><dd>{{ pm.record.category }}</dd> }
+                  @if (pm.record.address) { <dt>Place address</dt><dd>{{ pm.record.address }}@if (pm.record.phone) { · {{ pm.record.phone }} }@if (pm.record.website) { · {{ pm.record.website }} }</dd> }
+                </dl>
+              } @else if (lp.note) { <p class="muted">{{ lp.note }}</p> }
+              <p class="muted">Sources: @for (s of lp.sources; track s.source) { <span class="pill small" [class]="s.succeeded ? 'neutral' : 'bad'" [matTooltip]="s.error ?? ''">{{ s.source }} ({{ s.matches.length }})</span> } — trading evidence only; it does not confirm legal registration.</p>
+            }
+
             @if (r.screening; as s) {
               <h3>Sanctions / PEP / adverse media <span class="pill small" [class]="s.overallRisk === 'Low' ? 'good' : s.overallRisk === 'Medium' ? 'warn' : 'bad'">{{ s.overallRisk }}</span></h3>
               @for (sub of s.subjects; track sub.subject.name) {

@@ -104,7 +104,7 @@ internal static class AssessmentComposer
     internal static AssessmentExplainability BuildExplainability(AssessmentIntake intake, AssessmentDecision decision, BusinessVerificationResult? v, ScreeningReport? s,
         WebsiteComplianceResult? w, ProhibitedBusinessResult? p, MccValidationResult? m, MatchResult? match, CashFlowAnalysis? b, FinancialStatementAnalysis? f,
         VolumePlausibilityResult? pl, DecisionResult? credit, DecisionExplanation? explanation, TermsRecommendation? terms, UnifiedRiskScore? score,
-        RulesEvaluation? rules, IReadOnlyList<RiskSignal> signals)
+        RulesEvaluation? rules, IReadOnlyList<RiskSignal> signals, LocalPresenceResult? lp = null)
     {
         var outcomes = new List<CheckOutcome>();
         var narrative = new List<string>();
@@ -126,14 +126,31 @@ internal static class AssessmentComposer
                 ? $"No registry record matched '{intake.Business.LegalName}' across {v.Sources.Count} source(s) ({string.Join(", ", v.Sources.Select(x => x.Source + (x.Succeeded ? "" : " – failed")))})."
                 : $"Best match '{v.BestMatch.Record.LegalName}' from {v.BestMatch.Record.Source} (name {v.BestMatch.NameScore:P0}, address {v.BestMatch.AddressScore:P0}, overall {v.BestMatch.OverallScore:P0})"
                   + (v.EntityAgeMonths is { } age ? $"; entity age {age} months" : "") + (v.Address is { } a ? $"; address {(a.Verified ? "verified" : "not verified")} via {a.Provider}" : "") + ".";
-            if (v.LocalPresence is { Status: not LocalPresenceStatus.NotChecked } lp)
-                detail += lp.BestMatch is { } pm
-                    ? $" Local presence {lp.Status}: '{pm.Record.Name}' via {pm.Record.Source}{(pm.DistanceMeters is { } dm ? $" {dm:F0} m from the declared address" : "")}{(pm.Record.Category is null ? "" : $" ({pm.Record.Category})")}."
-                    : $" Local presence {lp.Status}: {lp.Note ?? "no matching business found near the declared address"}";
             outcomes.Add(new("Business identity", $"{v.Status} ({v.ConfidencePercent:F0}%)", detail, sev, true));
             narrative.Add($"Identity: the legal entity is {v.Status.ToString().ToLowerInvariant()} with {v.ConfidencePercent:F0}% confidence. {detail}");
             if (v.Status is VerificationStatus.NotFound or VerificationStatus.Inconclusive) next.Add("Request registration documents; public registry coverage (GLEIF / SEC EDGAR) is limited for small private companies.");
             else if (v.BestMatch is null && v.LocalPresence?.Status == LocalPresenceStatus.Confirmed) next.Add("Identity rests on local-presence evidence only; request a certificate of formation or state registration to confirm the legal entity.");
+        }
+
+        // Local presence (places sources)
+        lp ??= v?.LocalPresence;
+        if (lp is null) outcomes.Add(new("Local presence", "Not run", "Places lookup was not run.", RiskTier.Low, false));
+        else if (lp.Status == LocalPresenceStatus.NotChecked) outcomes.Add(new("Local presence", "Not checked", lp.Note ?? "No address supplied.", RiskTier.Low, false));
+        else if (lp.Status == LocalPresenceStatus.Inconclusive)
+        {
+            var detail = lp.Note ?? $"Every places source failed ({string.Join(", ", lp.Sources.Select(x => $"{x.Source}: {x.Error ?? "failed"}"))}).";
+            outcomes.Add(new("Local presence", "Unavailable", detail, RiskTier.Low, false));
+            narrative.Add($"Local presence: could not be checked. {detail}");
+        }
+        else
+        {
+            var searched = string.Join(", ", lp.Sources.Where(x => x.Succeeded).Select(x => x.Source));
+            var detail = lp.BestMatch is { } pm
+                ? $"'{pm.Record.Name}' via {pm.Record.Source}{(pm.DistanceMeters is { } dm ? $", {dm:F0} m from the declared address" : "")}{(pm.Record.Category is null ? "" : $" ({pm.Record.Category})")}; name {pm.NameScore:P0}, overall {pm.OverallScore:P0}. Searched {searched}."
+                : $"No business matching the declared name near the address in {searched}.{(lp.Note is null ? "" : " " + lp.Note)}";
+            outcomes.Add(new("Local presence", $"{lp.Status} ({lp.ConfidencePercent:F0}%)", detail, lp.Status == LocalPresenceStatus.NotFound ? RiskTier.Medium : RiskTier.Low, true));
+            narrative.Add($"Local presence: {(lp.Status == LocalPresenceStatus.Confirmed ? "a business with this name trades at the declared address" : lp.Status == LocalPresenceStatus.PartialMatch ? "a similarly named business trades near the declared address" : "no business with this name was found near the declared address")} – trading evidence, not legal registration. {detail}");
+            if (lp.Status == LocalPresenceStatus.NotFound && lp.Sources.Count(x => x.Succeeded) == 1) next.Add("Local presence was searched in OpenStreetMap only; configure a Foursquare or Google Places key, or request a utility bill / lease for the trading address.");
         }
 
         // Screening

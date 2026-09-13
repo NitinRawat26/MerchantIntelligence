@@ -76,6 +76,7 @@ public sealed class FullKybRequest
 [Route("api/kyb")]
 public sealed class KybController(
     BusinessVerificationService verification,
+    LocalPresenceService localPresence,
     SanctionsScreeningService screening,
     WebsiteComplianceScanner websiteScanner,
     ProhibitedBusinessDetector prohibited,
@@ -84,8 +85,13 @@ public sealed class KybController(
     /// <summary>Match a declared legal entity against GLEIF, SEC EDGAR and any configured registries.</summary>
     [HttpPost("verify-business")]
     [ProducesResponseType<BusinessVerificationResult>(StatusCodes.Status200OK)]
-    public async Task<ActionResult<BusinessVerificationResult>> VerifyBusiness([FromBody] BusinessIdentityRequest request, CancellationToken ct) =>
-        Ok(await verification.VerifyAsync(request.ToIdentity(), ct));
+    public async Task<ActionResult<BusinessVerificationResult>> VerifyBusiness([FromBody] BusinessIdentityRequest request, CancellationToken ct)
+    {
+        var result = await verification.VerifyAsync(request.ToIdentity(), ct);
+        if (localPresence.IsEnabled)
+            result = BusinessVerificationService.WithLocalPresence(result, await localPresence.CheckAsync(result, ct));
+        return Ok(result);
+    }
 
     /// <summary>Screen people / entities against OFAC, UN, EU (via OpenSanctions) and adverse media.</summary>
     [HttpPost("screen")]
