@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, effect, inject, signal, untracked } from '@angular/core';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -28,13 +28,19 @@ interface NavGroup { title: string; items: NavItem[]; }
 
         <nav class="nav-scroll">
           @for (g of groups; track g.title) {
-            <div class="nav-group">
-              <div class="nav-title">{{ g.title }}</div>
-              @for (n of g.items; track n.path) {
-                <a class="nav-item" [routerLink]="n.path" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: false }" (click)="handset() && opened.set(false)">
-                  <mat-icon>{{ n.icon }}</mat-icon>
-                  <span>{{ n.label }}</span>
-                </a>
+            <div class="nav-group" [class.collapsed]="isCollapsed(g.title)">
+              <button type="button" class="nav-title" (click)="toggle(g.title)" [attr.aria-expanded]="!isCollapsed(g.title)">
+                <span>{{ g.title }}</span>
+                @if (isCollapsed(g.title) && current().group === g.title) { <span class="nav-dot"></span> }
+                <mat-icon class="chev">expand_more</mat-icon>
+              </button>
+              @if (!isCollapsed(g.title)) {
+                @for (n of g.items; track n.path) {
+                  <a class="nav-item" [routerLink]="n.path" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: false }" (click)="handset() && opened.set(false)">
+                    <mat-icon>{{ n.icon }}</mat-icon>
+                    <span>{{ n.label }}</span>
+                  </a>
+                }
               }
             </div>
           }
@@ -93,7 +99,15 @@ interface NavGroup { title: string; items: NavItem[]; }
     .nav-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 12px 12px; scrollbar-width: none; }
     .nav-scroll::-webkit-scrollbar { display: none; }
     .nav-group { margin-top: 14px; }
-    .nav-title { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.12em; color: #64748b; font-weight: 600; padding: 0 12px 8px; }
+    .nav-title {
+      display: flex; align-items: center; gap: 6px; width: 100%; border: 0; background: none; cursor: pointer; font: inherit; text-align: left;
+      font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.12em; color: #64748b; font-weight: 600; padding: 4px 12px 8px; border-radius: 8px;
+    }
+    .nav-title:hover { color: #94a3b8; background: rgba(255, 255, 255, 0.04); }
+    .nav-title .chev { margin-left: auto; font-size: 16px; width: 16px; height: 16px; opacity: 0.7; transition: transform 160ms ease; }
+    .nav-group.collapsed .nav-title .chev { transform: rotate(-90deg); }
+    .nav-group.collapsed .nav-title { padding-bottom: 4px; }
+    .nav-dot { width: 6px; height: 6px; border-radius: 50%; background: #8fb0ff; box-shadow: 0 0 0 3px rgba(79, 124, 255, 0.25); }
     .nav-item {
       display: flex; align-items: center; gap: 12px; padding: 9px 12px; margin: 2px 0; border-radius: 10px;
       color: var(--mi-nav-text); font-size: 13.5px; font-weight: 500; text-decoration: none;
@@ -170,7 +184,8 @@ export class AppComponent {
       { path: '/workflows', label: 'Workflows', icon: 'account_tree', blurb: 'Configure the agents and the checks an assessment runs' }
     ] },
     { title: 'Pre-check', items: [
-      { path: '/mcc', label: 'MCC validator', icon: 'fact_check', blurb: 'Check the declared MCC against what the website actually sells' }
+      { path: '/mcc', label: 'MCC validator', icon: 'fact_check', blurb: 'Check the declared MCC against what the website actually sells' },
+      { path: '/precheck', label: 'Website & prohibited', icon: 'shield', blurb: 'Website compliance scan and prohibited & restricted business classification' }
     ] },
     { title: 'KYB & Screening', items: [
       { path: '/kyb', label: 'KYB & screening', icon: 'verified_user', blurb: 'Registry verification, sanctions/PEP, adverse media, website compliance' },
@@ -193,6 +208,20 @@ export class AppComponent {
     ] }
   ];
 
+  private static readonly COLLAPSED_KEY = 'mi.nav.collapsed';
+  readonly collapsed = signal<Set<string>>(AppComponent.loadCollapsed());
+
+  private static loadCollapsed(): Set<string> {
+    try { return new Set(JSON.parse(localStorage.getItem(AppComponent.COLLAPSED_KEY) ?? '[]') as string[]); } catch { return new Set(); }
+  }
+  isCollapsed(title: string): boolean { return this.collapsed().has(title); }
+  toggle(title: string): void {
+    const next = new Set(this.collapsed());
+    if (!next.delete(title)) next.add(title);
+    this.collapsed.set(next);
+    try { localStorage.setItem(AppComponent.COLLAPSED_KEY, JSON.stringify([...next])); } catch { /* storage unavailable */ }
+  }
+
   readonly current = toSignal(
     this.router.events.pipe(
       filter((e): e is NavigationEnd => e instanceof NavigationEnd),
@@ -202,6 +231,13 @@ export class AppComponent {
     ),
     { initialValue: this.resolve(this.router.url) }
   );
+
+  constructor() {
+    effect(() => {
+      const g = this.current().group;
+      if (untracked(this.collapsed).has(g)) this.toggle(g);
+    }, { allowSignalWrites: true });
+  }
 
   private resolve(url: string): { group: string; label: string; blurb: string } {
     const path = '/' + (url.split('?')[0].split('/')[1] ?? '');

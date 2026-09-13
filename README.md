@@ -323,8 +323,9 @@ your own labelled merchant records to it before running `train` to improve cover
 
 `web/mcc-validator` is an Angular 18 + Material single-page app with a page per capability, grouped in
 the sidebar the same way the assessment runs: *Agentic* (Full assessment, Workflows) → *Pre-check* →
-*KYB & Screening* → *Financial & Credit* → *Decision* → *Review* (Case queue) → *Operations*. Every form
-control has an ⓘ hint stating which calculation it feeds. All pages call the .NET API through the
+*KYB & Screening* → *Financial & Credit* → *Decision* → *Review* (Case queue) → *Operations*. Each
+sidebar section collapses by clicking its heading (remembered per browser; the section of the current
+page re-opens on navigation). Every form control has an ⓘ hint stating which calculation it feeds. All pages call the .NET API through the
 `/api` dev proxy (`proxy.conf.json` → `http://localhost:5292`).
 
 | Route | Page |
@@ -335,6 +336,7 @@ control has an ⓘ hint stating which calculation it feeds. All pages call the .
 | `/kyb` | KYB & screening: business identity, beneficial owners, registry sources, sanctions/PEP/adverse media, website compliance checks, prohibited-business verdict |
 | `/underwriting` | Explainability (Shapley bars + reason codes), reserve & pricing terms, volume plausibility, bank-statement CSV/PDF and P&L analysis |
 | `/mcc` | MCC validator (unchanged) |
+| `/precheck` | Pre-check: standalone **website compliance scan** (`POST /api/kyb/website-compliance` — grade, per-check table, RDAP domain record, prohibited content found on the site, unified-score effect) and **prohibited & restricted business** classification (`POST /api/kyb/prohibited-business` — verdict, BusinessPolicy component score, matched categories, full policy taxonomy). Same services the Pre-check agent runs inside Full assessment |
 | `/cases`, `/cases/:id` | Analyst queue with stats/filters; case detail with assign, status, notes, decide (override reason enforced) and per-case audit trail |
 | `/rules` | Active rule-set JSON editor with validate / publish / evaluate against sample facts, version history and rollback |
 | `/audit` | Recent audit events and hash-chain verification |

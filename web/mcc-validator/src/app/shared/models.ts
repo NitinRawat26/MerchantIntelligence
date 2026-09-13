@@ -12,6 +12,9 @@ export interface BusinessIdentityRequest {
   addressLine?: string; city?: string; region?: string; postalCode?: string; country?: string; websiteUrl?: string;
 }
 export interface BeneficialOwnerRequest { fullName: string; dateOfBirth?: string; nationality?: string; role?: string; ownershipPercent?: number; }
+export interface WebsiteComplianceRequest { websiteUrl: string; businessDescription?: string; declaredMcc?: number; legalName?: string; }
+export interface ProhibitedBusinessRequest { text?: string; businessDescription?: string; declaredMcc?: number; }
+export interface RestrictedCategory { code: string; name: string; policy: BusinessPolicy; mccs: number[]; keywords: string[]; notes: string; }
 export interface FullKybRequest { business: BusinessIdentityRequest; owners: BeneficialOwnerRequest[]; businessDescription?: string; declaredMcc?: number; }
 
 export interface RegistryRecord {
@@ -40,7 +43,7 @@ export interface ScreeningReport {
 export interface ComplianceCheck { code: string; title: string; status: 'Pass' | 'Warn' | 'Fail' | 'Skipped'; detail: string; severity: RiskTier; evidence?: string | null; }
 export interface ProhibitedBusinessResult {
   verdict: BusinessPolicy;
-  matches: { category: { code: string; name: string; policy: BusinessPolicy; mccs: number[]; keywords: string[]; notes: string }; score: number; matchedKeywords: string[]; declaredMccInCategory: boolean }[];
+  matches: { category: RestrictedCategory; score: number; matchedKeywords: string[]; declaredMccInCategory: boolean }[];
   flags: Flag[];
 }
 export interface WebsiteComplianceResult {

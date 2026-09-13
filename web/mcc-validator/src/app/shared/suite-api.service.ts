@@ -5,6 +5,7 @@ import { environment } from '../../environments/environment';
 import {
   AuditEvent, AuditVerification, CaseNote, CaseQueueStats, CaseStatus, CashFlowAnalysis, ChampionChallengerReport, DecisionExplanation,
   DriftReport, ExplainRequest, FinancialStatementAnalysis, FullKybRequest, KybReport, LoggedDecision, MatchInquiryRequest, MatchResult,
+  ProhibitedBusinessRequest, ProhibitedBusinessResult, RestrictedCategory, WebsiteComplianceRequest, WebsiteComplianceResult,
   MerchantCase, ModelsResponse, RegisteredModel, RetrainResult, RuleSet, RuleSetVersion, RulesEvaluation, TermsRecommendation, TermsRequest,
   UnifiedScoreRequest, UnifiedScoreResponse, VolumePlausibilityRequest, VolumePlausibilityResult, WebhookDelivery, WebhookSubscription, Decision, CasePriority, RuleOutcome,
   AssessmentAgentDescriptor, AssessmentEvent, AssessmentListItem, AssessmentRequest, AssessmentResult, AssessmentStepDescriptor,
@@ -33,6 +34,9 @@ export class SuiteApiService {
 
   // KYB
   kybReport(req: FullKybRequest): Observable<KybReport> { return this.http.post<KybReport>(`${this.base}/kyb/report`, req); }
+  websiteCompliance(req: WebsiteComplianceRequest): Observable<WebsiteComplianceResult> { return this.http.post<WebsiteComplianceResult>(`${this.base}/kyb/website-compliance`, req); }
+  prohibitedBusiness(req: ProhibitedBusinessRequest): Observable<ProhibitedBusinessResult> { return this.http.post<ProhibitedBusinessResult>(`${this.base}/kyb/prohibited-business`, req); }
+  prohibitedCategories(): Observable<RestrictedCategory[]> { return this.http.get<RestrictedCategory[]>(`${this.base}/kyb/prohibited-business/categories`); }
   sanctionsLists(): Observable<unknown[]> { return this.http.get<unknown[]>(`${this.base}/kyb/screen/lists`); }
 
   // Underwriting
