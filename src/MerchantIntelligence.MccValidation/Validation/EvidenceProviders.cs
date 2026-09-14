@@ -78,6 +78,9 @@ public sealed class TextClassifierProvider : IMccEvidenceProvider
         _catalog = catalog;
     }
 
+    /// <summary>Predictions below this probability are noise across 100+ classes and are not offered as candidates.</summary>
+    public const double MinProbability = 0.10;
+
     public string Name => "ML text classifier (EDGAR-trained)";
     public double Weight => 1.5;
 
@@ -88,13 +91,16 @@ public sealed class TextClassifierProvider : IMccEvidenceProvider
 
         var prediction = _classifier.Predict(context.Website.CombinedText);
         var candidates = prediction.Ranked
+            .Where(r => r.Probability >= MinProbability)
             .Select(r => new MccCandidate(r.Mcc, _catalog.Describe(r.Mcc), r.Probability))
             .ToList();
-        var highlights = new[]
+        var highlights = new List<string>
         {
             $"Top prediction {prediction.Top.Mcc} {_catalog.Describe(prediction.Top.Mcc)} at {prediction.Top.Probability:P0}",
             $"Declared MCC probability {prediction.ProbabilityOf(context.DeclaredMcc):P0} across {_classifier.ClassCount} classes"
         };
+        if (candidates.Count == 0)
+            highlights.Add($"No prediction reached {MinProbability:P0}; classifier abstains.");
         return Task.FromResult(new ProviderEvidence(Name, true, candidates, highlights));
     }
 }
