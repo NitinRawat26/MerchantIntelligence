@@ -239,6 +239,29 @@ public sealed class EvidenceAggregatorTests
     }
 
     [Fact]
+    public void Lone_provider_lower_ranked_high_risk_guess_is_not_flagged()
+    {
+        // One provider's third pick (inflated by per-provider normalisation) must not raise HIDDEN_HIGH_RISK...
+        var result = _aggregator.Aggregate(5045, Url, new[]
+        {
+            Vote("edgar", 1.2, (5045, 0.9)),
+            Vote("ml", 1.5, (6012, 0.08), (7372, 0.08), (5122, 0.06))
+        }, Array.Empty<Uri>());
+
+        Assert.DoesNotContain(result.RiskFlags, f => f.Code == "HIDDEN_HIGH_RISK");
+
+        // ...but the same guess backed by a second provider does.
+        result = _aggregator.Aggregate(5045, Url, new[]
+        {
+            Vote("edgar", 1.2, (5045, 0.9)),
+            Vote("ml", 1.5, (6012, 0.08), (7372, 0.08), (5122, 0.06)),
+            Vote("web", 1.0, (5122, 0.5), (5045, 0.4))
+        }, Array.Empty<Uri>());
+
+        Assert.Contains(result.RiskFlags, f => f.Code == "HIDDEN_HIGH_RISK");
+    }
+
+    [Fact]
     public void Same_category_neighbour_is_questionable_not_inconsistent()
     {
         // Declared full-service restaurant, evidence says fast food: same "Retail" category.

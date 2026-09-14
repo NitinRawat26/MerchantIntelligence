@@ -55,7 +55,7 @@ public sealed class EvidenceAggregator
         else if (accuracy >= 0.25 || sameCategorySupport >= 0.5) verdict = MccVerdict.Questionable;
         else verdict = MccVerdict.Inconsistent;
 
-        var flags = BuildRiskFlags(declared, declaredMcc, verdict, suggested, results);
+        var flags = BuildRiskFlags(declared, declaredMcc, verdict, suggested, informative, results);
 
         return new MccValidationResult(
             declaredMcc, declaredDescription, declaredTier, websiteUrl, verdict,
@@ -66,6 +66,7 @@ public sealed class EvidenceAggregator
     private List<RiskFlag> BuildRiskFlags(
         MccEntry? declared, int declaredMcc, MccVerdict verdict,
         IReadOnlyList<MccCandidate> suggested,
+        IReadOnlyList<(IMccEvidenceProvider Provider, ProviderEvidence Evidence)> informative,
         IReadOnlyList<(IMccEvidenceProvider Provider, ProviderEvidence Evidence)> results)
     {
         var flags = new List<RiskFlag>();
@@ -78,7 +79,9 @@ public sealed class EvidenceAggregator
         var top = suggested.FirstOrDefault();
         var hiddenHighRisk = declared?.RiskTier == RiskTier.High
             ? null
-            : suggested.FirstOrDefault(s => s.Mcc != declaredMcc && s.Score >= 0.25 && _catalog.Find(s.Mcc)?.RiskTier == RiskTier.High);
+            : suggested.FirstOrDefault(s => s.Mcc != declaredMcc && s.Score >= 0.25
+                && _catalog.Find(s.Mcc)?.RiskTier == RiskTier.High
+                && IsCorroborated(s.Mcc, informative));
 
         if (hiddenHighRisk is not null)
             flags.Add(new RiskFlag("HIDDEN_HIGH_RISK",
@@ -96,5 +99,17 @@ public sealed class EvidenceAggregator
             flags.Add(new RiskFlag("INSUFFICIENT_EVIDENCE", "The website could not be analysed; manual review required.", RiskTier.Medium));
 
         return flags;
+    }
+
+    /// <summary>
+    /// A candidate counts as corroborated when more than one provider votes for it, or when it is
+    /// some provider's top pick. A lone provider's lower-ranked guess is not enough to raise a
+    /// high-severity flag, since per-provider normalisation inflates such guesses.
+    /// </summary>
+    private static bool IsCorroborated(int mcc, IReadOnlyList<(IMccEvidenceProvider Provider, ProviderEvidence Evidence)> informative)
+    {
+        var voters = informative.Where(r => r.Evidence.Candidates.Any(c => c.Mcc == mcc)).ToList();
+        return voters.Count > 1
+            || voters.Any(r => r.Evidence.Candidates.MaxBy(c => c.Score)!.Mcc == mcc);
     }
 }
