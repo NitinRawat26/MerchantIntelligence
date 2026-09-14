@@ -310,6 +310,35 @@ curl -X POST http://localhost:5292/api/kyb/report \
 
 The first call downloads ~100 MB of sanctions data (30-60 s); subsequent calls are fast.
 
+### Optional API keys
+
+Everything works out of the box with the free, key-less sources (GLEIF, SEC EDGAR, OpenSanctions,
+GDELT, OpenStreetMap Nominatim + Overpass). The sources below are opt-in: when their key is missing they
+are reported as *Not configured* in the result and skipped, nothing fails.
+
+| Setting | Source | Where to get a key |
+|---|---|---|
+| `Kyb:FoursquareApiKey` | Foursquare Places (local business presence) | [foursquare.com/developers](https://foursquare.com/developers) → create a project → *Service API Key*. Free monthly credit; no card required. |
+| `Kyb:GooglePlacesApiKey` | Google Places (local business presence) | [Google Cloud console](https://console.cloud.google.com/apis/library/places-backend.googleapis.com), enable *Places API*, create an API key. Needs a billing account (free monthly credit). |
+| `Kyb:OpenCorporatesApiToken` | OpenCorporates company registry | [opencorporates.com/api_accounts/new](https://opencorporates.com/api_accounts/new) |
+| `Kyb:CompaniesHouseApiKey` | UK Companies House registry | [developer.company-information.service.gov.uk](https://developer.company-information.service.gov.uk/) → register an application → REST API key. Free. |
+
+Never put keys in `appsettings.json`. Locally, use .NET user secrets (stored outside the repo under your
+user profile; the `UserSecretsId` in the API `.csproj` is only a folder name and is safe to commit):
+
+```bash
+dotnet user-secrets set "Kyb:FoursquareApiKey" "<key>" --project src/MerchantIntelligence.Api
+```
+
+or pass the setting as an environment variable (`:` becomes `__`):
+
+```bash
+Kyb__FoursquareApiKey=<key> dotnet run --project src/MerchantIntelligence.Api
+```
+
+On Render (or any host) set the same `Kyb__*` environment variables on the service. Set
+`Kyb__LocalPresenceEnabled=false` to turn the places check off entirely.
+
 ### Web UI
 
 ```bash
@@ -385,7 +414,7 @@ service that redeploys on every push to `base`. Free-tier caveats:
 
 Configuration is via `Section__Key` environment variables (see `render.yaml` for the defaults), e.g.
 `Cors__AllowedOrigins__0` if the UI is hosted on another origin, `Kyb__OpenCorporatesApiToken`,
-`Kyb__CompaniesHouseApiKey`, `Kyb__FoursquareApiKey`, `Kyb__GooglePlacesApiKey`.
+`Kyb__CompaniesHouseApiKey`, `Kyb__FoursquareApiKey`, `Kyb__GooglePlacesApiKey` (see *Optional API keys* above).
 
 ## Training data
 
