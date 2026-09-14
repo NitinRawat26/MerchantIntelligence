@@ -6,7 +6,7 @@
   },
   "newProjectRoot": "projects",
   "projects": {
-    "mcc-validator": {
+    "workbench": {
       "projectType": "application",
       "schematics": {
         "@schematics/angular:component": {
@@ -20,7 +20,7 @@
         "build": {
           "builder": "@angular-devkit/build-angular:application",
           "options": {
-            "outputPath": "dist/mcc-validator",
+            "outputPath": "dist/workbench",
             "index": "src/index.html",
             "browser": "src/main.ts",
             "polyfills": [
@@ -67,10 +67,10 @@
           "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "mcc-validator:build:production"
+              "buildTarget": "workbench:build:production"
             },
             "development": {
-              "buildTarget": "mcc-validator:build:development"
+              "buildTarget": "workbench:build:development"
             }
           },
           "defaultConfiguration": "development",

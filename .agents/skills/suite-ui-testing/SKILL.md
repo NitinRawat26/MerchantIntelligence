@@ -5,7 +5,7 @@ description: Run the Angular merchant workbench against the local API and verify
 
 # Suite UI testing
 
-Run `dotnet run --project src/MerchantIntelligence.Api` from the repository root (5292), and `npm start` from `web/mcc-validator` (4200). The Angular development proxy forwards `/api` to 5292. If dependencies are absent, install them using the package lock. Restart both services after machine suspension; SQLite state and model artifacts may persist.
+Run `dotnet run --project src/MerchantIntelligence.Api` from the repository root (5292), and `npm start` from `web/workbench` (4200). The Angular development proxy forwards `/api` to 5292. If dependencies are absent, install them using the package lock. Restart both services after machine suspension; SQLite state and model artifacts may persist.
 
 ## Devin Secrets Needed
 None for local UI acceptance. Unconfigured MATCH should explicitly report Unknown/NotConfigured; do not substitute a clear result.

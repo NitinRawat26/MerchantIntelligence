@@ -1,9 +1,9 @@
 # Stage 1: Angular workbench
 FROM node:20-alpine AS web
 WORKDIR /web
-COPY web/mcc-validator/package*.json ./
+COPY web/workbench/package*.json ./
 RUN npm ci --no-audit --no-fund
-COPY web/mcc-validator/ ./
+COPY web/workbench/ ./
 RUN npm run build -- --configuration production
 
 # Stage 2: .NET API
@@ -22,7 +22,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=build /app ./
-COPY --from=web /web/dist/mcc-validator/browser ./wwwroot
+COPY --from=web /web/dist/workbench/browser ./wwwroot
 RUN mkdir -p data
 ENV ASPNETCORE_ENVIRONMENT=Production \
     DOTNET_gcServer=0 \
