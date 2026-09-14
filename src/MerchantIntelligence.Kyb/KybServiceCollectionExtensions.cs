@@ -15,7 +15,7 @@ public static class KybServiceCollectionExtensions
 
         services.AddHttpClient(KybOptions.HttpClientName, c =>
         {
-            c.Timeout = TimeSpan.FromSeconds(20);
+            c.Timeout = TimeSpan.FromSeconds(25);
             c.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", kybOptions.UserAgent);
             c.DefaultRequestHeaders.Accept.ParseAdd("application/json");
         });
