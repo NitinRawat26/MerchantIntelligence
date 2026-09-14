@@ -105,7 +105,7 @@ public sealed class LocalPresenceService
         {
             return await CheckAsync(verification.Input, known, ct);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex) when (!ct.IsCancellationRequested)
         {
             _logger.LogWarning(ex, "Local presence check failed");
             return new LocalPresenceResult(LocalPresenceStatus.Inconclusive, 0, null, Array.Empty<PlaceSourceResult>(), ex.Message);
@@ -123,7 +123,7 @@ public sealed class LocalPresenceService
         if (centre is null)
         {
             try { centre = await _geocoder.GeocodeAsync(identity, ct); }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex) when (!ct.IsCancellationRequested)
             {
                 _logger.LogWarning(ex, "Nominatim geocoding failed");
                 return new LocalPresenceResult(LocalPresenceStatus.Inconclusive, 0, null, Array.Empty<PlaceSourceResult>(), $"Address could not be geocoded: {ex.Message}");
@@ -145,7 +145,7 @@ public sealed class LocalPresenceService
                     .ToList();
                 return new PlaceSourceResult(p.Name, true, matches);
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex) when (!ct.IsCancellationRequested)
             {
                 _logger.LogWarning(ex, "Places provider {Provider} failed", p.Name);
                 return new PlaceSourceResult(p.Name, false, Array.Empty<PlaceMatch>(), ex.Message);

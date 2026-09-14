@@ -68,7 +68,7 @@ public sealed class SanctionsScreeningService
             if (_options.EnableAdverseMedia && _adverseMedia is not null)
             {
                 try { media = await _adverseMedia.SearchAsync(subject, ct); }
-                catch (Exception ex) when (ex is not OperationCanceledException)
+                catch (Exception ex) when (!ct.IsCancellationRequested)
                 {
                     _logger.LogWarning(ex, "Adverse media lookup failed for {Subject}", subject.Name);
                     media = new AdverseMediaResult(_adverseMedia.Name, false, 0, 0, Array.Empty<AdverseMediaArticle>(), ex.Message);
@@ -120,7 +120,7 @@ public sealed class SanctionsScreeningService
                     statuses.Add(new SanctionsListStatus(source.ListName, index.Count - before, new DateTimeOffset(File.GetLastWriteTimeUtc(path), TimeSpan.Zero), null));
                     _logger.LogInformation("Loaded {Count} entities from {List}", index.Count - before, source.ListName);
                 }
-                catch (Exception ex) when (ex is not OperationCanceledException)
+                catch (Exception ex) when (!ct.IsCancellationRequested)
                 {
                     _logger.LogWarning(ex, "Failed to load sanctions list {List}", source.ListName);
                     statuses.Add(new SanctionsListStatus(source.ListName, 0, null, ex.Message));

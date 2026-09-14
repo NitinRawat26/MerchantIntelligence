@@ -21,7 +21,8 @@ export function describeError(err: unknown): string {
     if (typeof body?.detail === 'string') return body.detail;
     if (typeof body?.title === 'string') return body.title;
     if (typeof body === 'string' && body) return body;
-    if (err.status === 0) return 'API unreachable – is the .NET API running on port 5292?';
+    if (err.status === 0) return 'API unreachable – no response from the server (is the .NET API running?).';
+    if (err.status >= 500) return `The API failed while processing the request (${err.status}). Please retry; check the API logs if it persists.`;
     return `${err.status} ${err.statusText}`;
   }
   return err instanceof Error ? err.message : String(err);

@@ -49,7 +49,7 @@ public sealed class BusinessVerificationService
                     .ToList();
                 return new RegistrySourceResult(p.Name, true, matches);
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex) when (!ct.IsCancellationRequested)
             {
                 _logger.LogWarning(ex, "Registry provider {Provider} failed", p.Name);
                 return new RegistrySourceResult(p.Name, false, Array.Empty<RegistryMatch>(), ex.Message);
@@ -145,7 +145,7 @@ public sealed class BusinessVerificationService
                 var result = await geocoder.VerifyAsync(identity, ct);
                 if (result.Verified || !result.Error!.Contains("only covers", StringComparison.Ordinal)) return result;
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex) when (!ct.IsCancellationRequested)
             {
                 _logger.LogWarning(ex, "Geocoder {Geocoder} failed", geocoder.Name);
                 return new AddressVerification(geocoder.Name, false, null, null, null, ex.Message);
