@@ -84,5 +84,31 @@ See [MCC validation → Retraining](MCC-Validation.md#retraining-the-edgar-class
 
 * `README.md` — overview and quick start.
 * `docs/full-assessment.md` — functional specification of the full assessment.
-* `docs/wiki/` — this wiki (architecture and module reference). Keep pages in sync when adding
-  steps, endpoints, settings or finding codes.
+* `docs/wiki/` — this wiki (architecture and module reference).
+
+### Keeping the wiki current
+
+The wiki is static Markdown: it changes only when a PR changes it. The rule is **the PR that
+changes behaviour updates the page that describes it**, in the same PR — never a follow-up.
+`.github/pull_request_template.md` carries the checklist; reviewers should treat an unticked
+wiki item as a blocking comment. Map of what touches which page:
+
+| Change | Page(s) |
+|--------|---------|
+| New/removed step, agent review logic, `WorkflowDefinition` field, planner rule | `Agents-and-Steps.md`, `Assessment-Workflow.md` |
+| Endpoint added/renamed, request or response shape | `API-Reference.md` |
+| Angular route or page | `Web-UI.md` |
+| `appsettings` key / env var / Render setting | `Configuration.md` |
+| External source, key, licence, embedded reference file | `Data-Sources.md` |
+| Score weight, cap, tier, default rule, pricing band | `Scoring-and-Decisions.md` |
+| Registry, presence, sanctions, compliance, prohibited categories | `KYB-and-Compliance.md` |
+| Evidence provider, weight, aggregator threshold, training | `MCC-Validation.md` |
+| Analyzer, benchmark, flag code, model feature | `Underwriting.md` |
+| New term used across pages | `Glossary.md` |
+
+Quick self-check before opening a PR:
+
+```bash
+git diff --name-only base... | grep -qE '^(src|web)/' && \
+git diff --name-only base... | grep -q '^docs/wiki/' || echo "code changed, wiki did not — confirm no page is affected"
+```
