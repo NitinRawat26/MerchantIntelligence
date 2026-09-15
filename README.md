@@ -179,7 +179,7 @@ One intake, every check, one decision. Collects the business, owners, website, M
 
 Each step is isolated: a failing step is recorded as a coverage gap, never as clear. If every public registry fails, or no sanctions list could be downloaded, the result is reported as *Unavailable* and excluded from the unified score rather than being read as verified/clear. MATCH stays `NotConfigured` without credentials. **Missing evidence never stops a run**: the Pre-check agent tells the analyst what is missing and how it degrades coverage/confidence, and the assessment continues over the evidence that is there.
 
-The complete functional specification — every intake field, each of the 14 checks (inputs, processing, outputs, how it feeds the score), decision derivation, coverage semantics, the explainability report, the PDF memo, presets and a field-to-check matrix — is in **[docs/full-assessment.md](docs/full-assessment.md)**.
+The complete functional specification — every intake field, each of the 14 checks (inputs, processing, outputs, how it feeds the score), decision derivation, coverage semantics, the explainability report, the PDF memo, presets and a field-to-check matrix — is in **[docs/full-assessment.md](docs/full-assessment.md)**. Architecture and module reference (agents, workflow engine, scoring, KYB, MCC, underwriting, API, UI, configuration) live in the **[wiki](docs/wiki/Home.md)**.
 
 ### Agentic workflow (`/api/workflows`, UI `/workflows`)
 

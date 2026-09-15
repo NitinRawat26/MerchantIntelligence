@@ -1,0 +1,108 @@
+# KYB and compliance
+
+Project: `src/MerchantIntelligence.Kyb`. API: `/api/kyb` (see [API reference](API-Reference.md)).
+All sources are public/free by default; keyed sources are opt-in ([Configuration](Configuration.md)).
+Live acceptance procedure: `.agents/skills/kyb-api-testing/SKILL.md`.
+
+## Business identity verification — `Registry/`
+
+`BusinessVerificationService` fans the declared legal name / address / registration number out to
+every configured `IRegistryProvider`, fuzzy-matches the returned `RegistryRecord`s
+(`Matching/NameMatcher`: token-set overlap + Jaro-Winkler, legal suffixes stripped) and returns a
+`VerificationResult` with status (`Verified` / `PartialMatch` / `NotFound` / `Unavailable`),
+confidence, per-source outcome and flags.
+
+| Provider | Data | Key |
+|----------|------|-----|
+| GLEIF | LEI records: legal name, legal form, address, status | no |
+| SEC EDGAR | company-name autocomplete (`efts.sec.gov`) → `data.sec.gov/submissions/CIK….json`: entity type, SIC, state of incorporation, EIN, website, last filing | no (needs descriptive `Kyb:UserAgent`) |
+| US Census geocoder | address normalisation / geocoding | no |
+| OpenCorporates | company type, status, incorporation date | `Kyb:OpenCorporatesApiToken` |
+| Companies House (UK) | company status, SIC, registered office | `Kyb:CompaniesHouseApiKey` |
+
+Flags: `NEW_ENTITY`, `NAME_MISMATCH`, `REGISTERED_ADDRESS_MISMATCH`, `INACTIVE_ENTITY`,
+`VIRTUAL_OFFICE_ADDRESS`, `ENTITY_NOT_FOUND`. A source that errors is *Unavailable* and excluded; if
+every source is unavailable the whole check is *Unavailable*, never "verified".
+
+**Coverage note.** Small merchants (a local restaurant, a sole trader) hold no LEI and file nothing
+with the SEC, so registry verification reports them `NotFound`. That is the reason for the separate
+*local presence* step below. Ticker symbols are not captured today; there is no merchant-segment
+("SMB vs public company") classification in the code — it has been discussed as a future addition.
+
+## Local business presence — `Registry/LocalPresence.cs`
+
+`LocalPresenceService` (step `presence`, depends on `verification`):
+
+1. Geocode the declared address — US Census first, OpenStreetMap Nominatim fallback.
+2. Search places sources around that point for a business with a matching name:
+   **OpenStreetMap Overpass** (always), **Foursquare Places** (`Kyb:FoursquareApiKey`),
+   **Google Places** (`Kyb:GooglePlacesApiKey`).
+3. Score name similarity + distance → `Confirmed` / `Partial` / `NotFound`.
+
+Effects: a confirmed presence raises identity to `PartialMatch` (confidence capped at 70 % — it
+proves trading at the location, not legal registration) and adds `LOCAL_PRESENCE_CONFIRMED`; near
+miss → `LOCAL_PRESENCE_PARTIAL`; nothing nearby → `LOCAL_PRESENCE_NOT_FOUND` (Low severity: with
+OSM alone, absence is weak evidence). `Kyb:LocalPresenceEnabled=false` disables it.
+
+## Sanctions / PEP / adverse-media screening — `Sanctions/`
+
+* `SanctionsListSources`: OpenSanctions consolidated `targets.simple.csv` (OFAC, EU, UN, UK HMT…),
+  OFAC SDN CSV, UN Security Council consolidated XML; optional OpenSanctions PEP dataset
+  (`Sanctions:IncludePeps`). Downloaded on first use into `Sanctions:CacheDirectory`
+  (default `data/sanctions`, ~100 MB, 30–60 s) and refreshed every `Sanctions:RefreshInterval` (24 h).
+* `SanctionsIndex` builds an in-memory index; `SanctionsScreeningService` screens the legal name,
+  trading name and each beneficial owner (aliases, DOB and nationality aware) with
+  `Sanctions:MatchThreshold` (0.85) and runs a GDELT adverse-media search
+  (`Sanctions:EnableAdverseMedia`).
+* Result: `Clear` / `PotentialMatch` / `Match` / `Unavailable` with per-hit list, score and source
+  URL. A `Match` sets the `SANCTIONS_MATCH` hard stop. If no list could be loaded the result is
+  *Unavailable*, not clear. The KYB agent re-screens any alias discovered by registry verification
+  (`ALIAS_RESCREENED`).
+
+Licensing: OpenSanctions bulk data is CC BY-NC 4.0 (commercial use needs their licence); OFAC and
+UN lists are public domain.
+
+## Website compliance — `Compliance/WebsiteComplianceScanner.cs`
+
+Card-brand website requirements scored 0–100 with grade A–F. Reuses the shared website
+`HttpClient` and `HtmlTextExtractor`; crawls the homepage plus linked policy pages.
+
+| Check code | What it verifies |
+|-----------|------------------|
+| `SITE_UNREACHABLE`, `TLS` | Reachable; served over HTTPS |
+| `PRIVACY_POLICY`, `TERMS_CONDITIONS`, `REFUND_POLICY`, `DELIVERY_POLICY` | Dedicated page found and substantive (Pass), link/wording only (Warn), absent (Fail) |
+| `CUSTOMER_SERVICE_CONTACT` | Email / phone / address present |
+| `CURRENCY_DISCLOSURE`, `CARD_ACCEPTANCE_MARKS`, `CHECKOUT_PRESENT`, `EXPORT_RESTRICTIONS` | Commerce disclosures |
+| `LEGAL_NAME_DISCLOSED` | Declared legal name appears on the site |
+| `PLACEHOLDER_CONTENT` | Not an under-construction / parked page |
+| `PROHIBITED_CONTENT` / category flags | Site text run through the prohibited-business detector |
+| `DOMAIN_AGE`, `DOMAIN_EXPIRING` | RDAP registration date and expiry |
+
+Limitations: static HTML only (no JavaScript rendering — SPA sites can look empty), robots.txt is
+not consulted, 15 s per request, 4 MB cap.
+
+## Prohibited & restricted business — `Prohibited/ProhibitedBusinessDetector.cs`
+
+`Analyze(websiteText, businessDescription, declaredMcc)` classifies against 23 categories in
+`Resources/restricted-categories.json` (CBD/cannabis, adult, gambling, firearms, tobacco/vape,
+crypto, debt collection, MLM, pharma, nutraceuticals, weapons, …), each with keyword/phrase
+patterns, an MCC list and a policy (`Acceptable` / `HighRisk` / `Restricted` / `Prohibited`).
+
+Scoring per category:
+
+1. Website text and description are scanned; multi-word phrases weigh 1.5×.
+2. A keyword that also appears in the **description** counts **2×** — self-declared evidence beats
+   incidental site text.
+3. Density matters (hits per words of text), breadth (distinct keywords) beats repetition; normalised 0–1.
+4. Declared MCC in the category's MCC list → score × 1.5 and the match is kept even when weak.
+5. Matches ≥ 0.35 (or MCC-in-category) raise a flag; verdict = worst policy among flags.
+
+`Prohibited` → `PROHIBITED_BUSINESS` hard stop; `Restricted` → High reason → Refer. The
+description is what gives coverage when the merchant has no website; the MCC alone never clears
+or condemns.
+
+## Combined report
+
+`KybReportService` (`POST /api/kyb/report`) runs verification, screening, website compliance and
+prohibited-business for one applicant and returns an overall `RiskTier` with the merged flag list —
+the same services the KYB and Pre-check agents call inside a full assessment.
