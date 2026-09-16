@@ -33,7 +33,9 @@
 | **Shapley value** | Exact per-feature attribution of the credit model's probability vs. a baseline merchant |
 | **SIC** | SEC industry code; mapped to MCC via a curated crosswalk (weak labels) |
 | **Step** | One check implementing `IAssessmentStep`; 14 exist |
-| **Stop-gate / transition** | Designed (not implemented) workflow concepts for per-step halting rules and agent-to-agent control flow |
+| **Stop-gate** | Per-step rule (`steps[].stopGate`) evaluated right after the step: on hard stop / failure / high-severity flag / named flag it skips the remaining evidence steps of the agent or the whole workflow, marks the agent Failed and can force Refer or Decline |
+| **Transition** | Agent-to-agent control flow (`transitions[]`): the target runs after the source when `Always` / `Success` / `Fail` holds; an agent with no holding transition is Skipped |
+| **Slot** | Position of a step inside an `Ordered` agent; equal slots run together. `dependsOn` overrides slots |
 | **Unified risk score** | 0–1000 weighted composite over covered components; tier VeryLow…VeryHigh |
 | **Unavailable** | Result status when a source could not be reached; excluded from the score, never read as clear |
-| **Workflow definition** | Versioned JSON describing agents, steps, order, params, on-fail policy |
+| **Workflow definition** | Versioned JSON describing agents (ownership, `stepOrder`), steps (params, on-fail, `slot`, `stopGate`) and `transitions` |

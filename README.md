@@ -184,7 +184,7 @@ The complete functional specification — every intake field, each of the 14 che
 
 ### Agentic workflow (`/api/workflows`, UI `/workflows`)
 
-The assessment is not a hard-coded pipeline. Each of the 14 checks is an `IAssessmentStep` (id, display name, `dependsOn`, parameters) and each agent is an `IAssessmentAgent` (id, name, mandate, default steps, a deterministic `ReviewAsync`). A **workflow definition** — JSON, versioned in SQLite with publish / rollback / audit events like policy rules — says which agents are enabled, which steps each agent owns, the step order, per-step parameters and the on-failure policy (`Skip` → coverage gap, `Refer` → force Refer, `Abort`). `WorkflowPlanner` validates it (unknown / duplicate / unowned steps, unknown parameters, dependency cycles, degraded checks whose dependency is disabled) and computes the stages; `WorkflowRunner` compiles the plan into a `Microsoft.Agents.AI.Workflows` graph — one executor per enabled agent, fan-out inside a stage, a gate between stages — and streams executor events back to the API.
+The assessment is not a hard-coded pipeline. Each of the 14 checks is an `IAssessmentStep` (id, display name, `dependsOn`, parameters) and each agent is an `IAssessmentAgent` (id, name, mandate, default steps, a deterministic `ReviewAsync`). A **workflow definition** — JSON, versioned in SQLite with publish / rollback / audit events like policy rules — says which agents are enabled, which steps each agent owns, per-step parameters and the on-failure policy (`Skip` → coverage gap, `Refer` → force Refer, `Abort`), plus the **flow**: agent-to-agent `transitions[]` (`Always` / `Success` / `Fail` — an agent whose incoming transitions all fail is *Skipped*; agents with no incoming transition start together), per-agent `stepOrder` (`Ordered` with `slot`s, equal slots run together, or `Parallel`) and per-step `stopGate`s (trigger: hard stop / failure / high-severity flag / named flag; scope: agent or workflow; optional forced Refer / Decline). `dependsOn` stays a hard data constraint that overrides any chosen order. `WorkflowPlanner` validates it (unknown / duplicate / unowned steps, unknown parameters, dependency and transition cycles, degraded checks whose dependency is disabled) and computes the stages; `WorkflowRunner` compiles the plan into a `Microsoft.Agents.AI.Workflows` graph — one executor per enabled agent, fan-out inside a stage, a gate between stages, conditional edges per transition, deterministic stop-gate evaluation after each step — and streams executor events back to the API.
 
 | Agent | Owns (default) | Deterministic review it adds |
 |-------|----------------|------------------------------|
@@ -200,12 +200,12 @@ Agents are logical groupings of executors with coded heuristics — they coordin
 | `GET catalog` | Step catalogue: id, name, description, `dependsOn`, parameter schema |
 | `GET agents` | Agent catalogue: id, name, mandate, description, default steps |
 | `GET default` | The embedded default workflow (`Resources/default-workflow.json`) |
-| `GET active`, `GET active/plan`, `GET active/steps` | Active definition, its computed plan (agent stages, step stages, disabled steps, warnings, Mermaid graph) and its step list |
+| `GET active`, `GET active/plan`, `GET active/steps` | Active definition, its computed plan (agent stages with `runsWhen` / `waitsFor` / per-agent step stages, disabled steps, warnings, Mermaid graph) and its step list |
 | `POST validate` | Validates a draft and returns its plan and warnings without saving |
 | `POST publish` | Stores a new version and makes it active (author, comment; audited) |
 | `GET history`, `POST rollback/{version}` | Version history and rollback (creates a new version) |
 
-Disabling a step, or a whole agent, makes every affected check a *Skipped* coverage gap — results stay 13-check compatible and the score simply has less to work with.
+Disabling a step, or a whole agent — or an agent being skipped because none of its incoming transitions held — makes every affected check a *Skipped* coverage gap — results stay 13-check compatible and the score simply has less to work with.
 
 ## Project layout
 
@@ -377,7 +377,7 @@ page re-opens on navigation). Every form control has an ⓘ hint stating which c
 | Route | Page |
 |-------|------|
 | `/assess`, `/assess/:id` | Full assessment (default page): one intake form (business, owners, website, MCC, volumes, statements/uploads), live run grouped into agent lanes (per-check status plus each agent's advisories / actions / observations as they happen), decision card, tabbed explainability report (identity & screening, website/MCC/business type, financials & plausibility, terms, **agents**, run log with owning agent), PDF download and recent-assessment history |
-| `/workflows` | Workflow editor: agent cards (mandate, enable toggle, owned checks, stage and what it waits for), drag-to-reorder check list with enable toggles, agent assignment, on-failure policy and parameters, live validation with degraded / unowned warnings, stage + Mermaid graph preview, version history with load and rollback, publish |
+| `/workflows` | Visual workflow designer: agent-flow canvas with Start/End, the four fixed colour-coded agents dragged from a palette, port-to-port transitions cycled always → on success → on fail (loops refused), step lanes per agent (Ordered slots or All parallel, “run together” brackets, dependency badges, dependency-safe drops), inspector for agent / transition / step incl. stop-gates, full-screen mode, live JSON, dry-run plan + Mermaid, version history with load and rollback, publish |
 | `/score` | Unified risk score: enter credit application + upstream KYB/screening/website/plausibility signals, see score, tier, coverage gaps, hard stops, reason codes, matched rules; optionally open a case |
 | `/kyb` | KYB & screening: business identity, beneficial owners, registry sources, sanctions/PEP/adverse media, website compliance checks, prohibited-business verdict |
 | `/underwriting` | Explainability (Shapley bars + reason codes), reserve & pricing terms, volume plausibility, bank-statement CSV/PDF and P&L analysis |
