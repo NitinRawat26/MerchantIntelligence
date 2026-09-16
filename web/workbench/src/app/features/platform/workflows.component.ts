@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, ElementRef, HostListener, computed, inject, signal, viewChild } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -36,8 +36,9 @@ import { AGENT_ICONS, WorkflowDesignerComponent } from './workflow-designer.comp
           <mi-status [loading]="loading()" [error]="error()"></mi-status>
           <mat-tab-group>
             <mat-tab label="Designer">
-              <div class="tab">
+              <div #designerTab class="tab" [class.fullscreen]="fullscreen()">
                 <div class="row toolbar">
+                  <button mat-stroked-button type="button" (click)="toggleFullscreen()" [matTooltip]="fullscreen() ? 'Back to the page (Esc)' : 'Expand the designer over the whole window'"><mat-icon>{{ fullscreen() ? 'fullscreen_exit' : 'fullscreen' }}</mat-icon> {{ fullscreen() ? 'Exit full screen' : 'Full screen' }}</button>
                   <button mat-stroked-button type="button" (click)="load()" matTooltip="Discard edits and load the active version"><mat-icon>refresh</mat-icon> Reload active</button>
                   <button mat-stroked-button type="button" (click)="resetToDefault()" matTooltip="Load the built-in default flow"><mat-icon>restart_alt</mat-icon> Default flow</button>
                   <button mat-stroked-button type="button" (click)="newWorkflow()" matTooltip="Start from an empty canvas"><mat-icon>add</mat-icon> New workflow</button>
@@ -156,6 +157,7 @@ import { AGENT_ICONS, WorkflowDesignerComponent } from './workflow-designer.comp
   styles: [`
     .tab { padding: 18px 0 4px; } .w200 { width: 200px; } .w300 { width: 300px; } .spacer { flex: 1; } .small { font-size: 12px; }
     .toolbar { margin-bottom: 10px; }
+    .tab.fullscreen { overflow: auto; padding: 14px 22px 22px; background: var(--mi-bg, #f4f6fa); }
     .status-line { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 4px 0 12px; }
     .pill mat-icon[inline] { font-size: 14px; width: 14px; height: 14px; vertical-align: -2px; }
     .stages { padding-left: 20px; display: flex; flex-direction: column; gap: 8px; } .stages li { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
@@ -183,6 +185,15 @@ export class WorkflowsComponent {
   readonly message = signal<{ ok: boolean; text: string } | null>(null);
   readonly jsonError = signal<string | null>(null);
   readonly loadKey = signal(0);
+  readonly fullscreen = signal(false);
+  private readonly designerTab = viewChild<ElementRef<HTMLElement>>('designerTab');
+
+  /** Browser fullscreen on the designer tab: fills the window over the sidebar; Esc or the button leaves it. */
+  toggleFullscreen(): void {
+    if (document.fullscreenElement) { void document.exitFullscreen(); return; }
+    void this.designerTab()?.nativeElement.requestFullscreen();
+  }
+  @HostListener('document:fullscreenchange') syncFullscreen(): void { this.fullscreen.set(document.fullscreenElement === this.designerTab()?.nativeElement); }
   readonly enabledCount = computed(() => this.draft()?.steps.filter(s => s.enabled).length ?? 0);
   readonly jsonText = computed(() => { const d = this.draft(); return d ? JSON.stringify(d, null, 2) : ''; });
 
