@@ -14,7 +14,7 @@ public sealed class DecisionAgent : IAssessmentAgent
     public Task<AgentReview> ReviewAsync(AssessmentContext ctx, IReadOnlyList<string> ownedSteps)
     {
         var findings = new List<AgentFinding>();
-        var decision = AssessmentComposer.BuildDecision(ctx.Score, ctx.Rules, ctx.Steps, ctx.ForcedRefer);
+        var decision = AssessmentComposer.BuildDecision(ctx.Score, ctx.Rules, ctx.Steps, ctx.ForcedRefer, ctx.ForcedDecline);
 
         if (ctx.Score is null)
             findings.Add(new(AgentFindingKind.Advisory, "NO_SCORE", "Unified score did not run; the outcome defaults to Refer.", "Enable the score step or investigate its failure."));

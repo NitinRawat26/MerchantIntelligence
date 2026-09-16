@@ -78,14 +78,19 @@ internal static class AssessmentComposer
         return list.GroupBy(x => (x.Source, x.Code)).Select(g => g.First()).ToList();
     }
 
-    internal static AssessmentDecision BuildDecision(UnifiedRiskScore? score, RulesEvaluation? rules, IReadOnlyList<AssessmentStep> steps, bool forcedRefer = false)
+    internal static AssessmentDecision BuildDecision(UnifiedRiskScore? score, RulesEvaluation? rules, IReadOnlyList<AssessmentStep> steps, bool forcedRefer = false, bool forcedDecline = false)
     {
         if (score is null || rules is null)
-            return new AssessmentDecision("Refer", 0, "Unknown", 0, "n/a", steps.Any(s => s.Id == "score" && s.Status == StepStatus.Skipped)
-                ? "The unified score step is disabled in the active workflow; refer to an analyst for manual review."
-                : "The unified score or rules engine failed; refer to a senior analyst for manual review.");
+            return new AssessmentDecision(forcedDecline ? "Decline" : "Refer", 0, "Unknown", 0, "n/a", forcedDecline
+                ? "Decline. A workflow stop-gate forced the outcome before the unified score ran."
+                : steps.Any(s => s.Id == "score" && s.Status == StepStatus.Skipped)
+                    ? "The unified score step is disabled in the active workflow; refer to an analyst for manual review."
+                    : "The unified score or rules engine failed; refer to a senior analyst for manual review.");
 
         var failed = steps.Count(s => s.Status == StepStatus.Failed);
+        if (forcedDecline && rules.Outcome != RuleOutcome.Decline)
+            return new AssessmentDecision(RuleOutcome.Decline.ToString(), score.Score, score.Tier, score.CoveragePercent, rules.RuleSetVersion,
+                $"Decline. Score {score.Score}/1000 ({score.Tier}) and rule {rules.DecidingRule} would give {rules.Outcome}, but a workflow stop-gate forced Decline.");
         if (forcedRefer && rules.Outcome == RuleOutcome.Approve)
         {
             var forced = $"Refer for manual review. Score {score.Score}/1000 ({score.Tier}) and rule {rules.DecidingRule} would approve, but {failed} check(s) failed under a refer-on-failure policy.";

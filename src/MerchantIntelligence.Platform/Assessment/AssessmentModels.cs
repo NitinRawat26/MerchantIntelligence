@@ -10,6 +10,7 @@ using MerchantIntelligence.Platform.Cases;
 using MerchantIntelligence.Platform.Integrations;
 using MerchantIntelligence.Platform.Rules;
 using MerchantIntelligence.Platform.Scoring;
+using MerchantIntelligence.Platform.Workflows;
 using MerchantIntelligence.Underwriting.Explainability;
 using MerchantIntelligence.Underwriting.Financials;
 using MerchantIntelligence.Underwriting.Plausibility;
@@ -109,8 +110,8 @@ public sealed record AssessmentResult(
     AssessmentWorkflowInfo? Workflow = null,
     IReadOnlyList<AgentReport>? Agents = null);
 
-/// <summary>Which workflow definition produced a result, for replay and audit.</summary>
-public sealed record AssessmentWorkflowInfo(string Name, string Version, IReadOnlyList<string> EnabledSteps);
+/// <summary>Which workflow definition produced a result, for replay and audit, and which stop-gates fired during the run.</summary>
+public sealed record AssessmentWorkflowInfo(string Name, string Version, IReadOnlyList<string> EnabledSteps, IReadOnlyList<StopGateHit>? StopGates = null);
 
 public enum AgentFindingKind
 {
