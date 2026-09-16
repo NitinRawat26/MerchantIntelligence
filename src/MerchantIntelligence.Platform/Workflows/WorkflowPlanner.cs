@@ -48,7 +48,7 @@ public sealed class WorkflowPlanner
     {
         var known = def.Steps.Select(s => s.Id).ToHashSet();
         var newSteps = _catalog.Keys.Where(k => !known.Contains(k)).ToList();
-        var newAgents = def.Agents is null ? [] : _agentOrder.Where(a => def.Agents.All(x => x.Id != a)).ToList();
+        var newAgents = _agentOrder.Where(a => def.Agents is null || def.Agents.All(x => x.Id != a)).ToList();
         if (newSteps.Count == 0 && newAgents.Count == 0) return def;
 
         var steps = def.Steps.Select(s => new WorkflowStepConfig
@@ -56,9 +56,10 @@ public sealed class WorkflowPlanner
             Id = s.Id, Enabled = s.Enabled, OnFail = s.OnFail, DependsOn = s.DependsOn?.ToList(), Params = s.Params is null ? null : new(s.Params),
             Slot = s.Slot, StopGate = s.StopGate is null ? null : new StopGateConfig { When = s.StopGate.When, Code = s.StopGate.Code, Scope = s.StopGate.Scope, ForceOutcome = s.StopGate.ForceOutcome }
         }).ToList();
-        var agents = def.Agents?.Select(a => new WorkflowAgentConfig { Id = a.Id, Enabled = a.Enabled, Steps = a.Steps.ToList(), StepOrder = a.StepOrder }).ToList();
+        // a definition without an agents block gets the default ownership made explicit; agents missing from an existing block start empty
+        var agents = def.Agents?.Select(a => new WorkflowAgentConfig { Id = a.Id, Enabled = a.Enabled, Steps = a.Steps.ToList(), StepOrder = a.StepOrder }).ToList() ?? [];
         foreach (var id in newAgents)
-            agents!.Add(new WorkflowAgentConfig { Id = id, Enabled = true, Steps = [] });
+            agents.Add(new WorkflowAgentConfig { Id = id, Enabled = true, Steps = def.Agents is null ? _agents[id].DefaultSteps.Where(known.Contains).ToList() : [] });
 
         foreach (var id in newSteps)
         {
@@ -190,9 +191,11 @@ public sealed class WorkflowPlanner
         var set = agent.Steps.Where(activeIds.Contains).ToHashSet();
         var stageOf = new Dictionary<string, int>();
 
+        var topological = InDependencyOrder(def, set);
+
         if (agent.StepOrder == AgentStepOrder.Parallel)
         {
-            foreach (var step in def.Steps.Where(s => set.Contains(s.Id)))
+            foreach (var step in topological)
                 stageOf[step.Id] = DependenciesOf(step).Where(set.Contains).Select(d => stageOf[d] + 1).DefaultIfEmpty(0).Max();
         }
         else
@@ -207,8 +210,8 @@ public sealed class WorkflowPlanner
                 previous = slot;
             }
             var ranks = slotOf.Values.Distinct().OrderBy(x => x).Select((s, i) => (s, i)).ToDictionary(x => x.s, x => x.i);
-            // dependencies can only push a step later; resolve in dependency order (def.Steps order is dependency-safe)
-            foreach (var step in def.Steps.Where(s => set.Contains(s.Id)))
+            // dependencies can only push a step later; resolve in dependency order
+            foreach (var step in topological)
             {
                 var wanted = ranks[slotOf[step.Id]];
                 var deps = DependenciesOf(step).Where(set.Contains).ToList();
@@ -219,8 +222,25 @@ public sealed class WorkflowPlanner
             }
         }
 
+        var laneOrder = agent.Steps.Select((id, i) => (id, i)).ToDictionary(x => x.id, x => x.i);
         return stageOf.GroupBy(kv => kv.Value).OrderBy(g => g.Key)
-            .Select(g => def.Steps.Select(s => s.Id).Where(id => g.Any(kv => kv.Key == id)).ToList()).ToList();
+            .Select(g => g.Select(kv => kv.Key).OrderBy(id => laneOrder[id]).ToList()).ToList();
+    }
+
+    /// <summary>The given steps ordered so that every step follows its (in-set) dependencies; ties keep definition order.</summary>
+    private List<WorkflowStepConfig> InDependencyOrder(WorkflowDefinition def, IReadOnlySet<string> set)
+    {
+        var pending = def.Steps.Where(s => set.Contains(s.Id)).ToList();
+        var done = new HashSet<string>();
+        var ordered = new List<WorkflowStepConfig>();
+        while (pending.Count > 0)
+        {
+            var ready = pending.Where(s => DependenciesOf(s).Where(set.Contains).All(done.Contains)).ToList();
+            if (ready.Count == 0)
+                throw new WorkflowValidationException($"Steps {string.Join(", ", pending.Select(s => $"'{s.Id}'"))} depend on each other in a cycle.");
+            foreach (var s in ready) { ordered.Add(s); done.Add(s.Id); pending.Remove(s); }
+        }
+        return ordered;
     }
 
     private static int StageOf(string agent, Dictionary<string, SortedSet<string>> waits, Dictionary<string, int> memo, HashSet<string> path)
@@ -263,13 +283,9 @@ public sealed class WorkflowPlanner
         ValidateAgents(def);
         ValidateTransitions(def);
 
-        // Active dependencies must appear earlier in the list (this also rules out cycles).
-        var position = def.Steps.Select((s, i) => (s.Id, i)).ToDictionary(x => x.Id, x => x.i);
+        // Active dependencies must be acyclic; list position is not significant (slots and agents[].steps order schedule).
         var active = def.Steps.Where(s => IsActive(def, s.Id)).Select(s => s.Id).ToHashSet();
-        foreach (var step in def.Steps.Where(s => active.Contains(s.Id)))
-            foreach (var dep in DependenciesOf(step).Where(active.Contains))
-                if (position[dep] > position[step.Id])
-                    throw new WorkflowValidationException($"Step '{step.Id}' depends on '{dep}', which is ordered after it. Move '{dep}' above '{step.Id}' or disable the dependency.");
+        InDependencyOrder(def, active);
 
         // Agent graph (transitions + cross-agent dependencies) must be acyclic.
         var owner = OwnersOf(def);
