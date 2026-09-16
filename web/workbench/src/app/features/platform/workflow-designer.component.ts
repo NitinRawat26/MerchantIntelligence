@@ -86,6 +86,7 @@ interface Point { x: number; y: number; }
             </div>
 
             <div #canvas class="canvas" (click)="select(null)">
+              @if (notice(); as n) { @if (n.where === 'flow') { <div class="notice canvas-notice"><mat-icon inline>warning</mat-icon> {{ n.text }}</div> } }
               <div class="drop-target" cdkDropList id="agent-canvas" [cdkDropListData]="placedIds()" cdkDropListSortingDisabled (cdkDropListDropped)="dropAgent($event)"></div>
               <svg class="wires" [attr.width]="canvasW()" [attr.height]="canvasH()">
                 <defs>
@@ -153,7 +154,7 @@ interface Point { x: number; y: number; }
             </div>
 
             <div class="lanes">
-              @if (notice(); as n) { <div class="notice wide"><mat-icon inline>swap_vert</mat-icon> {{ n }}</div> }
+              @if (notice(); as n) { @if (n.where === 'lanes') { <div class="notice wide"><mat-icon inline>swap_vert</mat-icon> {{ n.text }}</div> } }
               @for (a of placed(); track a.id) {
                 <div class="lane" [class.disabled]="!a.enabled" [class.selected]="isSelected('agent', a.id)" [style.--agent]="color(a.id)">
                   <div class="lane-head" (click)="pick({ kind: 'agent', id: a.id }, $event)">
@@ -180,7 +181,7 @@ interface Point { x: number; y: number; }
                             <div class="step-title"><strong>{{ describe(id)?.name ?? id }}</strong>
                               @if (describe(id)?.required) { <mat-icon inline matTooltip="Decision authority: disabling forces Refer">star</mat-icon> }
                               @if (!s.enabled) { <span class="pill small warn">off</span> }
-                              @if (s.stopGate) { <span class="pill small bad" matTooltip="Stop-gate configured"><mat-icon inline>block</mat-icon> gate</span> }
+                              @if (s.stopGate) { <span class="pill small bad" matTooltip="Stop-gate configured"><mat-icon inline>warning</mat-icon> gate</span> }
                               @if (s.onFail !== 'Skip') { <span class="pill small neutral">{{ s.onFail }} on fail</span> }
                             </div>
                             <div class="badges">
@@ -370,6 +371,7 @@ interface Point { x: number; y: number; }
     .grp-label { position: absolute; left: -12px; top: -13px; font-size: 10px; font-weight: 700; color: var(--agent, #3f51b5); background: var(--mi-surface, #fff); padding: 0 4px; line-height: 12px; white-space: nowrap; }
     .step-card.grp-start { margin-top: 10px; }
     .notice { grid-column: 1 / -1; display: flex; gap: 6px; align-items: center; padding: 8px 12px; border-radius: 8px; font-size: 12px; background: var(--mi-warn-soft, #fff4e5); color: var(--mi-warn, #b26a00); border: 1px solid currentColor; }
+    .canvas-notice { position: absolute; bottom: 6px; left: 6px; right: 6px; z-index: 5; background: #fff4e5; }
     .notice mat-icon[inline] { font-size: 16px; width: 16px; height: 16px; }
     .order-toggle { transform: scale(.8); transform-origin: right center; }
     .lane-body { flex: 1; padding: 8px; display: flex; flex-direction: column; gap: 8px; min-height: 120px; }
@@ -425,7 +427,7 @@ export class WorkflowDesignerComponent {
   readonly linking = signal<{ from: string; to: Point } | null>(null);
   readonly paramError = signal<string | null>(null);
   /** Short-lived explanation shown when a drop was re-ordered to respect a data dependency. */
-  readonly notice = signal<string | null>(null);
+  readonly notice = signal<{ text: string; where: 'flow' | 'lanes' } | null>(null);
   private noticeTimer: ReturnType<typeof setTimeout> | null = null;
   /** Node positions are presentation state only – the workflow JSON carries no layout. */
   private readonly moved = signal<Record<string, Point>>({});
@@ -642,12 +644,49 @@ export class WorkflowDesignerComponent {
     const d = this.def(); if (!d || l.from === to) return;
     d.transitions ??= [];
     if (d.transitions.some(t => t.from === l.from && t.to === to)) return;
+    const path = this.routeBetween(to, l.from);
+    if (path) {
+      this.showNotice(`${this.name(l.from)} → ${this.name(to)} would loop the flow: ${path.map(id => this.name(id)).join(' → ')} already ${path.length > 2 ? 'lead' : 'leads'} back to ${this.name(l.from)}. The flow must run one way only.`, 'flow');
+      return;
+    }
     d.transitions.push({ from: l.from, to, when: 'Always' });
     this.select({ kind: 'transition', index: d.transitions.length - 1 });
     this.emit();
   }
 
   cancelLink(): void { if (this.linking()) this.linking.set(null); }
+
+  /**
+   * Agents the given agent hands over to, through explicit transitions or
+   * because another agent's step needs one of its step outputs.
+   */
+  private successors(agentId: string): string[] {
+    const d = this.def(); if (!d) return [];
+    const next = new Set<string>((d.transitions ?? []).filter(t => t.from === agentId).map(t => t.to));
+    for (const a of d.agents ?? []) {
+      if (a.id === agentId) continue;
+      for (const id of a.steps) for (const dep of this.deps(this.step(id) ?? { id, enabled: true, onFail: 'Skip' })) {
+        if (this.ownerOf(dep) === agentId) next.add(a.id);
+      }
+    }
+    return [...next];
+  }
+
+  /** Existing path from → to (agents visited, inclusive), or null when `to` is not downstream of `from`. */
+  private routeBetween(from: string, to: string): string[] | null {
+    const prev = new Map<string, string>([[from, '']]);
+    const queue = [from];
+    while (queue.length) {
+      const cur = queue.shift()!;
+      if (cur === to) {
+        const path: string[] = [];
+        for (let n: string | undefined = cur; n; n = prev.get(n) || undefined) path.unshift(n);
+        return path;
+      }
+      for (const n of this.successors(cur)) if (!prev.has(n)) { prev.set(n, cur); queue.push(n); }
+    }
+    return null;
+  }
 
   cycle(index: number, e: Event): void {
     e.stopPropagation();
@@ -749,8 +788,8 @@ export class WorkflowDesignerComponent {
     this.showNotice(why);
   }
 
-  private showNotice(text: string): void {
-    this.notice.set(text);
+  private showNotice(text: string, where: 'flow' | 'lanes' = 'lanes'): void {
+    this.notice.set({ text, where });
     if (this.noticeTimer) clearTimeout(this.noticeTimer);
     this.noticeTimer = setTimeout(() => this.notice.set(null), 6000);
   }
