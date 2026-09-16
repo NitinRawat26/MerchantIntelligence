@@ -14,7 +14,7 @@ public sealed class CaseStep(CaseService cases) : IAssessmentStep
     public async Task ExecuteAsync(AssessmentContext ctx)
     {
         if (!ctx.Intake.CreateCase) { await ctx.SkipAsync(Descriptor, "Case creation disabled by caller."); return; }
-        var decision = AssessmentComposer.BuildDecision(ctx.Score, ctx.Rules, ctx.Steps, ctx.ForcedRefer);
+        var decision = AssessmentComposer.BuildDecision(ctx.Score, ctx.Rules, ctx.Steps, ctx.ForcedRefer, ctx.ForcedDecline);
         var priority = ctx.Param<CasePriority?>(Descriptor.Id, "priority", null);
         ctx.Case = await ctx.RunAsync(Descriptor, () => Task.FromResult(cases.Create(ctx.Intake.Business.LegalName, ctx.Intake.Actor, ctx.Intake.ExternalRef ?? ctx.AssessmentId,
                 priority, ctx.Score?.Score, ctx.Score?.Tier, ctx.Rules?.Outcome,

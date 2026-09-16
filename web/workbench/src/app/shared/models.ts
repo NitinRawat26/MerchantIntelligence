@@ -170,11 +170,24 @@ export interface AgentReport { id: string; name: string; mandate: string; status
 
 // ---- Workflows ------------------------------------------------------------------------
 export type StepFailurePolicy = 'Skip' | 'Refer' | 'Abort';
-export interface WorkflowStepConfig { id: string; enabled: boolean; onFail: StepFailurePolicy; dependsOn?: string[] | null; params?: Record<string, unknown> | null; }
-export interface WorkflowAgentConfig { id: string; enabled: boolean; steps: string[]; }
-export interface WorkflowDefinition { name: string; version: string; description?: string | null; haltOnHardStop: boolean; steps: WorkflowStepConfig[]; agents?: WorkflowAgentConfig[] | null; }
+export type StopGateTrigger = 'HardStop' | 'Failed' | 'HighSeverityFlag' | 'Flag';
+export type StopGateScope = 'Agent' | 'Workflow';
+export type ForcedOutcome = 'None' | 'Refer' | 'Decline';
+export interface StopGateConfig { when: StopGateTrigger; code?: string | null; scope: StopGateScope; forceOutcome: ForcedOutcome; }
+export type AgentStepOrder = 'Parallel' | 'Ordered';
+export type TransitionCondition = 'Always' | 'Success' | 'Fail';
+export interface WorkflowTransition { from: string; to: string; when: TransitionCondition; }
+export interface WorkflowStepConfig {
+  id: string; enabled: boolean; onFail: StepFailurePolicy; dependsOn?: string[] | null; params?: Record<string, unknown> | null;
+  slot?: number | null; stopGate?: StopGateConfig | null;
+}
+export interface WorkflowAgentConfig { id: string; enabled: boolean; steps: string[]; stepOrder?: AgentStepOrder; }
+export interface WorkflowDefinition {
+  name: string; version: string; description?: string | null; haltOnHardStop: boolean; steps: WorkflowStepConfig[];
+  agents?: WorkflowAgentConfig[] | null; transitions?: WorkflowTransition[] | null;
+}
 export interface WorkflowAgentDescriptor { id: string; name: string; mandate: string; description: string; defaultSteps: string[]; }
-export interface WorkflowAgentPlan { id: string; name: string; enabled: boolean; stage: number; steps: string[]; waitsFor: string[]; }
+export interface WorkflowAgentPlan { id: string; name: string; enabled: boolean; stage: number; steps: string[]; waitsFor: string[]; runsWhen: WorkflowTransition[]; stepStages: string[][]; }
 export interface WorkflowVersion { version: number; name: string; author: string; comment?: string | null; createdAt: string; active: boolean; enabledSteps: number; totalSteps: number; }
 export interface WorkflowParamDescriptor { name: string; type: string; default: string; description: string; }
 export interface WorkflowStepDescriptor { id: string; name: string; description: string; dependsOn: string[]; consumes: string[]; required: boolean; params: WorkflowParamDescriptor[]; }

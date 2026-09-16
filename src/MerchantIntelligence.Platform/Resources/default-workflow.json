@@ -4,10 +4,16 @@
   "description": "Every deterministic check, grouped under four rule-based agents. Pre-check and KYB run first, Financial & credit follows, Decision & case closes.",
   "haltOnHardStop": false,
   "agents": [
-    { "id": "precheck", "enabled": true, "steps": ["website", "prohibited", "mcc"] },
-    { "id": "kyb", "enabled": true, "steps": ["verification", "screening", "match", "presence"] },
-    { "id": "financial", "enabled": true, "steps": ["bank", "financials", "plausibility", "credit"] },
-    { "id": "decision", "enabled": true, "steps": ["terms", "score", "case"] }
+    { "id": "precheck", "enabled": true, "stepOrder": "Parallel", "steps": ["website", "prohibited", "mcc"] },
+    { "id": "kyb", "enabled": true, "stepOrder": "Parallel", "steps": ["verification", "screening", "match", "presence"] },
+    { "id": "financial", "enabled": true, "stepOrder": "Parallel", "steps": ["bank", "financials", "plausibility", "credit"] },
+    { "id": "decision", "enabled": true, "stepOrder": "Parallel", "steps": ["terms", "score", "case"] }
+  ],
+  "transitions": [
+    { "from": "precheck", "to": "decision", "when": "Always" },
+    { "from": "kyb", "to": "financial", "when": "Always" },
+    { "from": "kyb", "to": "decision", "when": "Always" },
+    { "from": "financial", "to": "decision", "when": "Always" }
   ],
   "steps": [
     { "id": "verification", "enabled": true, "onFail": "Skip" },

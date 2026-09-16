@@ -42,7 +42,12 @@ stream (`{"type":"agent"}`), the `/assess` agents tab and the PDF.
 Notes
 
 * `dependsOn` is a **data** dependency: the step cannot produce a meaningful result without that
-  input. The planner uses it to build stages; list order in the workflow only breaks ties.
+  input. It always wins over the scheduling the workflow asks for: an agent's `stepOrder`
+  (`Parallel`, or `Ordered` by `slot` — equal slots run together) is a preference the planner
+  corrects when it contradicts a dependency, with a warning; the designer snaps such a drop back
+  and explains why. Agent-to-agent order comes from `transitions[]` (`Always` / `Success` / `Fail`)
+  plus any cross-agent `dependsOn`; a `stopGate` on a step can end its agent early (agent or
+  workflow scope) and force Refer / Decline. Details: [Assessment workflow](Assessment-Workflow.md).
   A workflow may override `dependsOn` per step, but a dependency on a disabled step makes the
   dependant *degraded* (warning) rather than blocked.
 * `score` is the only *required* step; validation fails if it is disabled. `case` is optional and

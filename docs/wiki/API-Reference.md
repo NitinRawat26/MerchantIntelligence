@@ -23,9 +23,9 @@ defined in the controllers under `src/MerchantIntelligence.Api/Controllers/`.
 | GET | `catalog` | Step descriptors: id, name, description, `dependsOn`, `consumes`, `required`, param schema |
 | GET | `agents` | Agent descriptors: id, name, mandate, description, default steps |
 | GET | `default` | Embedded default workflow |
-| GET | `active` · `active/plan` · `active/steps` | Active definition, its plan (stages, agents, warnings, Mermaid) and step list |
+| GET | `active` · `active/plan` · `active/steps` | Active definition, its plan (step stages, `agents[]` with `stage`, `waitsFor`, `runsWhen`, `stepStages`, warnings, Mermaid) and step list |
 | GET | `history` · `{version}` | Version list; one stored version |
-| POST | `validate` | Validate a draft → plan + warnings (not saved) |
+| POST | `validate` | Validate a draft (incl. `transitions`, `stepOrder`/`slot`, `stopGate`) → `{valid, error, plan}` with warnings (not saved); invalid definitions (e.g. an agent cycle) return `valid: false` with the reason |
 | POST | `publish` | Store a new version and activate it (`author`, `comment`; audited) |
 | POST | `rollback/{version}` | Re-activate an old version as a new version |
 

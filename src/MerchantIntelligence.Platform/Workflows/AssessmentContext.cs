@@ -39,7 +39,10 @@ public sealed class AssessmentContext
     private readonly Func<AgentReport, Task> _reportAgent;
     private readonly AsyncLocal<Func<AssessmentStep, Task>?> _sink = new();
     private readonly ILogger _logger;
+    private readonly Dictionary<string, AgentOutcome> _outcomes = new();
+    private readonly List<StopGateHit> _stopGates = new();
     private int _forcedRefer;
+    private int _forcedDecline;
 
     public AssessmentContext(string assessmentId, AssessmentIntake intake, UploadedDocument? bankStatement, UploadedDocument? financialStatement,
         WorkflowDefinition workflow, Func<AssessmentStep, Task> report, ILogger logger, CancellationToken ct, Func<AgentReport, Task>? reportAgent = null)
@@ -126,8 +129,32 @@ public sealed class AssessmentContext
         return Steps.Where(s => set.Contains(s.Id)).ToList();
     }
 
-    /// <summary>Set when a step failed under the <see cref="StepFailurePolicy.Refer"/> policy.</summary>
+    /// <summary>Set when a step failed under the <see cref="StepFailurePolicy.Refer"/> policy or a stop-gate forced Refer.</summary>
     public bool ForcedRefer => Volatile.Read(ref _forcedRefer) == 1;
+
+    /// <summary>Set when a stop-gate forced the outcome to Decline.</summary>
+    public bool ForcedDecline => Volatile.Read(ref _forcedDecline) == 1;
+
+    /// <summary>Stop-gates that fired so far, in firing order.</summary>
+    public IReadOnlyList<StopGateHit> StopGateHits { get { lock (_stopGates) return _stopGates.ToList(); } }
+
+    /// <summary>A workflow-scoped stop-gate has fired: every agent still to run skips its non-required steps.</summary>
+    public StopGateHit? WorkflowStop { get { lock (_stopGates) return _stopGates.FirstOrDefault(h => h.Scope == StopGateScope.Workflow); } }
+
+    /// <summary>Stop-gates fired inside one agent (agent- or workflow-scoped).</summary>
+    public IReadOnlyList<StopGateHit> StopGatesOf(string agentId) { lock (_stopGates) return _stopGates.Where(h => h.Agent == agentId).ToList(); }
+
+    public void RecordStopGate(StopGateHit hit)
+    {
+        lock (_stopGates) _stopGates.Add(hit);
+        if (hit.ForceOutcome == ForcedOutcome.Refer) Interlocked.Exchange(ref _forcedRefer, 1);
+        if (hit.ForceOutcome == ForcedOutcome.Decline) Interlocked.Exchange(ref _forcedDecline, 1);
+    }
+
+    /// <summary>How each agent ended, keyed by agent id; agents still running or not yet started are absent.</summary>
+    public IReadOnlyDictionary<string, AgentOutcome> AgentOutcomes { get { lock (_outcomes) return new Dictionary<string, AgentOutcome>(_outcomes); } }
+
+    public void SetAgentOutcome(string agentId, AgentOutcome outcome) { lock (_outcomes) _outcomes[agentId] = outcome; }
 
     /// <summary>A blocking finding already exists, so further evidence gathering cannot change the outcome.</summary>
     public string? HardStop

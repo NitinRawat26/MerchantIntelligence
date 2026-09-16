@@ -5,6 +5,7 @@ using System.Text.Json;
 using MerchantIntelligence.Kyb.Registry;
 using MerchantIntelligence.Kyb.Sanctions;
 using MerchantIntelligence.MccValidation.Web;
+using MerchantIntelligence.Platform.Rules;
 using MerchantIntelligence.Platform.Workflows;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
@@ -68,9 +69,9 @@ public sealed class WorkflowTests : IClassFixture<WebApplicationFactory<Program>
         var plan = Planner.Plan(Default());
         Assert.Empty(plan.Warnings);
         Assert.Empty(plan.Disabled);
-        // Pre-check and KYB agents run concurrently; inside each, list order is monotonic (prohibited needs website)
-        Assert.Equal(["verification", "screening", "website", "match"], plan.Stages[0].Steps);
-        Assert.Equal(["prohibited", "mcc", "presence"], plan.Stages[1].Steps);   // presence waits for verification
+        // Pre-check and KYB agents run concurrently; inside each (Parallel by default) only dependencies sequence steps
+        Assert.Equal(["verification", "screening", "website", "mcc", "match"], plan.Stages[0].Steps);
+        Assert.Equal(["prohibited", "presence"], plan.Stages[1].Steps);   // prohibited needs website, presence waits for verification
         Assert.Equal(["score"], plan.Stages[^2].Steps);
         Assert.Equal(["case"], plan.Stages[^1].Steps);
         Assert.Equal(["precheck", "kyb", "financial", "decision"], plan.Agents.Select(a => a.Id));
@@ -114,14 +115,105 @@ public sealed class WorkflowTests : IClassFixture<WebApplicationFactory<Program>
     }
 
     [Fact]
-    public void Dependency_ordered_after_dependent_is_rejected()
+    public void List_position_is_not_significant_dependencies_still_schedule()
     {
         var def = Default();
         var score = def.Steps.Single(s => s.Id == "score");
         def.Steps.Remove(score);
-        def.Steps.Insert(0, score); // score before credit, which it depends on
-        var ex = Assert.Throws<WorkflowValidationException>(() => Planner.Validate(def));
-        Assert.Contains("ordered after it", ex.Message);
+        def.Steps.Insert(0, score); // score listed before credit, which it depends on
+        var plan = Planner.Plan(def);
+        var stageOf = plan.Stages.SelectMany((s, i) => s.Steps.Select(id => (id, i))).ToDictionary(x => x.id, x => x.i);
+        Assert.True(stageOf["credit"] < stageOf["score"]);
+    }
+
+    // ---- transitions, step order, slots ----
+
+    [Fact]
+    public void Ordered_agent_follows_lane_order_and_slots_but_dependencies_win()
+    {
+        var def = Default();
+        var financial = def.Agents!.Single(a => a.Id == "financial");
+        financial.StepOrder = AgentStepOrder.Ordered;
+        financial.Steps = ["plausibility", "bank", "financials", "credit"]; // plausibility needs bank + financials
+        def.Step("bank")!.Slot = 1;
+        def.Step("financials")!.Slot = 1;         // same slot → run together
+
+        var plan = Planner.Plan(def);
+        var stages = plan.Agents.Single(a => a.Id == "financial").StepStages;
+        Assert.Equal(["bank", "financials"], stages[0]);
+        Assert.Equal(["plausibility", "credit"], stages[1]); // plausibility pushed after its inputs, next to credit (slot 2)
+        Assert.Equal(2, stages.Count);
+        Assert.Contains(plan.Warnings, w => w.Contains("'plausibility' is slotted before") && w.Contains("'bank'"));
+
+        var parallel = Default();
+        var pre = parallel.Agents!.Single(a => a.Id == "precheck");
+        pre.StepOrder = AgentStepOrder.Ordered;   // website, prohibited, mcc → three sequential slots
+        Assert.Equal([["website"], ["prohibited"], ["mcc"]], Planner.Plan(parallel).Agents.Single(a => a.Id == "precheck").StepStages);
+    }
+
+    [Fact]
+    public void Transitions_order_agents_and_are_validated()
+    {
+        var def = Default();
+        def.Transitions = [new() { From = "precheck", To = "kyb", When = TransitionCondition.Success }, new() { From = "kyb", To = "financial" }, new() { From = "financial", To = "decision" }];
+        var plan = Planner.Plan(def);
+        Assert.Equal([1, 2, 3, 4], plan.Agents.Select(a => a.Stage));
+        Assert.Equal(["precheck"], plan.Agents.Single(a => a.Id == "kyb").WaitsFor);
+        Assert.Single(plan.Agents.Single(a => a.Id == "kyb").RunsWhen);
+        Assert.Contains(plan.Warnings, w => w.Contains("'kyb' runs only when 'precheck' on success"));
+        Assert.Contains("on success", plan.Mermaid);
+
+        var unknown = Default();
+        unknown.Transitions = [new() { From = "precheck", To = "nope" }];
+        Assert.Throws<WorkflowValidationException>(() => Planner.Validate(unknown));
+
+        var self = Default();
+        self.Transitions = [new() { From = "kyb", To = "kyb" }];
+        Assert.Throws<WorkflowValidationException>(() => Planner.Validate(self));
+
+        var cycle = Default();
+        cycle.Transitions = [new() { From = "precheck", To = "kyb" }, new() { From = "kyb", To = "precheck" }];
+        Assert.Contains("depend on each other", Assert.Throws<WorkflowValidationException>(() => Planner.Validate(cycle)).Message);
+
+        var againstDeps = Default();
+        againstDeps.Transitions = [new() { From = "decision", To = "kyb" }]; // score depends on kyb's match
+        Assert.Throws<WorkflowValidationException>(() => Planner.Validate(againstDeps));
+    }
+
+    [Fact]
+    public void Stop_gates_are_validated_and_new_fields_round_trip_through_json()
+    {
+        var def = Default();
+        def.Step("screening")!.StopGate = new StopGateConfig { When = StopGateTrigger.Flag };
+        Assert.Contains("names no flag code", Assert.Throws<WorkflowValidationException>(() => Planner.Validate(def)).Message);
+
+        var onScore = Default();
+        onScore.Step("score")!.StopGate = new StopGateConfig();
+        Assert.Contains("cannot carry a stop-gate", Assert.Throws<WorkflowValidationException>(() => Planner.Validate(onScore)).Message);
+
+        var ok = Default();
+        ok.Step("screening")!.StopGate = new StopGateConfig { When = StopGateTrigger.HardStop, Scope = StopGateScope.Workflow, ForceOutcome = ForcedOutcome.Decline };
+        ok.Step("terms")!.StopGate = new StopGateConfig { When = StopGateTrigger.HighSeverityFlag };
+        ok.Agents!.Single(a => a.Id == "kyb").StepOrder = AgentStepOrder.Ordered;
+        ok.Step("match")!.Slot = 3;
+        var plan = Planner.Plan(ok);
+        Assert.Contains(plan.Warnings, w => w.Contains("Stop-gate on 'screening'") && w.Contains("the whole workflow") && w.Contains("Decline"));
+        Assert.Contains(plan.Warnings, w => w.Contains("Stop-gate on 'terms' watches flags"));
+
+        var json = JsonSerializer.Serialize(ok, RulesEngine.JsonOptions);
+        var back = JsonSerializer.Deserialize<WorkflowDefinition>(json, RulesEngine.JsonOptions)!;
+        Assert.Equal(AgentStepOrder.Ordered, back.Agents!.Single(a => a.Id == "kyb").StepOrder);
+        Assert.Equal(3, back.Step("match")!.Slot);
+        Assert.Equal(ForcedOutcome.Decline, back.Step("screening")!.StopGate!.ForceOutcome);
+        Assert.Equal(4, back.Transitions!.Count);
+
+        // stored definitions from before these fields existed still load and get the default flow
+        var legacy = JsonSerializer.Deserialize<WorkflowDefinition>("""{"name":"Old","version":"1","steps":[{"id":"score"}]}""", RulesEngine.JsonOptions)!;
+        var upgraded = Planner.Upgrade(legacy);
+        Assert.Equal(14, upgraded.Steps.Count);
+        Assert.All(upgraded.Agents!, a => Assert.Equal(AgentStepOrder.Parallel, a.StepOrder));
+        Assert.Empty(Planner.Plan(upgraded).Agents.SelectMany(a => a.RunsWhen)); // no transitions → dependency-driven order, as before
+        Assert.Equal([1, 1, 2, 3], Planner.Plan(upgraded).Agents.Select(a => a.Stage));
     }
 
     [Fact]
@@ -403,6 +495,66 @@ public sealed class WorkflowTests : IClassFixture<WebApplicationFactory<Program>
         Assert.Contains("Agent 'financial' disabled", credit.GetProperty("summary").GetString());
         var financial = root.GetProperty("agents").EnumerateArray().Single(a => a.GetProperty("id").GetString() == "financial");
         Assert.Equal("Skipped", financial.GetProperty("status").GetString());
+
+        await Json(await _client.PostAsJsonAsync("/api/workflows/publish", new { workflow = Default(), author = "tester" }));
+    }
+
+    [Fact]
+    public async Task Agent_whose_transition_does_not_hold_is_skipped_with_its_steps()
+    {
+        var def = Default();
+        def.Name = "Financial only on KYB failure";
+        def.Transitions!.Single(t => t is { From: "kyb", To: "financial" }).When = TransitionCondition.Fail;
+        await Json(await _client.PostAsJsonAsync("/api/workflows/publish", new { workflow = def, author = "tester" }));
+
+        var root = await Json(await _client.PostAsJsonAsync("/api/assessment/run", new
+        {
+            business = new { legalName = "Good Shoes Ltd", country = "US" },
+            owners = new[] { new { fullName = "Jane Cobbler", role = "Owner", ownershipPercent = 100 } },
+            businessDescription = "Handmade leather shoes.", merchantCategoryCode = 5661, annualVolume = 600000, averageTicket = 120, highestTicket = 900,
+            employeeCount = 6, yearsInBusiness = 4, actor = "tester", createCase = false
+        }));
+        var agents = root.GetProperty("agents").EnumerateArray().ToDictionary(a => a.GetProperty("id").GetString()!);
+        Assert.Equal("Succeeded", agents["kyb"].GetProperty("status").GetString());
+        Assert.Equal("Skipped", agents["financial"].GetProperty("status").GetString());
+        Assert.Contains("'kyb' on fail", agents["financial"].GetProperty("summary").GetString());
+        var credit = root.GetProperty("steps").EnumerateArray().Single(s => s.GetProperty("id").GetString() == "credit");
+        Assert.Equal("Skipped", credit.GetProperty("status").GetString());
+        Assert.Contains("agent 'financial' did not run", credit.GetProperty("summary").GetString());
+        Assert.NotEqual("Skipped", agents["decision"].GetProperty("status").GetString()); // still reached via precheck/kyb → decision (always)
+
+        await Json(await _client.PostAsJsonAsync("/api/workflows/publish", new { workflow = Default(), author = "tester" }));
+    }
+
+    [Fact]
+    public async Task Stop_gate_skips_remaining_steps_and_forces_the_outcome()
+    {
+        var def = Default();
+        def.Name = "Decline prohibited early";
+        def.Agents!.Single(a => a.Id == "precheck").StepOrder = AgentStepOrder.Ordered; // website → prohibited → mcc
+        def.Step("prohibited")!.StopGate = new StopGateConfig { When = StopGateTrigger.HardStop, Scope = StopGateScope.Workflow, ForceOutcome = ForcedOutcome.Decline };
+        await Json(await _client.PostAsJsonAsync("/api/workflows/publish", new { workflow = def, author = "tester" }));
+
+        var root = await Json(await _client.PostAsJsonAsync("/api/assessment/run", new
+        {
+            business = new { legalName = "QuickCash Advance LLC", country = "US" },
+            owners = new[] { new { fullName = "Sam Lender", role = "Owner", ownershipPercent = 100 } },
+            businessDescription = "Payday loans, cash advance and short-term high-interest lending with same-day payday advance.", merchantCategoryCode = 6012,
+            annualVolume = 600000, averageTicket = 80, highestTicket = 400, employeeCount = 6, yearsInBusiness = 2, actor = "tester", createCase = false
+        }));
+        var steps = root.GetProperty("steps").EnumerateArray().ToDictionary(s => s.GetProperty("id").GetString()!);
+        Assert.Equal("Succeeded", steps["prohibited"].GetProperty("status").GetString());
+        Assert.Equal("Skipped", steps["mcc"].GetProperty("status").GetString());
+        Assert.Contains("stop-gate on 'prohibited'", steps["mcc"].GetProperty("summary").GetString());
+        Assert.Equal("Skipped", steps["bank"].GetProperty("status").GetString());        // workflow scope reaches other agents
+        Assert.Equal("Succeeded", steps["score"].GetProperty("status").GetString());     // required steps still run
+        Assert.Equal("Decline", root.GetProperty("decision").GetProperty("outcome").GetString());
+        var gates = root.GetProperty("workflow").GetProperty("stopGates").EnumerateArray().ToList();
+        Assert.Single(gates);
+        Assert.Equal("prohibited", gates[0].GetProperty("stepId").GetString());
+        Assert.Contains("PROHIBITED_BUSINESS", gates[0].GetProperty("reason").GetString());
+        var precheck = root.GetProperty("agents").EnumerateArray().Single(a => a.GetProperty("id").GetString() == "precheck");
+        Assert.Contains(precheck.GetProperty("findings").EnumerateArray(), f => f.GetProperty("code").GetString() == "STOP_GATE");
 
         await Json(await _client.PostAsJsonAsync("/api/workflows/publish", new { workflow = Default(), author = "tester" }));
     }

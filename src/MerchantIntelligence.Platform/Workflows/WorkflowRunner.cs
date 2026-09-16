@@ -23,8 +23,9 @@ public sealed record RunToken(string AssessmentId);
 /// <summary>
 /// Executes an assessment by compiling the active <see cref="WorkflowDefinition"/> into a Microsoft Agent Framework
 /// workflow graph: one executor per enabled agent, agents of the same stage fanned out concurrently, a barrier
-/// between stages. Each agent runs the steps it owns (concurrently where their dependencies allow) and then
-/// reviews the combined result.
+/// between stages. When it is reached, an agent first checks the transitions pointing at it against the recorded
+/// outcomes of the agents it waits for (all of which settled in earlier stages) and skips itself when none holds.
+/// Otherwise it runs the steps it owns stage by stage, evaluates each step's stop-gate, and reviews the combined result.
 /// </summary>
 public sealed class WorkflowRunner
 {
@@ -54,7 +55,7 @@ public sealed class WorkflowRunner
         {
             var executors = stage.Select(a => (ExecutorBinding)new AgentExecutor(_agents[a.Id], a.Steps.Select(id => _steps[id]).ToList(),
                 def.Steps.Select(s => s.Id).Where(id => owner.GetValueOrDefault(id) == a.Id).ToList(),
-                _planner.IntraStages(def, a.Steps), ctx, _logger)).ToList();
+                a.StepStages.Select(s => s.ToList()).ToList(), a.RunsWhen, ctx, _logger)).ToList();
             var gate = new StageGate($"stage-{stage.Key}", executors.Count);
             builder.AddFanOutEdge(previous, executors);
             foreach (var e in executors) builder.AddEdge(e, gate);
@@ -84,6 +85,7 @@ public sealed class WorkflowRunner
             var d = _agents[a.Id].Descriptor;
             var ownedAll = def.Steps.Select(s => s.Id).Where(id => owner.GetValueOrDefault(id) == a.Id).ToList();
             var report = new AgentReport(d.Id, d.Name, d.Mandate, StepStatus.Skipped, ownedAll, $"Disabled in workflow '{def.Name}' (v{def.Version}).", [], 0);
+            ctx.SetAgentOutcome(a.Id, AgentOutcome.Skipped);
             ctx.AddAgent(report);
             await ctx.ReportAgentAsync(report);
         }
@@ -118,14 +120,27 @@ public sealed class WorkflowRunner
         return ex is StepAbortedException or OperationCanceledException ? ex : new InvalidOperationException($"Workflow execution failed: {ex.Message}", ex);
     }
 
-    /// <summary>Runs one agent: its tools stage by stage (concurrently inside a stage), then its review.</summary>
-    private sealed class AgentExecutor(IAssessmentAgent agent, IReadOnlyList<IAssessmentStep> steps, IReadOnlyList<string> ownedAll, List<List<string>> stages, AssessmentContext ctx, ILogger logger)
+    /// <summary>Runs one agent: checks its incoming transitions, then its tools stage by stage (concurrently inside a stage), then its review.</summary>
+    private sealed class AgentExecutor(IAssessmentAgent agent, IReadOnlyList<IAssessmentStep> steps, IReadOnlyList<string> ownedAll, List<List<string>> stages,
+        IReadOnlyList<WorkflowTransition> runsWhen, AssessmentContext ctx, ILogger logger)
         : Executor<RunToken, RunToken>("agent-" + agent.Descriptor.Id)
     {
         public override async ValueTask<RunToken> HandleAsync(RunToken message, IWorkflowContext context, CancellationToken cancellationToken)
         {
             var d = agent.Descriptor;
             var owned = steps.Select(s => s.Descriptor.Id).ToList();
+
+            if (Blocked() is { } why)
+            {
+                var skipped = new AgentReport(d.Id, d.Name, d.Mandate, StepStatus.Skipped, ownedAll, why, [], 0);
+                foreach (var step in steps)
+                    await ctx.SkipAsync(step.Descriptor, $"Skipped: agent '{d.Id}' did not run – {why}");
+                ctx.SetAgentOutcome(d.Id, AgentOutcome.Skipped);
+                ctx.AddAgent(skipped);
+                await context.AddEventAsync(new AgentProgressEvent(skipped), cancellationToken);
+                return message;
+            }
+
             await context.AddEventAsync(new AgentProgressEvent(new AgentReport(d.Id, d.Name, d.Mandate, StepStatus.Running, ownedAll, "Running…", [], 0)), cancellationToken);
             var sw = Stopwatch.StartNew();
 
@@ -136,12 +151,16 @@ public sealed class WorkflowRunner
                     await Task.WhenAll(stage.Select(id => RunStep(byId[id])));
             }
 
+            var gates = ctx.StopGatesOf(d.Id);
             AgentReport report;
             try
             {
                 var review = await agent.ReviewAsync(ctx, owned);
-                var status = ctx.StepsOf(owned).Any(s => s.Status == StepStatus.Failed) ? StepStatus.Failed : StepStatus.Succeeded;
-                report = new AgentReport(d.Id, d.Name, d.Mandate, status, ownedAll, review.Summary, review.Findings, sw.ElapsedMilliseconds);
+                var failed = ctx.StepsOf(owned).Any(s => s.Status == StepStatus.Failed) || gates.Count > 0;
+                var findings = review.Findings.Concat(gates.Select(g => new AgentFinding(AgentFindingKind.Action, "STOP_GATE",
+                    $"Stop-gate on '{g.StepId}' fired: {g.Reason}.",
+                    $"Remaining evidence steps of {(g.Scope == StopGateScope.Agent ? "this agent" : "the workflow")} skipped{(g.ForceOutcome == ForcedOutcome.None ? "" : $"; outcome forced to {g.ForceOutcome}")}."))).ToList();
+                report = new AgentReport(d.Id, d.Name, d.Mandate, failed ? StepStatus.Failed : StepStatus.Succeeded, ownedAll, review.Summary, findings, sw.ElapsedMilliseconds);
             }
             catch (OperationCanceledException) { throw; }
             catch (Exception ex)
@@ -149,19 +168,58 @@ public sealed class WorkflowRunner
                 logger.LogWarning(ex, "Agent {Agent} review failed", d.Id);
                 report = new AgentReport(d.Id, d.Name, d.Mandate, StepStatus.Failed, ownedAll, $"Tools ran; review failed: {ex.Message}", [], sw.ElapsedMilliseconds);
             }
+            ctx.SetAgentOutcome(d.Id, report.Status == StepStatus.Failed ? AgentOutcome.Failed : AgentOutcome.Succeeded);
             ctx.AddAgent(report);
             await context.AddEventAsync(new AgentProgressEvent(report), cancellationToken);
             return message;
         }
 
+        /// <summary>Null when the agent may run; otherwise why its incoming transitions block it.</summary>
+        private string? Blocked()
+        {
+            if (runsWhen.Count == 0) return null;
+            var outcomes = ctx.AgentOutcomes;
+            var held = runsWhen.Where(t => Holds(t, outcomes.GetValueOrDefault(t.From, AgentOutcome.Skipped))).ToList();
+            if (held.Count > 0) return null;
+            var seen = runsWhen.Select(t => $"'{t.From}' {outcomes.GetValueOrDefault(t.From, AgentOutcome.Skipped).ToString().ToLowerInvariant()}");
+            return $"none of its transitions held ({string.Join(", ", runsWhen.Select(t => $"'{t.From}' {StopGates.Describe(t.When)}"))}); outcome: {string.Join(", ", seen)}.";
+        }
+
+        private static bool Holds(WorkflowTransition t, AgentOutcome outcome) => t.When switch
+        {
+            TransitionCondition.Always => true,
+            TransitionCondition.Success => outcome == AgentOutcome.Succeeded,
+            TransitionCondition.Fail => outcome == AgentOutcome.Failed,
+            _ => false
+        };
+
         private async Task RunStep(IAssessmentStep step)
         {
-            if (ctx.Workflow.HaltOnHardStop && !step.Descriptor.Required && step.Descriptor.Id != "case" && ctx.HardStop is { } hardStop)
+            var d = step.Descriptor;
+            var evidence = !d.Required && d.Id != "case";
+            if (evidence && ctx.Workflow.HaltOnHardStop && ctx.HardStop is { } hardStop)
             {
-                await ctx.SkipAsync(step.Descriptor, $"Skipped: hard stop {hardStop} already established and the workflow halts on hard stops.");
+                await ctx.SkipAsync(d, $"Skipped: hard stop {hardStop} already established and the workflow halts on hard stops.");
                 return;
             }
+            if (evidence && ctx.WorkflowStop is { } stop)
+            {
+                await ctx.SkipAsync(d, $"Skipped: stop-gate on '{stop.StepId}' fired ({stop.Reason}) and halts the workflow.");
+                return;
+            }
+            if (evidence && ctx.StopGatesOf(agent.Descriptor.Id).FirstOrDefault(h => h.Scope == StopGateScope.Agent) is { } agentStop)
+            {
+                await ctx.SkipAsync(d, $"Skipped: stop-gate on '{agentStop.StepId}' fired ({agentStop.Reason}) and halts agent '{agent.Descriptor.Id}'.");
+                return;
+            }
+
             await step.ExecuteAsync(ctx);
+
+            if (ctx.Workflow.Step(d.Id)?.StopGate is { } gate && StopGates.Evaluate(gate, d.Id, ctx) is { } reason)
+            {
+                logger.LogInformation("Assessment {Id}: stop-gate on {Step} fired ({Reason})", ctx.AssessmentId, d.Id, reason);
+                ctx.RecordStopGate(new StopGateHit(d.Id, agent.Descriptor.Id, reason, gate.Scope, gate.ForceOutcome));
+            }
         }
     }
 
