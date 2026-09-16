@@ -4,10 +4,10 @@ namespace MerchantIntelligence.Platform.Workflows;
 
 /// <summary>
 /// Validates a <see cref="WorkflowDefinition"/> against the step and agent catalogues and resolves it into an
-/// execution plan: agents are ordered by the dependencies between the steps they own (agents with no such
-/// dependency run concurrently); inside an agent a step is placed in the first stage after all of its enabled
-/// dependencies and never before the step listed above it, so list order is honoured while independent
-/// neighbours run concurrently.
+/// execution plan. Agents are ordered by the transitions between them plus the dependencies between the steps they
+/// own (agents with neither run concurrently). Inside an agent, a <see cref="AgentStepOrder.Parallel"/> agent lets
+/// data dependencies alone decide the stages; an <see cref="AgentStepOrder.Ordered"/> agent runs its steps in list
+/// (or slot) order, one slot at a time. Dependencies always win over slots: a step is never scheduled before an input.
 /// </summary>
 public sealed class WorkflowPlanner
 {
@@ -36,6 +36,9 @@ public sealed class WorkflowPlanner
     public IReadOnlyList<WorkflowAgentConfig> AgentsOf(WorkflowDefinition def) =>
         def.Agents ?? _agentOrder.Select(id => new WorkflowAgentConfig { Id = id, Enabled = true, Steps = _agents[id].DefaultSteps.ToList() }).ToList();
 
+    /// <summary>The agent-to-agent transitions in force (none when the definition predates them).</summary>
+    public static IReadOnlyList<WorkflowTransition> TransitionsOf(WorkflowDefinition def) => def.Transitions ?? [];
+
     /// <summary>
     /// Adds catalogue steps (and agents) that a stored definition predates: each new step is inserted right after the last
     /// step it depends on, enabled with the default failure policy, and assigned to the agent that owns it by default.
@@ -48,8 +51,12 @@ public sealed class WorkflowPlanner
         var newAgents = def.Agents is null ? [] : _agentOrder.Where(a => def.Agents.All(x => x.Id != a)).ToList();
         if (newSteps.Count == 0 && newAgents.Count == 0) return def;
 
-        var steps = def.Steps.Select(s => new WorkflowStepConfig { Id = s.Id, Enabled = s.Enabled, OnFail = s.OnFail, DependsOn = s.DependsOn?.ToList(), Params = s.Params is null ? null : new(s.Params) }).ToList();
-        var agents = def.Agents?.Select(a => new WorkflowAgentConfig { Id = a.Id, Enabled = a.Enabled, Steps = a.Steps.ToList() }).ToList();
+        var steps = def.Steps.Select(s => new WorkflowStepConfig
+        {
+            Id = s.Id, Enabled = s.Enabled, OnFail = s.OnFail, DependsOn = s.DependsOn?.ToList(), Params = s.Params is null ? null : new(s.Params),
+            Slot = s.Slot, StopGate = s.StopGate is null ? null : new StopGateConfig { When = s.StopGate.When, Code = s.StopGate.Code, Scope = s.StopGate.Scope, ForceOutcome = s.StopGate.ForceOutcome }
+        }).ToList();
+        var agents = def.Agents?.Select(a => new WorkflowAgentConfig { Id = a.Id, Enabled = a.Enabled, Steps = a.Steps.ToList(), StepOrder = a.StepOrder }).ToList();
         foreach (var id in newAgents)
             agents!.Add(new WorkflowAgentConfig { Id = id, Enabled = true, Steps = [] });
 
@@ -68,7 +75,11 @@ public sealed class WorkflowPlanner
             }
         }
 
-        return new WorkflowDefinition { Name = def.Name, Version = def.Version, Description = def.Description, HaltOnHardStop = def.HaltOnHardStop, Steps = steps, Agents = agents };
+        return new WorkflowDefinition
+        {
+            Name = def.Name, Version = def.Version, Description = def.Description, HaltOnHardStop = def.HaltOnHardStop, Steps = steps, Agents = agents,
+            Transitions = def.Transitions?.Select(t => new WorkflowTransition { From = t.From, To = t.To, When = t.When }).ToList()
+        };
     }
 
     /// <summary>Owner agent of each step.</summary>
@@ -89,6 +100,7 @@ public sealed class WorkflowPlanner
         var warnings = new List<string>();
         var agents = AgentsOf(def);
         var owner = OwnersOf(def);
+        var transitions = TransitionsOf(def);
         var enabledAgents = agents.Where(a => a.Enabled).Select(a => a.Id).ToHashSet();
         var active = def.Steps.Where(s => s.Enabled && enabledAgents.Contains(owner[s.Id])).ToList();
         var activeIds = active.Select(s => s.Id).ToHashSet();
@@ -106,18 +118,43 @@ public sealed class WorkflowPlanner
             warnings.Add($"Agent '{agent.Id}' is disabled: {string.Join(", ", agent.Steps.Select(s => $"'{s}'"))} will not run.");
         if (def.HaltOnHardStop)
             warnings.Add("Halt on hard stop is on: once sanctions, MATCH or a prohibited category is confirmed, remaining evidence steps are skipped.");
+        foreach (var step in active.Where(s => s.StopGate is not null))
+        {
+            var g = step.StopGate!;
+            if (g.When is StopGateTrigger.Flag or StopGateTrigger.HighSeverityFlag && !StopGates.RaisesFlags(step.Id))
+                warnings.Add($"Stop-gate on '{step.Id}' watches flags, but that step never raises any – the gate can only fire on its other triggers.");
+            var effect = g.ForceOutcome == ForcedOutcome.None ? "" : $", outcome forced to {g.ForceOutcome}";
+            warnings.Add($"Stop-gate on '{step.Id}': when {StopGates.Describe(g)}, remaining evidence steps of {(g.Scope == StopGateScope.Agent ? $"agent '{owner[step.Id]}'" : "the whole workflow")} are skipped{effect}.");
+        }
 
-        // ---- agent graph: A waits for B when an active step of A depends on an active step owned by B ----
+        // ---- agent graph: A waits for B when a transition B → A exists or an active step of A depends on an active step owned by B ----
         var waits = agents.ToDictionary(a => a.Id, _ => new SortedSet<string>());
         foreach (var step in active)
             foreach (var dep in DependenciesOf(step).Where(activeIds.Contains))
                 if (owner[dep] != owner[step.Id]) waits[owner[step.Id]].Add(owner[dep]);
+        foreach (var t in transitions.Where(t => enabledAgents.Contains(t.From) && enabledAgents.Contains(t.To)))
+            waits[t.To].Add(t.From);
+
+        foreach (var a in agents.Where(a => a.Enabled))
+        {
+            var incoming = transitions.Where(t => t.To == a.Id).ToList();
+            if (incoming.Count == 0) continue;
+            var live = incoming.Where(t => enabledAgents.Contains(t.From)).ToList();
+            if (live.Count == 0)
+                warnings.Add($"Agent '{a.Id}' only runs after {string.Join(", ", incoming.Select(t => $"'{t.From}'"))}, which is disabled – '{a.Id}' will never run.");
+            else if (live.All(t => t.When != TransitionCondition.Always))
+            {
+                var required = a.Steps.Where(activeIds.Contains).Where(s => _catalog[s].Required).ToList();
+                var tail = required.Count > 0 ? $" It owns {string.Join(", ", required.Select(r => $"'{r}'"))}, so those runs end in Refer with no score." : "";
+                warnings.Add($"Agent '{a.Id}' runs only when {string.Join(" or ", live.Select(t => $"'{t.From}' {StopGates.Describe(t.When)}"))}; otherwise it is skipped.{tail}");
+            }
+        }
 
         var agentStage = new Dictionary<string, int>();
         foreach (var a in agents.Where(a => a.Enabled)) StageOf(a.Id, waits, agentStage, []);
 
         // ---- step stages: intra-agent stages, offset by the agent stage ----
-        var intra = agents.Where(a => a.Enabled).ToDictionary(a => a.Id, a => IntraStages(def, a.Steps.Where(activeIds.Contains).ToList()));
+        var intra = agents.Where(a => a.Enabled).ToDictionary(a => a.Id, a => IntraStages(def, a, activeIds, warnings));
         var offsets = new Dictionary<int, int>();
         var offset = 0;
         foreach (var s in agentStage.Values.Distinct().OrderBy(x => x))
@@ -137,34 +174,59 @@ public sealed class WorkflowPlanner
         var agentPlans = agents.Select(a => new WorkflowAgentPlan(a.Id, _agents[a.Id].Name, a.Enabled,
             a.Enabled ? agentStage[a.Id] + 1 : 0,
             a.Steps.Where(activeIds.Contains).ToList(),
-            waits[a.Id].ToList())).ToList();
+            waits[a.Id].ToList(),
+            transitions.Where(t => t.To == a.Id).ToList(),
+            a.Enabled ? intra[a.Id] : [])).ToList();
 
         return new WorkflowPlan(planned, warnings, disabled, Mermaid(def, agentPlans, activeIds), agentPlans);
     }
 
-    /// <summary>Stages for a subset of steps (list order preserved), considering only dependencies inside the subset.</summary>
-    public List<List<string>> IntraStages(WorkflowDefinition def, IReadOnlyList<string> stepIds)
+    /// <summary>
+    /// Stages for the active steps of one agent. Parallel: dependencies only. Ordered: list/slot order, then dependencies push
+    /// steps later (each such correction is reported as a warning so the editor can show why a slot was not honoured).
+    /// </summary>
+    public List<List<string>> IntraStages(WorkflowDefinition def, WorkflowAgentConfig agent, IReadOnlySet<string> activeIds, List<string>? warnings = null)
     {
-        var set = stepIds.ToHashSet();
+        var set = agent.Steps.Where(activeIds.Contains).ToHashSet();
         var stageOf = new Dictionary<string, int>();
-        var stages = new List<List<string>>();
-        var previous = 0;
-        foreach (var step in def.Steps.Where(s => set.Contains(s.Id)))
+
+        if (agent.StepOrder == AgentStepOrder.Parallel)
         {
-            var depStage = DependenciesOf(step).Where(set.Contains).Select(d => stageOf[d] + 1).DefaultIfEmpty(0).Max();
-            var stage = Math.Max(depStage, previous);
-            stageOf[step.Id] = stage;
-            while (stages.Count <= stage) stages.Add(new List<string>());
-            stages[stage].Add(step.Id);
-            previous = stage;
+            foreach (var step in def.Steps.Where(s => set.Contains(s.Id)))
+                stageOf[step.Id] = DependenciesOf(step).Where(set.Contains).Select(d => stageOf[d] + 1).DefaultIfEmpty(0).Max();
         }
-        return stages;
+        else
+        {
+            // slot order: explicit slots are kept, unset ones follow the previous step
+            var slotOf = new Dictionary<string, int>();
+            var previous = -1;
+            foreach (var id in agent.Steps.Where(set.Contains))
+            {
+                var slot = def.Step(id)!.Slot ?? previous + 1;
+                slotOf[id] = slot;
+                previous = slot;
+            }
+            var ranks = slotOf.Values.Distinct().OrderBy(x => x).Select((s, i) => (s, i)).ToDictionary(x => x.s, x => x.i);
+            // dependencies can only push a step later; resolve in dependency order (def.Steps order is dependency-safe)
+            foreach (var step in def.Steps.Where(s => set.Contains(s.Id)))
+            {
+                var wanted = ranks[slotOf[step.Id]];
+                var deps = DependenciesOf(step).Where(set.Contains).ToList();
+                var forced = deps.Select(d => stageOf[d] + 1).DefaultIfEmpty(0).Max();
+                stageOf[step.Id] = Math.Max(wanted, forced);
+                if (forced > wanted)
+                    warnings?.Add($"'{step.Id}' is slotted before {string.Join(", ", deps.Where(d => stageOf[d] >= wanted).Select(d => $"'{d}'"))} in agent '{agent.Id}', but needs their output – it runs after them.");
+            }
+        }
+
+        return stageOf.GroupBy(kv => kv.Value).OrderBy(g => g.Key)
+            .Select(g => def.Steps.Select(s => s.Id).Where(id => g.Any(kv => kv.Key == id)).ToList()).ToList();
     }
 
     private static int StageOf(string agent, Dictionary<string, SortedSet<string>> waits, Dictionary<string, int> memo, HashSet<string> path)
     {
         if (memo.TryGetValue(agent, out var s)) return s;
-        if (!path.Add(agent)) throw new WorkflowValidationException($"Agents {string.Join(" → ", path.Append(agent).Select(a => $"'{a}'"))} depend on each other's steps. Move the steps so the dependency runs one way only.");
+        if (!path.Add(agent)) throw new WorkflowValidationException($"Agents {string.Join(" → ", path.Append(agent).Select(a => $"'{a}'"))} depend on each other (through transitions or step dependencies). Make the flow run one way only.");
         var stage = waits[agent].Select(w => StageOf(w, waits, memo, path) + 1).DefaultIfEmpty(0).Max();
         path.Remove(agent);
         return memo[agent] = stage;
@@ -189,11 +251,17 @@ public sealed class WorkflowPlanner
             foreach (var p in step.Params?.Keys ?? Enumerable.Empty<string>())
                 if (_catalog[step.Id].Params.All(d => d.Name != p))
                     throw new WorkflowValidationException($"Step '{step.Id}' has no parameter '{p}'. Allowed: {string.Join(", ", _catalog[step.Id].Params.Select(d => d.Name)).NullIfEmpty() ?? "none"}.");
+            if (step.Slot is < 0) throw new WorkflowValidationException($"Step '{step.Id}' has a negative slot.");
+            if (step.StopGate is { When: StopGateTrigger.Flag, Code: null or "" })
+                throw new WorkflowValidationException($"Stop-gate on '{step.Id}' triggers on a flag but names no flag code.");
+            if (step.StopGate is not null && _catalog[step.Id].Required)
+                throw new WorkflowValidationException($"Step '{step.Id}' decides the outcome and cannot carry a stop-gate.");
         }
         foreach (var missing in _catalog.Keys.Where(k => !seen.Contains(k)))
             throw new WorkflowValidationException($"Step '{missing}' is missing from the workflow – list every step and disable the ones you do not want.");
 
         ValidateAgents(def);
+        ValidateTransitions(def);
 
         // Active dependencies must appear earlier in the list (this also rules out cycles).
         var position = def.Steps.Select((s, i) => (s.Id, i)).ToDictionary(x => x.Id, x => x.i);
@@ -203,13 +271,16 @@ public sealed class WorkflowPlanner
                 if (position[dep] > position[step.Id])
                     throw new WorkflowValidationException($"Step '{step.Id}' depends on '{dep}', which is ordered after it. Move '{dep}' above '{step.Id}' or disable the dependency.");
 
-        // Agent graph must be acyclic.
+        // Agent graph (transitions + cross-agent dependencies) must be acyclic.
         var owner = OwnersOf(def);
         var agents = AgentsOf(def);
+        var enabledAgents = agents.Where(a => a.Enabled).Select(a => a.Id).ToHashSet();
         var waits = agents.ToDictionary(a => a.Id, _ => new SortedSet<string>());
         foreach (var step in def.Steps.Where(s => active.Contains(s.Id)))
             foreach (var dep in DependenciesOf(step).Where(active.Contains))
                 if (owner[dep] != owner[step.Id]) waits[owner[step.Id]].Add(owner[dep]);
+        foreach (var t in TransitionsOf(def).Where(t => enabledAgents.Contains(t.From) && enabledAgents.Contains(t.To)))
+            waits[t.To].Add(t.From);
         var memo = new Dictionary<string, int>();
         foreach (var a in agents.Where(a => a.Enabled)) StageOf(a.Id, waits, memo, []);
     }
@@ -237,9 +308,22 @@ public sealed class WorkflowPlanner
             throw new WorkflowValidationException($"Step '{step}' is not owned by any agent – assign it to one.");
     }
 
+    private void ValidateTransitions(WorkflowDefinition def)
+    {
+        var pairs = new HashSet<(string, string)>();
+        foreach (var t in TransitionsOf(def))
+        {
+            if (!_agents.ContainsKey(t.From)) throw new WorkflowValidationException($"Transition starts at unknown agent '{t.From}'.");
+            if (!_agents.ContainsKey(t.To)) throw new WorkflowValidationException($"Transition '{t.From}' → '{t.To}' points at an unknown agent.");
+            if (t.From == t.To) throw new WorkflowValidationException($"Agent '{t.From}' cannot transition to itself.");
+            if (!pairs.Add((t.From, t.To))) throw new WorkflowValidationException($"Transition '{t.From}' → '{t.To}' is defined more than once – one transition per pair, pick one condition.");
+        }
+    }
+
     private string Mermaid(WorkflowDefinition def, IReadOnlyList<WorkflowAgentPlan> agents, HashSet<string> active)
     {
         var sb = new StringBuilder("flowchart LR\n  intake([Intake])\n");
+        var transitions = TransitionsOf(def);
         foreach (var agent in agents)
         {
             var title = agent.Enabled ? $"{agent.Name} · stage {agent.Stage}" : $"{agent.Name} (off)";
@@ -249,7 +333,11 @@ public sealed class WorkflowPlanner
                 sb.Append(active.Contains(id) ? $"    {id}[\"{_catalog[id].Name}\"]\n" : $"    {id}[\"{_catalog[id].Name} (off)\"]:::off\n");
             sb.Append("  end\n");
             if (agent.Enabled && agent.WaitsFor.Count == 0) sb.Append($"  intake --> {agent.Id}\n");
-            foreach (var w in agent.WaitsFor) sb.Append($"  {w} --> {agent.Id}\n");
+            foreach (var w in agent.WaitsFor)
+            {
+                var t = transitions.FirstOrDefault(x => x.From == w && x.To == agent.Id);
+                sb.Append(t is null || t.When == TransitionCondition.Always ? $"  {w} --> {agent.Id}\n" : $"  {w} -- {StopGates.Describe(t.When)} --> {agent.Id}\n");
+            }
         }
         foreach (var step in def.Steps.Where(s => active.Contains(s.Id)))
             foreach (var dep in DependenciesOf(step))

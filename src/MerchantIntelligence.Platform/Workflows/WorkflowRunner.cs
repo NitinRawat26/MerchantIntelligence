@@ -54,7 +54,7 @@ public sealed class WorkflowRunner
         {
             var executors = stage.Select(a => (ExecutorBinding)new AgentExecutor(_agents[a.Id], a.Steps.Select(id => _steps[id]).ToList(),
                 def.Steps.Select(s => s.Id).Where(id => owner.GetValueOrDefault(id) == a.Id).ToList(),
-                _planner.IntraStages(def, a.Steps), ctx, _logger)).ToList();
+                a.StepStages.Select(s => s.ToList()).ToList(), ctx, _logger)).ToList();
             var gate = new StageGate($"stage-{stage.Key}", executors.Count);
             builder.AddFanOutEdge(previous, executors);
             foreach (var e in executors) builder.AddEdge(e, gate);

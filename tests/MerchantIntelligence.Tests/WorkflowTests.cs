@@ -68,9 +68,9 @@ public sealed class WorkflowTests : IClassFixture<WebApplicationFactory<Program>
         var plan = Planner.Plan(Default());
         Assert.Empty(plan.Warnings);
         Assert.Empty(plan.Disabled);
-        // Pre-check and KYB agents run concurrently; inside each, list order is monotonic (prohibited needs website)
-        Assert.Equal(["verification", "screening", "website", "match"], plan.Stages[0].Steps);
-        Assert.Equal(["prohibited", "mcc", "presence"], plan.Stages[1].Steps);   // presence waits for verification
+        // Pre-check and KYB agents run concurrently; inside each (Parallel by default) only dependencies sequence steps
+        Assert.Equal(["verification", "screening", "website", "mcc", "match"], plan.Stages[0].Steps);
+        Assert.Equal(["prohibited", "presence"], plan.Stages[1].Steps);   // prohibited needs website, presence waits for verification
         Assert.Equal(["score"], plan.Stages[^2].Steps);
         Assert.Equal(["case"], plan.Stages[^1].Steps);
         Assert.Equal(["precheck", "kyb", "financial", "decision"], plan.Agents.Select(a => a.Id));
