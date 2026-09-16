@@ -15,6 +15,8 @@ import {
 } from '../../shared/models';
 
 export const AGENT_ICONS: Record<string, string> = { precheck: 'fact_check', kyb: 'verified_user', financial: 'account_balance', decision: 'gavel' };
+/** One colour per fixed agent, used on canvas nodes, lanes, palette and inspector so an agent is recognisable everywhere. */
+export const AGENT_COLORS: Record<string, string> = { precheck: '#7b3fa0', kyb: '#0b6fa4', financial: '#2e7d32', decision: '#d84315' };
 
 export const POLICIES: { value: StepFailurePolicy; label: string; hint: string }[] = [
   { value: 'Skip', label: 'Skip (coverage gap)', hint: 'Failed check becomes a coverage gap.' },
@@ -46,8 +48,11 @@ const OUTCOMES: { value: ForcedOutcome; label: string }[] = [
   { value: 'Decline', label: 'force Decline' }
 ];
 
-const NODE_W = 190;
+const NODE_W = 172;
 const NODE_H = 64;
+const STAGE_GAP = 38;
+const TERM_R = 22;
+const TERM_GAP = 44;
 
 type Selection = { kind: 'agent'; id: string } | { kind: 'transition'; index: number } | { kind: 'step'; id: string } | null;
 
@@ -72,7 +77,7 @@ interface Point { x: number; y: number; }
             <div class="palette" cdkDropList id="agent-palette" [cdkDropListData]="unplacedAgentIds()" [cdkDropListConnectedTo]="['agent-canvas']" cdkDropListSortingDisabled>
               <div class="pal-title">Agents</div>
               @for (a of unplacedAgents(); track a.id) {
-                <div class="pal-item" cdkDrag [cdkDragData]="a.id" [matTooltip]="a.mandate">
+                <div class="pal-item agent-item" cdkDrag [cdkDragData]="a.id" [matTooltip]="a.mandate" [style.--agent]="color(a.id)">
                   <mat-icon>{{ icon(a.id) }}</mat-icon><span>{{ a.name }}</span>
                   <div *cdkDragPlaceholder class="pal-item placeholder"></div>
                 </div>
@@ -82,10 +87,20 @@ interface Point { x: number; y: number; }
 
             <div #canvas class="canvas" (click)="select(null)">
               <div class="drop-target" cdkDropList id="agent-canvas" [cdkDropListData]="placedIds()" cdkDropListSortingDisabled (cdkDropListDropped)="dropAgent($event)"></div>
-              <svg class="wires" [attr.width]="canvasW" [attr.height]="canvasH">
+              <svg class="wires" [attr.width]="canvasW()" [attr.height]="canvasH()">
                 <defs>
                   <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>
                 </defs>
+                @if (placed().length) {
+                  @for (w of terminalWires(); track $index) { <path [attr.d]="w" class="term-wire" marker-end="url(#arrow)"/> }
+                  @for (w of inferredWires(); track $index) { <path [attr.d]="w" class="wire inferred" marker-end="url(#arrow)" matTooltip="Order inferred from data dependencies – add a transition to make it explicit"/> }
+                  <g class="terminal" [attr.transform]="'translate(' + startPos().x + ',' + startPos().y + ')'">
+                    <circle [attr.r]="termR" class="start"/><text y="4" text-anchor="middle">Start</text>
+                  </g>
+                  <g class="terminal" [attr.transform]="'translate(' + endPos().x + ',' + endPos().y + ')'">
+                    <circle [attr.r]="termR" class="end"/><circle [attr.r]="termR - 5" class="end-inner"/><text y="4" text-anchor="middle">End</text>
+                  </g>
+                }
                 @for (t of d.transitions ?? []; track $index; let i = $index) {
                   @if (wire(t); as w) {
                     <g class="wire" [class.selected]="isSelected('transition', i)" [class.fail]="t.when === 'Fail'" [class.success]="t.when === 'Success'" (click)="pick({ kind: 'transition', index: i }, $event)">
@@ -109,7 +124,7 @@ interface Point { x: number; y: number; }
                 <div class="node" cdkDrag [cdkDragData]="a.id" [cdkDragFreeDragPosition]="posOf(a.id)" cdkDragBoundary=".canvas"
                      (cdkDragEnded)="nodeMoved(a.id, $event)" [class.selected]="isSelected('agent', a.id)" [class.disabled]="!a.enabled"
                      [class.link-target]="linking() && linking()!.from !== a.id" (click)="pick({ kind: 'agent', id: a.id }, $event)"
-                     (mouseup)="finishLink(a.id, $event)">
+                     (mouseup)="finishLink(a.id, $event)" [style.--agent]="color(a.id)">
                   <div class="port in" matTooltip="incoming"></div>
                   <div class="node-body">
                     <mat-icon>{{ icon(a.id) }}</mat-icon>
@@ -138,8 +153,9 @@ interface Point { x: number; y: number; }
             </div>
 
             <div class="lanes">
+              @if (notice(); as n) { <div class="notice wide"><mat-icon inline>swap_vert</mat-icon> {{ n }}</div> }
               @for (a of placed(); track a.id) {
-                <div class="lane" [class.disabled]="!a.enabled" [class.selected]="isSelected('agent', a.id)">
+                <div class="lane" [class.disabled]="!a.enabled" [class.selected]="isSelected('agent', a.id)" [style.--agent]="color(a.id)">
                   <div class="lane-head" (click)="pick({ kind: 'agent', id: a.id }, $event)">
                     <mat-icon>{{ icon(a.id) }}</mat-icon>
                     <strong>{{ name(a.id) }}</strong>
@@ -156,7 +172,9 @@ interface Point { x: number; y: number; }
                     @for (id of a.steps; track id; let i = $index) {
                       @if (step(id); as s) {
                         <div class="step-card" cdkDrag [cdkDragData]="id" [class.selected]="isSelected('step', id)" [class.off]="!s.enabled" [class.required]="describe(id)?.required"
+                             [class.grp]="groupPos(a, i)" [class.grp-start]="groupPos(a, i) === 'start'" [class.grp-end]="groupPos(a, i) === 'end'"
                              (click)="pick({ kind: 'step', id }, $event)">
+                          @if (groupPos(a, i) === 'start') { <div class="grp-label" matTooltip="These steps are dispatched at the same time (a dependency badge still forces a step to wait for its input)">∥ run together</div> }
                           <div class="slot" [class.hidden]="(a.stepOrder ?? 'Parallel') !== 'Ordered'" matTooltip="Slot – steps with the same number run together">{{ slotOf(a, i) }}</div>
                           <div class="step-main">
                             <div class="step-title"><strong>{{ describe(id)?.name ?? id }}</strong>
@@ -190,7 +208,7 @@ interface Point { x: number; y: number; }
           @switch (selected()?.kind) {
             @case ('agent') {
               @if (agent(selectedId()); as a) {
-                <div class="insp-head"><mat-icon>{{ icon(a.id) }}</mat-icon><div><strong>{{ name(a.id) }}</strong><div class="muted small">{{ agentDesc(a.id)?.mandate }}</div></div></div>
+                <div class="insp-head" [style.--agent]="color(a.id)"><mat-icon>{{ icon(a.id) }}</mat-icon><div><strong>{{ name(a.id) }}</strong><div class="muted small">{{ agentDesc(a.id)?.mandate }}</div></div></div>
                 <p class="muted small">{{ agentDesc(a.id)?.description }}</p>
                 <mat-slide-toggle [(ngModel)]="a.enabled" (ngModelChange)="emit()">Enabled</mat-slide-toggle>
                 <div class="sec">Step execution</div>
@@ -227,7 +245,7 @@ interface Point { x: number; y: number; }
             }
             @case ('step') {
               @if (step(selectedId()); as s) {
-                <div class="insp-head"><mat-icon>{{ icon(ownerOf(s.id) ?? '') }}</mat-icon><div><strong>{{ describe(s.id)?.name ?? s.id }}</strong><div class="muted small"><code>{{ s.id }}</code> · {{ name(ownerOf(s.id) ?? '') }}</div></div></div>
+                <div class="insp-head" [style.--agent]="color(ownerOf(s.id) ?? '')"><mat-icon>{{ icon(ownerOf(s.id) ?? '') }}</mat-icon><div><strong>{{ describe(s.id)?.name ?? s.id }}</strong><div class="muted small"><code>{{ s.id }}</code> · {{ name(ownerOf(s.id) ?? '') }}</div></div></div>
                 <p class="muted small">{{ describe(s.id)?.description }}</p>
                 <mat-slide-toggle [(ngModel)]="s.enabled" (ngModelChange)="emit()">Enabled</mat-slide-toggle>
                 @if (describe(s.id)?.required) { <p class="muted small"><mat-icon inline>star</mat-icon> Decision authority – disabling forces every decision to Refer.</p> }
@@ -305,7 +323,8 @@ interface Point { x: number; y: number; }
     .palette { display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 1px dashed var(--mi-border-strong, #c7ccd8); border-radius: 10px; background: var(--mi-surface-2, #f7f8fb); min-height: 120px; }
     .pal-title { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--mi-text-2); }
     .pal-item { display: flex; gap: 8px; align-items: center; padding: 8px 10px; border: 1px solid var(--mi-border, #e0e3ea); border-radius: 8px; background: var(--mi-surface, #fff); cursor: grab; font-size: 13px; user-select: none; }
-    .pal-item mat-icon { color: var(--mi-primary, #3f51b5); }
+    .pal-item mat-icon { color: var(--agent, var(--mi-primary, #3f51b5)); }
+    .pal-item.agent-item { border-left: 4px solid var(--agent); }
     .pal-item.placeholder { opacity: .3; min-height: 36px; }
     .pal-item.required-item { border-left: 3px solid var(--mi-primary, #3f51b5); }
     .step-item mat-icon[inline] { font-size: 14px; width: 14px; height: 14px; color: var(--mi-primary, #3f51b5); margin-left: auto; }
@@ -322,23 +341,36 @@ interface Point { x: number; y: number; }
     .wire.selected .line { stroke-width: 3.5; } .wire.selected .label-bg { stroke: currentColor; stroke-width: 1.5; }
     .wire .label-bg { fill: var(--mi-surface, #fff); stroke: var(--mi-border, #e0e3ea); }
     .wire .label { font-size: 11px; font-weight: 600; fill: currentColor; }
+    .term-wire { stroke: var(--mi-text-2, #6b7280); stroke-width: 1.5; stroke-dasharray: 3 4; fill: none; color: var(--mi-text-2, #6b7280); }
+    .terminal text { font-size: 10px; font-weight: 700; fill: #fff; letter-spacing: .04em; }
+    .terminal .start { fill: #2e7d32; } .terminal .end { fill: #263238; } .terminal .end-inner { fill: none; stroke: #fff; stroke-width: 1.5; }
     .wire.pending { pointer-events: none; stroke: var(--mi-primary, #3f51b5); stroke-width: 2; stroke-dasharray: 4 4; fill: none; color: var(--mi-primary, #3f51b5); }
-    .node { position: absolute; width: ${NODE_W}px; height: ${NODE_H}px; box-sizing: border-box; border: 1px solid var(--mi-border-strong, #c7ccd8); border-left: 4px solid var(--mi-primary, #3f51b5);
+    .node { position: absolute; width: ${NODE_W}px; height: ${NODE_H}px; box-sizing: border-box; border: 1px solid var(--mi-border-strong, #c7ccd8); border-left: 5px solid var(--agent, var(--mi-primary, #3f51b5));
       border-radius: 10px; background: var(--mi-surface, #fff); box-shadow: 0 2px 6px rgba(0,0,0,.08); cursor: grab; user-select: none; }
-    .node.selected { box-shadow: 0 0 0 2px var(--mi-primary, #3f51b5); }
+    .node.selected { box-shadow: 0 0 0 2px var(--agent, var(--mi-primary, #3f51b5)); }
     .node.disabled { opacity: .55; border-left-color: var(--mi-text-2); }
     .node.link-target { box-shadow: 0 0 0 2px var(--mi-good, #2e7d32); }
-    .node-body { display: flex; gap: 8px; align-items: center; padding: 10px 14px; height: 100%; box-sizing: border-box; }
-    .node-body mat-icon { color: var(--mi-primary, #3f51b5); }
+    .node-body { display: flex; gap: 8px; align-items: center; padding: 8px 10px; height: 100%; box-sizing: border-box; }
+    .node-text strong { font-size: 13px; line-height: 1.2; } .node-text span { font-size: 11px; }
+    .node-body mat-icon { color: var(--agent, var(--mi-primary, #3f51b5)); }
     .node-text { display: flex; flex-direction: column; min-width: 0; } .node-text span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .port { position: absolute; top: 50%; width: 12px; height: 12px; margin-top: -6px; border-radius: 50%; background: var(--mi-surface, #fff); border: 2px solid var(--mi-primary, #3f51b5); }
-    .port.in { left: -7px; } .port.out { right: -7px; cursor: crosshair; } .port.out:hover { background: var(--mi-primary, #3f51b5); }
+    .port { position: absolute; top: 50%; width: 12px; height: 12px; margin-top: -6px; border-radius: 50%; background: var(--mi-surface, #fff); border: 2px solid var(--agent, var(--mi-primary, #3f51b5)); }
+    .port.in { left: -7px; } .port.out { right: -7px; cursor: crosshair; } .port.out:hover { background: var(--agent, var(--mi-primary, #3f51b5)); }
     .lanes-wrap { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 12px; }
     .lanes { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
-    .lane { border: 1px solid var(--mi-border, #e0e3ea); border-radius: 10px; background: var(--mi-surface, #fff); display: flex; flex-direction: column; min-height: 200px; }
-    .lane.selected { box-shadow: 0 0 0 2px var(--mi-primary, #3f51b5); } .lane.disabled { opacity: .6; }
-    .lane-head { display: flex; gap: 8px; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--mi-border, #e0e3ea); background: var(--mi-surface-2, #f7f8fb); border-radius: 10px 10px 0 0; cursor: pointer; flex-wrap: wrap; }
-    .lane-head mat-icon { color: var(--mi-primary, #3f51b5); }
+    .lane { border: 1px solid var(--mi-border, #e0e3ea); border-top: 4px solid var(--agent, var(--mi-primary, #3f51b5)); border-radius: 10px; background: var(--mi-surface, #fff); display: flex; flex-direction: column; min-height: 200px; }
+    .lane.selected { box-shadow: 0 0 0 2px var(--agent, var(--mi-primary, #3f51b5)); } .lane.disabled { opacity: .6; }
+    .lane-head { display: flex; gap: 8px; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--mi-border, #e0e3ea); background: color-mix(in srgb, var(--agent, #3f51b5) 8%, var(--mi-surface, #fff)); border-radius: 6px 6px 0 0; cursor: pointer; flex-wrap: wrap; }
+    .lane-head mat-icon { color: var(--agent, var(--mi-primary, #3f51b5)); }
+    .step-card.grp { margin-left: 14px; position: relative; }
+    .step-card.grp::before { content: ''; position: absolute; left: -12px; top: -5px; bottom: -5px; width: 7px; border: 2px solid var(--agent, #3f51b5); border-right: 0; border-radius: 0; opacity: .8; }
+    .step-card.grp:not(.grp-start)::before { top: -8px; border-top: 0; border-radius: 0; }
+    .step-card.grp:not(.grp-end)::before { bottom: -8px; border-bottom: 0; }
+    .step-card.grp-start::before { border-top-left-radius: 6px; } .step-card.grp-end::before { border-bottom-left-radius: 6px; }
+    .grp-label { position: absolute; left: -12px; top: -13px; font-size: 10px; font-weight: 700; color: var(--agent, #3f51b5); background: var(--mi-surface, #fff); padding: 0 4px; line-height: 12px; white-space: nowrap; }
+    .step-card.grp-start { margin-top: 10px; }
+    .notice { grid-column: 1 / -1; display: flex; gap: 6px; align-items: center; padding: 8px 12px; border-radius: 8px; font-size: 12px; background: var(--mi-warn-soft, #fff4e5); color: var(--mi-warn, #b26a00); border: 1px solid currentColor; }
+    .notice mat-icon[inline] { font-size: 16px; width: 16px; height: 16px; }
     .order-toggle { transform: scale(.8); transform-origin: right center; }
     .lane-body { flex: 1; padding: 8px; display: flex; flex-direction: column; gap: 8px; min-height: 120px; }
     .lane-body.cdk-drop-list-receiving, .steps-palette.cdk-drop-list-receiving { background: var(--mi-primary-soft, #e8eaf6); }
@@ -358,7 +390,14 @@ interface Point { x: number; y: number; }
     .warn-line { display: flex; gap: 4px; align-items: flex-start; color: var(--mi-warn, #b26a00); font-size: 11px; margin-top: 4px; }
     .warn-line mat-icon[inline] { font-size: 14px; width: 14px; height: 14px; flex: 0 0 auto; }
     .inspector { position: sticky; top: 12px; padding: 14px; border: 1px solid var(--mi-border, #e0e3ea); border-radius: 10px; background: var(--mi-surface-2, #f7f8fb); display: flex; flex-direction: column; gap: 10px; }
-    .insp-head { display: flex; gap: 10px; align-items: flex-start; } .insp-head mat-icon { color: var(--mi-primary, #3f51b5); }
+    .insp-head { display: flex; gap: 10px; align-items: flex-start; } .insp-head mat-icon { color: var(--agent, var(--mi-primary, #3f51b5)); }
+    :host-context(.fullscreen) .canvas { height: 44vh; min-height: 340px; }
+    :host-context(.fullscreen) .designer { grid-template-columns: minmax(0, 1fr) 320px; }
+    :host-context(.fullscreen) .flow { grid-template-columns: minmax(0, 1fr); }
+    :host-context(.fullscreen) .palette:not(.steps-palette) { flex-direction: row; flex-wrap: wrap; align-items: center; min-height: 0; padding: 8px 10px; }
+    :host-context(.fullscreen) .palette:not(.steps-palette) .pal-item { width: auto; }
+    .wire.inferred { stroke: currentColor; stroke-width: 2; stroke-dasharray: 5 4; fill: none; opacity: .75; cursor: help; }
+    :host-context(.fullscreen) .lanes { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
     .sec { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--mi-text-2); margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--mi-border, #e0e3ea); }
     .plain { margin: 0; padding-left: 18px; } .plain-ol { margin: 0; padding-left: 18px; }
     .cdk-drag-preview { box-shadow: 0 8px 24px rgba(0,0,0,.18); border-radius: 10px; }
@@ -379,13 +418,15 @@ export class WorkflowDesignerComponent {
   readonly triggers = TRIGGERS;
   readonly scopes = SCOPES;
   readonly outcomes = OUTCOMES;
-  readonly canvasW = 900;
-  readonly canvasH = 340;
+  readonly termR = TERM_R;
 
   private readonly canvasRef = viewChild<ElementRef<HTMLElement>>('canvas');
   readonly selected = signal<Selection>(null);
   readonly linking = signal<{ from: string; to: Point } | null>(null);
   readonly paramError = signal<string | null>(null);
+  /** Short-lived explanation shown when a drop was re-ordered to respect a data dependency. */
+  readonly notice = signal<string | null>(null);
+  private noticeTimer: ReturnType<typeof setTimeout> | null = null;
   /** Node positions are presentation state only – the workflow JSON carries no layout. */
   private readonly moved = signal<Record<string, Point>>({});
 
@@ -402,9 +443,64 @@ export class WorkflowDesignerComponent {
     const perStage: Record<number, number> = {};
     for (const id of this.placedIds()) {
       const st = stage(id); const row = perStage[st] ?? 0; perStage[st] = row + 1;
-      pos[id] = { x: 20 + (st - 1) * (NODE_W + 50), y: 24 + row * (NODE_H + 36) };
+      pos[id] = { x: TERM_GAP + TERM_R * 2 + 16 + (st - 1) * (NODE_W + STAGE_GAP), y: 24 + row * (NODE_H + 36) };
     }
     return pos;
+  });
+
+  /** Agents nothing routes into (they start the run) and agents nothing routes out of (they finish it). */
+  readonly roots = computed(() => this.terminals('start'));
+  readonly sinks = computed(() => this.terminals('end'));
+
+  /** Without explicit transitions the planner infers stages, so the first/last stage bound the run instead. */
+  private terminals(side: 'start' | 'end'): WorkflowAgentConfig[] {
+    const enabled = this.placed().filter(a => a.enabled);
+    const t = this.def()?.transitions ?? [];
+    if (t.length) return enabled.filter(a => !t.some(x => side === 'start' ? x.to === a.id : x.from === a.id));
+    const stages = this.plan()?.agents ?? [];
+    const stageOf = (id: string) => stages.find(p => p.id === id)?.stage;
+    const known = enabled.map(a => stageOf(a.id)).filter((s): s is number => s != null);
+    if (!known.length) return enabled;
+    const edge = side === 'start' ? Math.min(...known) : Math.max(...known);
+    return enabled.filter(a => stageOf(a.id) === edge);
+  }
+
+  readonly startPos = computed<Point>(() => {
+    const ys = this.roots().map(a => this.posOf(a.id).y + NODE_H / 2);
+    return { x: TERM_R + 12, y: ys.length ? ys.reduce((s, y) => s + y, 0) / ys.length : 24 + NODE_H / 2 };
+  });
+  readonly endPos = computed<Point>(() => {
+    const maxX = Math.max(0, ...this.placed().map(a => this.posOf(a.id).x + NODE_W));
+    const ys = this.sinks().map(a => this.posOf(a.id).y + NODE_H / 2);
+    return { x: maxX + TERM_GAP + TERM_R, y: ys.length ? ys.reduce((s, y) => s + y, 0) / ys.length : 24 + NODE_H / 2 };
+  });
+  readonly canvasW = computed(() => Math.max(900, this.endPos().x + TERM_R + 24));
+  readonly canvasH = computed(() => Math.max(340, ...this.placed().map(a => this.posOf(a.id).y + NODE_H + 24)));
+
+  /** With no explicit transitions the planner sequences agents by stage; show that sequence dashed so the run is still readable end to end. */
+  readonly inferredWires = computed<string[]>(() => {
+    if (this.def()?.transitions?.length) return [];
+    const stages = this.plan()?.agents ?? [];
+    const stageOf = (id: string) => stages.find(p => p.id === id)?.stage;
+    const enabled = this.placed().filter(a => a.enabled && stageOf(a.id) != null);
+    const out: string[] = [];
+    for (const to of enabled) {
+      const prev = Math.max(-1, ...enabled.map(a => stageOf(a.id)!).filter(s => s < stageOf(to.id)!));
+      if (prev < 0) continue;
+      for (const from of enabled.filter(a => stageOf(a.id) === prev)) {
+        const a = this.posOf(from.id); const b = this.posOf(to.id);
+        out.push(this.curve(a.x + NODE_W + 7, a.y + NODE_H / 2, b.x - 7, b.y + NODE_H / 2).d);
+      }
+    }
+    return out;
+  });
+
+  readonly terminalWires = computed<string[]>(() => {
+    const s = this.startPos(); const e = this.endPos();
+    const out: string[] = [];
+    for (const a of this.roots()) { const p = this.posOf(a.id); out.push(this.curve(s.x + TERM_R, s.y, p.x - 7, p.y + NODE_H / 2).d); }
+    for (const a of this.sinks()) { const p = this.posOf(a.id); out.push(this.curve(p.x + NODE_W + 7, p.y + NODE_H / 2, e.x - TERM_R, e.y).d); }
+    return out;
   });
 
   readonly agentOrder = computed(() => Object.keys(this.agentCatalog()));
@@ -423,6 +519,18 @@ export class WorkflowDesignerComponent {
 
   // ---- lookups --------------------------------------------------------------------------
   icon(id: string): string { return AGENT_ICONS[id] ?? 'smart_toy'; }
+  color(id: string): string { return AGENT_COLORS[id] ?? '#3f51b5'; }
+
+  /** Bracket position of a card inside a group of steps dispatched together: the whole lane when All parallel, equal slots when Ordered. */
+  groupPos(a: WorkflowAgentConfig, i: number): 'start' | 'mid' | 'end' | null {
+    const n = a.steps.length;
+    if (n < 2) return null;
+    const key = (k: number) => (a.stepOrder ?? 'Parallel') === 'Ordered' ? this.slotOf(a, k) : 0;
+    const same = (k: number) => k >= 0 && k < n && key(k) === key(i);
+    const prev = same(i - 1), next = same(i + 1);
+    if (!prev && !next) return null;
+    return !prev ? 'start' : !next ? 'end' : 'mid';
+  }
   name(id: string): string { return this.agentCatalog()[id]?.name ?? id; }
   agentDesc(id: string): WorkflowAgentDescriptor | undefined { return this.agentCatalog()[id]; }
   describe(id: string): WorkflowStepDescriptor | undefined { return this.catalog()[id]; }
@@ -447,7 +555,7 @@ export class WorkflowDesignerComponent {
 
   agentSummary(a: WorkflowAgentConfig): string {
     const on = a.steps.filter(id => this.step(id)?.enabled).length;
-    return `${on}/${a.steps.length} checks · ${(a.stepOrder ?? 'Parallel') === 'Ordered' ? 'ordered' : 'parallel'}`;
+    return `${on}/${a.steps.length} checks · ${(a.stepOrder ?? 'Parallel') === 'Ordered' ? '↓ ordered' : '∥ parallel'}`;
   }
 
   /** Agents whose steps this agent's steps depend on (dependency-implied waits, shown when no arrows exist). */
@@ -607,8 +715,44 @@ export class WorkflowDesignerComponent {
       transferArrayItem(e.previousContainer.data, e.container.data, e.previousIndex, e.currentIndex);
       const s = this.step(id); if (s) s.slot = null;
     }
+    const lane = this.placed().find(a => this.laneId(a.id) === e.container.id);
+    if (lane) this.enforceDependencyOrder(lane, id);
     this.select({ kind: 'step', id });
     this.emit();
+  }
+
+  /**
+   * A step can never sit above a lane-mate whose output it needs (nor below one that needs its output).
+   * Re-orders the lane with a stable topological sort and explains the move when the dropped step was affected.
+   */
+  private enforceDependencyOrder(lane: WorkflowAgentConfig, droppedId: string): void {
+    const inLane = new Set(lane.steps);
+    const depsOf = (id: string) => this.deps(this.step(id) ?? { id, enabled: true, onFail: 'Skip' }).filter(d => inLane.has(d));
+    const before = lane.steps.indexOf(droppedId);
+    const sorted: string[] = []; const visiting = new Set<string>();
+    const visit = (id: string) => {
+      if (sorted.includes(id) || visiting.has(id)) return;
+      visiting.add(id);
+      for (const d of depsOf(id)) visit(d);
+      visiting.delete(id); sorted.push(id);
+    };
+    for (const id of lane.steps) visit(id);
+    if (sorted.every((id, i) => id === lane.steps[i])) return;
+    lane.steps.splice(0, lane.steps.length, ...sorted);
+    const after = lane.steps.indexOf(droppedId);
+    const label = (id: string) => this.describe(id)?.name ?? id;
+    const needs = depsOf(droppedId);
+    const neededBy = lane.steps.filter(id => depsOf(id).includes(droppedId));
+    const why = after > before && needs.length
+      ? `${label(droppedId)} needs the output of ${needs.map(label).join(', ')}, so it was moved below.`
+      : neededBy.length ? `${neededBy.map(label).join(', ')} need${neededBy.length === 1 ? 's' : ''} the output of ${label(droppedId)}, so it was moved above.` : `Order adjusted to respect data dependencies.`;
+    this.showNotice(why);
+  }
+
+  private showNotice(text: string): void {
+    this.notice.set(text);
+    if (this.noticeTimer) clearTimeout(this.noticeTimer);
+    this.noticeTimer = setTimeout(() => this.notice.set(null), 6000);
   }
 
   removeStep(id: string): void {
