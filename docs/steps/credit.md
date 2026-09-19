@@ -66,7 +66,7 @@ flowchart TD
     B --> C[ModelOpsService.PredictAndLog]
     C --> C1[Champion.Predict → DecisionResult]
     C --> C2[Challenger?.Predict → shadow result]
-    C1 & C2 --> C3[(decision_log row: features, champion & challenger prediction, model version, timestamp)]
+    C1 & C2 --> C3["(decision_log row: features, champion & challenger prediction, model version, timestamp)"]
     C3 --> D[ctx.Credit, ctx.DecisionLogId]
     D --> E[DecisionExplainer.Explain]
     E --> E1["Predict all 64 coalitions (features in/out vs baseline)"]

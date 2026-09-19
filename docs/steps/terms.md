@@ -59,7 +59,7 @@ Unavailable evidence is excluded rather than counted as Low; if everything is un
 
 ```mermaid
 flowchart TD
-    A[TermsStep] --> K[ctx.KybRisk = KybRisk(verification, screening, website)]
+    A[TermsStep] --> K["ctx.KybRisk = KybRisk(verification, screening, website)"]
     K --> P[ReservePricingRecommender.Recommend]
     P --> B[Resolve industry benchmark for MCC]
     P --> M["Champion predict → risk = P(decline) + 0.5·P(cancel)  (MODEL_RISK)"]

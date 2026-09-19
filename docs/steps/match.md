@@ -67,7 +67,7 @@ Principal national ids are never sent (the intake does not collect SSN/national 
 
 ```mermaid
 flowchart TD
-    C{Match options} -->|Endpoint set| H[HttpMatchProvider<br/>POST inquiry JSON, Bearer ApiKey<br/>parses hits[] → MatchHit]
+    C{Match options} -->|Endpoint set| H["HttpMatchProvider<br/>POST inquiry JSON, Bearer ApiKey<br/>parses hits[] → MatchHit"]
     C -->|else LocalListPath exists| L[LocalListMatchProvider<br/>CSV: name,taxId,reasonCode,terminationDate,acquirer]
     C -->|else| U[UnavailableMatchProvider<br/>Availability = NotConfigured]
 ```

@@ -63,8 +63,8 @@ flowchart TD
     D --> D1["id = CASE-yyyyMMdd-XXXXXX"]
     D1 --> D2["status: Approve→Approved · Decline→Declined · else Open<br/>final_decision set only when auto-decided"]
     D2 --> D3["priority: param ?? (score<250 High · <450 Normal · else Low)"]
-    D3 --> D4[(INSERT cases with snapshot_json)]
-    D4 --> D5[(audit: case.created, autoDecided)]
+    D3 --> D4["(INSERT cases with snapshot_json)"]
+    D4 --> D5["(audit: case.created, autoDecided)"]
     D5 --> D6["webhook case.created (+ case.decided if auto-decided)"]
     D6 --> E[ctx.Case]
 ```
@@ -136,7 +136,7 @@ Derived priority is inverted relative to intuition for a *review* queue: **low s
 flowchart LR
     C[MerchantCase] --> Q[Analyst queue: list / assign / notes / decide]
     C --> W[Webhooks → CRM, boarding system]
-    Q --> A[(audit_events hash chain)]
+    Q --> A["(audit_events hash chain)"]
     Q --> O["ModelOps.RecordOutcome(decisionLogId, actual)"]
     O --> R["/retrain → challenger → champion promotion"]
     C --> P[Assessment brief & PDF reference the case id]

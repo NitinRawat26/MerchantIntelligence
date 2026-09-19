@@ -76,7 +76,7 @@ The scanner performs exactly these seven actions, deterministically, and turns e
 ```mermaid
 flowchart TD
     A[WebsiteStep.ExecuteAsync] --> B{SiteUrl parsed?}
-    B -- no --> S[Skip: "No website URL supplied."]
+    B -- no --> S["Skip: 'No website URL supplied.'"]
     B -- yes --> C[Fetch home page over HTTPS]
     C -- ok --> E[Collect internal links]
     C -- TLS / connection error --> D[Retry over HTTP]

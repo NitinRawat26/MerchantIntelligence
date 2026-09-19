@@ -80,11 +80,11 @@ Policy tiers are ordered: `Acceptable < HighRisk < Restricted < Prohibited`. The
 
 ```mermaid
 flowchart TD
-    A[ProhibitedStep.ExecuteAsync] --> B[Detector.Analyze(null, description, mcc)]
+    A[ProhibitedStep.ExecuteAsync] --> B["Detector.Analyze(null, description, mcc)"]
     B --> C{ctx.Website?.ProhibitedBusiness present?}
     C -- no --> R[Result = description-only]
     C -- yes --> M[CombineProhibited]
-    M --> M1[verdict = max(descVerdict, webVerdict)]
+    M --> M1["verdict = max(descVerdict, webVerdict)"]
     M --> M2[matches: union by category code,<br/>keep highest score]
     M --> M3[flags: union by code]
     M1 & M2 & M3 --> R
@@ -92,12 +92,12 @@ flowchart TD
 
     subgraph Analyze
         direction TB
-        T1[text = lower(website + ' ' + description)] --> T2[for each category: run keyword regexes]
+        T1["text = lower(website + ' ' + description)"] --> T2[for each category: run keyword regexes]
         T2 --> T3[weight per keyword:<br/>1.0 single word · 1.5 phrase · ×2 if in description]
-        T3 --> T4[score += weight × ln(1 + hits)]
+        T3 --> T4["score += weight × ln(1 + hits)"]
         T4 --> T5[×1.5 if declared MCC ∈ category MCCs]
-        T5 --> T6[× (1 + min(1, 10 × hits/wordCount)) density]
-        T6 --> T7[normalise: min(1, score × (0.5 + 0.5·min(distinct,4)/4) / 4)]
+        T5 --> T6["× (1 + min(1, 10 × hits/wordCount)) density"]
+        T6 --> T7["normalise: min(1, score × (0.5 + 0.5·min(distinct,4)/4) / 4)"]
         T7 --> T8{score ≥ 0.15 or MCC hit with score > 0?}
         T8 -- yes --> T9[keep as CategoryMatch]
         T9 --> T10{score ≥ 0.35 or MCC hit?}
