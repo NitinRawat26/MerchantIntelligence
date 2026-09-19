@@ -6,7 +6,7 @@
 | Agent | KYB (`kyb`) |
 | Stage | 1, first step of the KYB agent |
 | Depends on | nothing |
-| Consumed by | `presence` (adds local-presence flags to this result), KYB agent review (alias re-screening), `terms` and `score` (KybRisk roll-up, `BusinessVerified`, `EntityAgeMonths`), rules facts `entityAgeMonths` / `isNewEntity`, analyst brief |
+| Consumed by | `presence` (adds local-presence flags to this result), KYB agent review (alias re-screening), `terms` and `score` (KybRisk roll-up, `BusinessVerified`, `EntityAgeMonths`), rules facts `entityAgeMonths`, `businessVerified`, `kybRisk`, analyst brief |
 | Required | No, but without it identity is unknown and the score drifts toward the midpoint |
 | Implementation | `src/MerchantIntelligence.Kyb/Registry/BusinessVerificationService.cs`, `RegistryProviders.cs`, `Matching/NameMatcher.cs`; wrapper `src/MerchantIntelligence.Platform/Agents/Kyb/VerificationStep.cs` |
 
@@ -191,7 +191,7 @@ clamp 0–100
 * Every verification flag is also added as a reason code with source `verification`; High ones cap the score.
 
 ### Rules
-Facts: `entityAgeMonths`, `isNewEntity` (< 12 months). Default rule `NEW_ENTITY_HIGH_VOLUME` (new entity **and** `annualVolume > 1,000,000`) → Refer.
+Facts: `entityAgeMonths`, `businessVerified`, `kybRisk`, plus `reasonCodes` (which contains `NEW_ENTITY` when applicable). Default rule `NEW_ENTITY_HIGH_VOLUME` (priority 30): `reasonCodes contains NEW_ENTITY` **and** `annualVolume > 1,000,000` → Refer.
 
 ### KYB agent (autonomous action)
 If the best registry record's legal name differs from both declared names, the agent **re-screens that alias** against sanctions and merges the hits into `ctx.Screening` (`ALIAS_RESCREENED`). This is the one place in the workflow where a step's output triggers extra evidence collection automatically.
