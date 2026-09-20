@@ -1,3 +1,4 @@
+using Microsoft.OpenApi;
 using MerchantIntelligence.Api.Swagger;
 using System.Text.Json.Serialization;
 using MerchantIntelligence.CreditDecision;
@@ -21,7 +22,17 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers()
     .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(o => o.OperationFilter<AssessmentRunRequestBodyFilter>());
+builder.Services.AddSwaggerGen(o =>
+{
+    o.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "Merchant Intelligence API",
+        Version = "v1",
+        Description = "Merchant acquiring pre-checks, KYB, credit and underwriting decisions.",
+        Contact = new OpenApiContact { Name = "Nitin Rawat", Url = new Uri("https://github.com/NitinRawat26") }
+    });
+    o.OperationFilter<AssessmentRunRequestBodyFilter>();
+});
 
 var modelPath = ResolvePath(builder.Configuration["CreditDecision:ModelPath"] ?? "models/credit-decision.zip");
 IDecisionPredictor LoadBootstrapModel(IServiceProvider sp)
