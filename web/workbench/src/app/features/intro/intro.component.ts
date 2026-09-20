@@ -1,8 +1,6 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, output, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { SuiteApiService } from '../../shared/suite-api.service';
 
 /** Scenes of the intro film; each scene owns a set of positions the SVG elements transition to. */
 type Scene = 'cup' | 'signals' | 'steps' | 'agents' | 'pipeline' | 'score';
@@ -45,13 +43,13 @@ const STEPS: StepDef[] = [
 ];
 
 const SIGNALS: SignalDef[] = [
-  { id: 'url', label: 'starbucks.com', step: 'website' },
-  { id: 'desc', label: 'Coffeehouse chain', step: 'prohibited' },
+  { id: 'url', label: 'nitincoffee.co', step: 'website' },
+  { id: 'desc', label: 'Independent coffeehouse', step: 'prohibited' },
   { id: 'mcc', label: 'MCC 5814', step: 'mcc' },
-  { id: 'legal', label: 'Starbucks Corporation', step: 'verification' },
-  { id: 'owner', label: 'Owner · Brian Niccol', step: 'screening' },
+  { id: 'legal', label: 'Nitin Coffee Co', step: 'verification' },
+  { id: 'owner', label: 'Owner · Nitin Rawat', step: 'screening' },
   { id: 'rel', label: 'Existing relationship', step: 'match' },
-  { id: 'addr', label: 'Seattle, WA 98134', step: 'presence' },
+  { id: 'addr', label: 'Austin, TX 78701', step: 'presence' },
   { id: 'bank', label: 'Bank statement CSV', step: 'bank' },
   { id: 'pl', label: 'P&L statement', step: 'financials' },
   { id: 'emp', label: '50 employees · 15 yrs', step: 'plausibility' },
@@ -71,6 +69,9 @@ const EDGES: [string, string][] = [
   ['bank', 'plausibility'], ['financials', 'plausibility'], ['plausibility', 'credit'],
   ['credit', 'terms'], ['terms', 'score'], ['score', 'case']
 ];
+
+/** Illustrative outcome for a long-standing, low-risk card-present coffeehouse. */
+const VERDICT = { score: 889, tier: 'VeryLow', outcome: 'Approve', coveragePercent: 100 };
 
 const STEP_ORDER = ['website', 'prohibited', 'mcc', 'verification', 'screening', 'match', 'presence', 'bank', 'financials', 'plausibility', 'credit', 'terms', 'score', 'case'];
 
@@ -101,12 +102,12 @@ const STEP_ORDER = ['website', 'prohibited', 'mcc', 'verification', 'screening',
         <!-- Scene 1: the merchant applies -->
         <g class="merchant" [class.show]="scene() === 'cup'">
           <g class="cup" transform="translate(380 300)">
-            <path d="M-70 -60 h140 l-14 200 q0 20 -20 20 h-72 q-20 0 -20 -20 z" fill="#f8fafc"/>
-            <path d="M-78 -60 h156 v-26 q0 -10 -10 -10 h-136 q-10 0 -10 10 z" fill="#0f5132"/>
-            <path d="M-40 -96 h80 v-14 q0 -6 -6 -6 h-68 q-6 0 -6 6 z" fill="#0b3d25"/>
-            <rect x="-84" y="40" width="168" height="44" fill="#0f5132"/>
-            <circle cx="0" cy="62" r="34" fill="#00704a" stroke="#fff" stroke-width="3"/>
-            <path d="M0 -20 l6 12 14 2 -10 10 2 14 -12 -6 -12 6 2 -14 -10 -10 14 -2 z" transform="translate(0 62) scale(1.2)" fill="#fff"/>
+            <path d="M-70 -60 h140 l-14 200 q0 20 -20 20 h-72 q-20 0 -20 -20 z" fill="#d7b58f"/>
+            <path d="M-78 -60 h156 v-26 q0 -10 -10 -10 h-136 q-10 0 -10 10 z" fill="#f8fafc"/>
+            <path d="M-40 -96 h80 v-14 q0 -6 -6 -6 h-68 q-6 0 -6 6 z" fill="#e2e8f0"/>
+            <path d="M-76 20 h152 l-6 80 h-140 z" fill="#0f766e"/>
+            <path d="M0 38 q22 6 20 34 q-22 -4 -20 -34 z M0 38 q-4 16 -10 30" fill="#5eead4" stroke="#5eead4" stroke-width="2" stroke-linecap="round"/>
+            <text x="0" y="90" text-anchor="middle" font-size="11" fill="#ccfbf1" font-weight="700" letter-spacing="1.5">NITIN COFFEE CO</text>
             <path class="steam" d="M-30 -125 q10 -20 0 -40 q-10 -20 0 -40" fill="none" stroke="#e2e8f0" stroke-width="4" stroke-linecap="round"/>
             <path class="steam s2" d="M0 -125 q10 -20 0 -40 q-10 -20 0 -40" fill="none" stroke="#e2e8f0" stroke-width="4" stroke-linecap="round"/>
             <path class="steam s3" d="M30 -125 q10 -20 0 -40 q-10 -20 0 -40" fill="none" stroke="#e2e8f0" stroke-width="4" stroke-linecap="round"/>
@@ -131,7 +132,7 @@ const STEP_ORDER = ['website', 'prohibited', 'mcc', 'verification', 'screening',
             }
             <rect x="-30" y="-120" width="60" height="8" rx="4" fill="#475569"/>
           </g>
-          <text class="lead" x="600" y="600" text-anchor="middle">Starbucks · Seattle, WA applies for a card-present POS terminal</text>
+          <text class="lead" x="600" y="600" text-anchor="middle">Nitin Coffee Co · Austin, TX applies for a card-present POS terminal</text>
         </g>
 
         <!-- Agent frames -->
@@ -192,8 +193,7 @@ const STEP_ORDER = ['website', 'prohibited', 'mcc', 'verification', 'screening',
           <div class="chips">
             <span class="chip">Coverage {{ verdict()?.coveragePercent ?? '—' }}%</span>
             <span class="chip">14 checks · 4 agents · 1 decision</span>
-            @if (verdict()?.source === 'live') { <span class="chip ok">From the latest Starbucks assessment</span> }
-            @else { <span class="chip">Illustrative score · run the preset to refresh</span> }
+            <span class="chip ok">Illustrative result for a low-risk coffeehouse</span>
           </div>
           <button mat-flat-button color="primary" class="enter" (click)="finish()">Enter the workbench<mat-icon>arrow_forward</mat-icon></button>
         </footer>
@@ -279,7 +279,6 @@ const STEP_ORDER = ['website', 'prohibited', 'mcc', 'verification', 'screening',
   `]
 })
 export class IntroComponent {
-  private readonly api = inject(SuiteApiService);
   private readonly destroyRef = inject(DestroyRef);
   readonly done = output<void>();
 
@@ -292,7 +291,7 @@ export class IntroComponent {
   readonly scene = signal<Scene>('cup');
   readonly litSteps = signal<Set<string>>(new Set());
   readonly shownScore = signal(0);
-  readonly verdict = signal<{ score: number; tier: string; outcome: string; coveragePercent: number; source: 'live' | 'fallback' } | null>(null);
+  readonly verdict = signal<{ score: number; tier: string; outcome: string; coveragePercent: number } | null>(null);
 
   readonly showSteps = computed(() => ['steps', 'agents', 'pipeline', 'score'].includes(this.scene()));
   readonly showAgents = computed(() => ['agents', 'pipeline', 'score'].includes(this.scene()));
@@ -329,14 +328,6 @@ export class IntroComponent {
       this.signalScatter.set(s.id, { x: 600 + Math.cos(angle) * r * 1.7, y: 350 + Math.sin(angle) * r });
     });
 
-    this.api.assessments(50).pipe(takeUntilDestroyed()).subscribe({
-      next: list => {
-        const hit = list.find(a => /starbucks/i.test(a.merchantName));
-        if (hit) this.verdict.set({ score: hit.score, tier: hit.tier, outcome: hit.outcome, coveragePercent: Math.round(hit.coveragePercent), source: 'live' });
-      },
-      error: () => { /* fall back to the illustrative verdict */ }
-    });
-
     this.schedule();
     this.destroyRef.onDestroy(() => this.timers.forEach(clearTimeout));
   }
@@ -356,7 +347,7 @@ export class IntroComponent {
       STEP_ORDER.forEach((id, i) => this.timers.push(setTimeout(() => this.litSteps.update(s => new Set([...s, id])), 600 + i * 300)));
     }
     if (scene === 'score') {
-      if (!this.verdict()) this.verdict.set({ score: 889, tier: 'VeryLow', outcome: 'Approve', coveragePercent: 100, source: 'fallback' });
+      this.verdict.set(VERDICT);
       const target = this.verdict()!.score;
       const start = performance.now();
       const tick = (now: number) => {
