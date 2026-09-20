@@ -6,7 +6,7 @@ assessment runs as a **Microsoft Agent Framework workflow** of four rule-based a
 pluggable checks; the workflow (agents, checks, order, failure policy) is data you edit in the UI
 his is a true Agent-framework-orchestrated deterministic pipeline and no LLM or external model is involved anywhere.
 
-#### [Website][Merchant Intel](https://merchant-intelligence-3gtq.onrender.com/assess). -- #### [Wiki](https://github.com/NitinRawat26/MerchantIntelligence/blob/base/docs/wiki/Home.md) -- #### [14 Steps](https://github.com/NitinRawat26/MerchantIntelligence/blob/base/docs/steps/README.md)
+#### [Merchant Intel](https://merchant-intelligence-3gtq.onrender.com/assess). -- [Wiki](https://github.com/NitinRawat26/MerchantIntelligence/blob/base/docs/wiki/Home.md) -- [14 Steps](https://github.com/NitinRawat26/MerchantIntelligence/blob/base/docs/steps/README.md)
 
 #### Functional flow
 
