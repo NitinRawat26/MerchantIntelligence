@@ -44,7 +44,7 @@ export interface SanctionsHit {
 }
 export interface SubjectScreeningResult {
   subject: { name: string; isIndividual: boolean; role?: string }; potentialMatch: boolean; hits: SanctionsHit[];
-  adverseMedia?: { provider: string; succeeded: boolean; articleCount: number; negativeCount: number; articles: { title: string; url: string; source: string; published?: string | null; tone: string }[]; error?: string | null } | null;
+  adverseMedia?: AdverseMediaResult | null;
   flags: Flag[];
 }
 export interface ScreeningReport {
@@ -197,10 +197,25 @@ export interface WorkflowValidationResponse { valid: boolean; error?: string | n
 export interface AssessmentStep { id: string; name: string; status: StepStatus; summary: string; durationMs: number; error?: string | null; }
 export interface CheckOutcome { check: string; result: string; detail: string; severity: RiskTier; covered: boolean; }
 export interface ExplanationItem { section: string; code: string; message: string; severity: RiskTier; source: string; }
+export interface AdverseMediaArticle {
+  title: string; url: string; source: string; published?: string | null; tone: string;
+  snippet?: string | null; matchedTerms?: string[] | null; category?: string | null; context?: string | null; provider?: string | null;
+}
+export interface AdverseMediaResult {
+  provider: string; succeeded: boolean; articleCount: number; negativeCount: number; mentionCount?: number;
+  articles: AdverseMediaArticle[]; error?: string | null;
+  providers?: { provider: string; succeeded: boolean; articleCount: number; error?: string | null }[] | null;
+}
+export interface AdverseMediaEvidence {
+  subject: string; title: string; source: string; provider: string; published?: string | null; tone: string;
+  matchedTerms: string[]; category?: string | null; context?: string | null; url: string;
+}
+
 export interface AssessmentExplainability {
   headline: string; narrative: string[]; checkOutcomes: CheckOutcome[]; findings: ExplanationItem[];
   scoreComponents: UnifiedRiskScore['components']; reasonCodes: UnifiedRiskScore['reasonCodes']; creditContributions: DecisionExplanation['contributions'];
   matchedRules: RulesEvaluation['matchedRules']; decidingRule?: string | null; coverageGaps: string[]; hardStops: string[]; analystNextSteps: string[];
+  adverseMedia?: AdverseMediaEvidence[] | null;
 }
 export interface AssessmentDecision { outcome: RuleOutcome; score: number; tier: string; coveragePercent: number; ruleSetVersion: string; summary: string; }
 export interface AssessmentIntakeSummary {
