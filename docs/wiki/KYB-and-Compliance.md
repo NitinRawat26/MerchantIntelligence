@@ -102,7 +102,7 @@ stripping `LLC`/`Inc`/`Ltd`/`Corp`/`Co`/… ) and for lexicon terms:
 * **mention** — name and terms in the same article but never the same sentence.
 * **neutral** — otherwise.
 
-Flags: `ADVERSE_MEDIA` (Medium; High when ≥ 3 negatives or any *Organised crime / terrorism* term)
+Flags: `ADVERSE_MEDIA` (always Medium — never High, so media alone cannot push `KybRisk` to High or block auto-approve)
 with terms, categories, sources and the quoted lead sentence; `ADVERSE_MEDIA_MENTION` (Low). The
 evidence is carried as `AdverseMediaEvidence` into the assessment brief: check-outcome detail,
 per-subject narrative, the **Adverse media evidence** table in the PDF and Explainability tab, and
