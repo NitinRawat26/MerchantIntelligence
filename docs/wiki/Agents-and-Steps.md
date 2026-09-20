@@ -28,7 +28,7 @@ stream (`{"type":"agent"}`), the `/assess` agents tab and the PDF.
 | `prohibited` | Prohibited & restricted business | `website` | | | `ProhibitedBusinessDetector` (Kyb) |
 | `mcc` | MCC validation | – | | | `MccValidationService` (MccValidation) |
 | `verification` | Business identity verification | – | | | `BusinessVerificationService` (Kyb) |
-| `screening` | Sanctions / PEP / adverse-media | – | | `includeTradingName`, `includeOwners` (bool, default true) | `SanctionsScreeningService` (Kyb) |
+| `screening` | Sanctions / PEP / adverse-media (GDELT, Google News, Bing News, Wikipedia, CourtListener via `CompositeAdverseMediaProvider`; articles graded negative / mention / neutral against the risk lexicon) | – | | `includeTradingName`, `includeOwners` (bool, default true) | `SanctionsScreeningService` (Kyb) |
 | `match` | MATCH / terminated-merchant inquiry | – | | | `IMatchProvider` (Platform) |
 | `presence` | Local business presence | `verification` | | | `LocalPresenceService` (Kyb) |
 | `bank` | Bank statement cash-flow | – | | | `BankStatementParser` + `CashFlowAnalyzer` (Underwriting) |

@@ -17,7 +17,7 @@ supplied; uncovered components are reported as coverage gaps.
 |-----------|--------|------------------|---------------------------|
 | `CreditModel` | 0.30 | `P(approve)` from the credit model | `MODEL_DECLINE` (High if P(approve) < 0.2), `MODEL_CANCEL_RISK` |
 | `Kyb` | 0.20 | High → 20, Medium → 55, else 90; adjusted for verification and entity age | `KYB_HIGH_RISK`, `BUSINESS_UNVERIFIED` (High), `NEW_ENTITY` |
-| `Screening` | 0.15 | sanctions / PEP / adverse-media booleans | `SANCTIONS_MATCH` (High, **hard stop**), `PEP_MATCH`, `ADVERSE_MEDIA` |
+| `Screening` | 0.15 | sanctions / PEP / adverse-media booleans (`AdverseMedia` is null — uncovered — when every media source failed) | `SANCTIONS_MATCH` (High, **hard stop**), `PEP_MATCH`, `ADVERSE_MEDIA` (Medium; High for ≥ 3 negatives or organised-crime terms), `ADVERSE_MEDIA_MENTION` (Low) |
 | `BusinessPolicy` | 0.10 | Prohibited 0 · Restricted 35 · HighRisk 60 · Acceptable 100 | `PROHIBITED_BUSINESS` (High, **hard stop**), `RESTRICTED_BUSINESS`, `HIGH_RISK_BUSINESS` |
 | `WebsiteCompliance` | 0.10 | website compliance score | `WEBSITE_NON_COMPLIANT` (< 60) |
 | `VolumePlausibility` | 0.10 | plausibility score | `VOLUME_IMPLAUSIBLE` (< 50) |

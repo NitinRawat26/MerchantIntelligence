@@ -14,7 +14,7 @@ defined in the controllers under `src/MerchantIntelligence.Api/Controllers/`.
 | POST | `run/stream` | Same input; NDJSON response: `{"type":"steps",…}` once, `{"type":"step",…}` per status change, `{"type":"agent",…}` on agent start/finish, `{"type":"result",…}` last |
 | GET | `` | Recent assessments |
 | GET | `{id}` | Stored result |
-| GET | `{id}/pdf` | Underwriting memo PDF |
+| GET | `{id}/pdf` | Underwriting memo PDF (includes an **Adverse media evidence** section: subject, tone, title, source · date · provider, quoted sentence, matched terms/category, URL) |
 
 ## Workflows — `/api/workflows` (`WorkflowController`)
 
@@ -47,7 +47,7 @@ defined in the controllers under `src/MerchantIntelligence.Api/Controllers/`.
 | Method | Path | Purpose |
 |--------|------|---------|
 | POST | `verify-business` | Registry verification + local presence |
-| POST | `screen` | Sanctions / PEP / adverse-media screening of business and owners |
+| POST | `screen` | Sanctions / PEP / adverse-media screening of business and owners. Each subject's `adverseMedia` returns `articleCount`, `negativeCount`, `mentionCount`, `providers[]` (per-source `succeeded`/`articleCount`/`error`) and up to 40 `articles[]` with `tone` (`negative`/`mention`/`neutral`), `matchedTerms`, `category`, quoted `context`, `source`, `provider`, `published`, `url`; `error` names sources that failed |
 | GET | `screen/lists` | Loaded sanctions lists and row counts |
 | POST | `website-compliance` | Card-brand website checks → score, grade, per-check table, RDAP record |
 | POST | `prohibited-business` | Classify description/text (+ MCC) against restricted categories |

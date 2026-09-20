@@ -24,11 +24,11 @@ browser). Every form control has an ⓘ hint stating which calculation it feeds.
 
 | Route | Page | API |
 |-------|------|-----|
-| `/`, `/assess`, `/assess/:id` | **Full assessment** (default): intake form (business, owners, website, MCC, volumes, size & footprint, statement uploads, case options); live run grouped into agent lanes with per-check status and each agent's findings as they stream; decision card; tabbed explainability (identity & screening, website/MCC/business type, financials & plausibility, terms, agents, run log); PDF; history | `/api/assessment/*` |
+| `/`, `/assess`, `/assess/:id` | **Full assessment** (default): intake form (business, owners, website, MCC, volumes, size & footprint, statement uploads, case options); live run grouped into agent lanes with per-check status and each agent's findings as they stream; decision card; tabbed explainability (identity & screening incl. adverse-media evidence list with quoted context and matched risk terms, website/MCC/business type, financials & plausibility, terms, agents, run log); PDF; history | `/api/assessment/*` |
 | `/workflows` | **Workflow designer** (see below): agent-flow canvas with Start/End, drag the four fixed agents in, draw on-success / on-fail / always transitions; step lanes per agent (Ordered with slots, or All parallel) with drag-and-drop between lanes, dependency badges, stop-gate toggle; inspector; full-screen mode; JSON tab; dry-run plan (stages, Mermaid); version history, load, rollback, publish | `/api/workflows/*` |
 | `/precheck` | Website compliance scan and prohibited & restricted business classification (standalone) | `/api/kyb/website-compliance`, `/api/kyb/prohibited-business` |
 | `/mcc` | MCC validator | `/api/mcc-validation/*` |
-| `/kyb` | Business identity, owners, registry sources, sanctions/PEP/adverse media, website compliance, prohibited verdict | `/api/kyb/*` |
+| `/kyb` | Business identity, owners, registry sources, sanctions/PEP/adverse media (per-source status pills, article tone, matched risk terms, category and quoted context), website compliance, prohibited verdict | `/api/kyb/*` |
 | `/underwriting` | Shapley explainability, reserve & pricing terms, volume plausibility, bank-statement and P&L uploads | `/api/underwriting/*` |
 | `/score` | Unified risk score with upstream signals; optional case creation | `/api/platform/score` |
 | `/match` | MATCH inquiry (shows `NotConfigured` explicitly) | `/api/platform/match/inquiry` |
