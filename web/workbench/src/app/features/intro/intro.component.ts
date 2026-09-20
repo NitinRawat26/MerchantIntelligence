@@ -156,6 +156,13 @@ const STEP_ORDER = ['website', 'prohibited', 'mcc', 'verification', 'screening',
             <path class="steam s2" d="M0 -125 q10 -20 0 -40 q-10 -20 0 -40" fill="none" stroke="#e2e8f0" stroke-width="4" stroke-linecap="round"/>
             <path class="steam s3" d="M30 -125 q10 -20 0 -40 q-10 -20 0 -40" fill="none" stroke="#e2e8f0" stroke-width="4" stroke-linecap="round"/>
           </g>
+          <defs>
+            <marker id="arrow-head" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0 0 L10 5 L0 10 z" fill="#22c55e"/>
+            </marker>
+          </defs>
+          <path class="hand a1" d="M470 300 L540 300" marker-end="url(#arrow-head)"/>
+          <path class="hand a2" d="M660 305 L738 315" marker-end="url(#arrow-head)"/>
           <g class="application">
             <rect x="-46" y="-60" width="92" height="120" rx="8" fill="#fff" stroke="#cbd5e1"/>
             <rect x="-30" y="-40" width="60" height="6" rx="3" fill="#94a3b8"/>
@@ -350,6 +357,11 @@ const STEP_ORDER = ['website', 'prohibited', 'mcc', 'verification', 'screening',
     .film[data-scene='cup'] .pos { animation: pos-pop .6s ease 2.2s both; }
     @keyframes pos-pop { from { transform: translate(820px, 320px) scale(.9); } to { transform: translate(820px, 320px) scale(1); } }
     .lead { font-size: 22px; fill: #cbd5e1; font-weight: 500; }
+    .hand { fill: none; stroke: #22c55e; stroke-width: 3; stroke-linecap: round; stroke-dasharray: 10 10; opacity: 0; filter: drop-shadow(0 0 6px rgba(34,197,94,.6)); }
+    .film[data-scene='cup'] .hand { animation: flow .6s linear infinite, hand-in .5s ease both; }
+    .film[data-scene='cup'] .hand.a1 { animation-delay: 1.6s, 1.6s; }
+    .film[data-scene='cup'] .hand.a2 { animation-delay: 2.7s, 2.7s; }
+    @keyframes hand-in { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
 
     /* agents */
     .agent-name { fill: #fff; font-size: 15px; font-weight: 600; }
