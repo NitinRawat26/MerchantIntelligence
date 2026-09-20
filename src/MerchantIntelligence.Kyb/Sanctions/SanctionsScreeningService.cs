@@ -127,7 +127,7 @@ public sealed class SanctionsScreeningService
                 $"{subject.Name}: {negatives.Count} article(s) tie the name to {string.Join(", ", terms)}" +
                 (categories.Count > 0 ? $" [{string.Join("; ", categories)}]" : string.Empty) +
                 $" across {string.Join(", ", sources)}. E.g. \"{excerpt}\" ({lead.Source}{(lead.Published is { } d ? $", {d:yyyy-MM-dd}" : string.Empty)}).",
-                negatives.Count >= 3 || negatives.Any(a => a.Category?.Contains("Organised crime", StringComparison.OrdinalIgnoreCase) == true) ? RiskTier.High : RiskTier.Medium);
+                RiskTier.Medium);
         }
 
         var mentions = media.Articles.Where(a => a.Tone == "mention").ToList();

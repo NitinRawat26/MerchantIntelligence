@@ -79,7 +79,7 @@ The complete set of words and phrases searched for in every headline, snippet an
 | **Civil / litigation** | lawsuit, sued, class action, settlement, judgment against, bankruptcy, insolvency, receivership, liquidation, default judgment | Solvency and reputational risk; bankruptcy/receivership bear directly on reserve sizing |
 | **Regulatory** | sanctions, sanctioned, fined, penalty, enforcement action, investigation, probe, subpoena, cease and desist, consent order, license revoked, banned, deregistered | Regulator action against the business or a principal; licence loss can make the MCC unboardable |
 | **Payments / card risk** | chargeback, chargebacks, counterfeit, data breach, skimming, bust-out, shell company, transaction laundering, terminated merchant | Card-scheme specific: MATCH-type behaviour, PCI incidents, factoring/transaction laundering |
-| **Organised crime / terrorism** | terrorism, terrorist, cartel, trafficking, organized crime, organised crime, smuggling | Any single co-located hit escalates the `ADVERSE_MEDIA` flag to **High** |
+| **Organised crime / terrorism** | terrorism, terrorist, cartel, trafficking, organized crime, organised crime, smuggling | Highest-concern category; still Medium severity, surfaced prominently for analyst review |
 
 **Query terms.** A compact 16-word subset (`QueryTerms`) is what is actually sent to the search engines so the result set is already biased toward risk coverage: `fraud, laundering, indicted, lawsuit, scam, embezzlement, bribery, sanctions, arrested, convicted, ponzi, chargeback, counterfeit, investigation, fined, bankruptcy`. Per source: GDELT and Google News use all 16 (`"<name>" (fraud OR laundering OR …)`), Bing News the first 8, Wikipedia the first 10, CourtListener searches the exact name only (court records are inherently adverse). Grading afterwards always uses the **full lexicon**, so a term that was not in the query (e.g. "receivership") is still detected in the returned text.
 
@@ -155,7 +155,7 @@ ScreeningReport(
 | `SANCTIONS_MATCH` | High | confirmed match (see §3.2) — **hard stop** |
 | `SANCTIONS_POSSIBLE_MATCH` | Medium | hit(s) ≥ 0.85 not meeting confirmation criteria |
 | `PEP_MATCH` | Medium | any hit whose list name contains "peps" or programme contains "PEP" |
-| `ADVERSE_MEDIA` | Medium (< 3 negative) / High (≥ 3, or any *Organised crime / terrorism* term) | articles/records where the name and a risk term share a sentence or headline. Message lists the matched terms, categories, contributing sources, and quotes the lead sentence with publisher and date |
+| `ADVERSE_MEDIA` | Medium (never High — lexical media matching is too noisy to drive KYB risk to High on its own) | articles/records where the name and a risk term share a sentence or headline. Message lists the matched terms, categories, contributing sources, and quotes the lead sentence with publisher and date |
 | `ADVERSE_MEDIA_MENTION` | Low | name and risk terms present in the same article but never in the same sentence – analyst to confirm relevance |
 
 Each `SubjectScreeningResult.AdverseMedia` carries: `ArticleCount`, `NegativeCount`, `MentionCount`, up to 40 `Articles` (each with `Title`, `Url`, `Source`, `Published`, `Tone`, `Snippet`, `MatchedTerms`, `Category`, `Context`, `Provider`), `Providers` (per-source succeeded/count/error) and `Error` naming any source that failed.
@@ -204,7 +204,7 @@ PepMatch        → −40, reason PEP_MATCH (Medium)
 AdverseMedia    → −25, reason ADVERSE_MEDIA (Medium)
 clamp 0–100
 ```
-`SANCTIONS_POSSIBLE_MATCH` does **not** reduce the component numerically; it reaches the score as a Medium reason code (via `CollectSignals`) and lifts `KybRisk` to Medium, which reduces the *Kyb* component to 55. A High `ADVERSE_MEDIA` flag (≥ 3 articles) caps the unified score at 549 through the high-severity rule.
+`SANCTIONS_POSSIBLE_MATCH` does **not** reduce the component numerically; it reaches the score as a Medium reason code (via `CollectSignals`) and lifts `KybRisk` to Medium, which reduces the *Kyb* component to 55. `ADVERSE_MEDIA` is capped at Medium, so media findings lower the Kyb component to 55 and add a Medium reason code but never trigger the high-severity cap on their own.
 
 ### Rules (default set)
 * `HARD_STOP_SANCTIONS` (priority 1): `hardStops contains SANCTIONS_MATCH` → **Decline**.
@@ -243,7 +243,7 @@ Analyst rule of thumb: **"Clear"** in the brief means *lists loaded, media check
 | `SANCTIONS_POSSIBLE_MATCH` | Fuzzy name hit, uncorroborated | Read `Reasons`; compare DOB, nationality, programme, listing date; request owner ID document; document the false-positive disposition in the case notes (audit trail). |
 | `PEP_MATCH` | Owner (or namesake) is a PEP | Confirm identity; if genuine PEP: EDD — source of wealth/funds, senior approval, ongoing monitoring. Refer outcome is by design. |
 | `ADVERSE_MEDIA` Medium | 1–2 negative-title articles | Read them; check whether about *this* entity/person; note in file. |
-| `ADVERSE_MEDIA` High | ≥ 3 articles | Treat as material; likely Refer; consider decline if articles concern fraud/chargebacks. |
+| `ADVERSE_MEDIA` Medium, many articles | ≥ 3 negatives or organised-crime terms | Treat as material; read the quoted sentences; escalate manually if the articles clearly concern this applicant and fraud/chargebacks. |
 | `ALIAS_RESCREENED` with hits | Registry name hit while declared name did not | Strong indicator of deliberate name variation — escalate. |
 | Media unavailable | every news/records source down or rate-limited | Re-run before final approval. |
 
