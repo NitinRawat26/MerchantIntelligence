@@ -7,6 +7,7 @@ import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { IntroComponent } from './features/intro/intro.component';
 
 interface NavItem { path: string; label: string; icon: string; blurb: string; }
 interface NavGroup { title: string; items: NavItem[]; }
@@ -14,8 +15,9 @@ interface NavGroup { title: string; items: NavItem[]; }
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, MatSidenavModule, MatIconModule, MatButtonModule, MatTooltipModule],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, MatSidenavModule, MatIconModule, MatButtonModule, MatTooltipModule, IntroComponent],
   template: `
+    @if (intro()) { <app-intro (done)="closeIntro()" /> }
     <mat-sidenav-container class="shell" [hasBackdrop]="handset()">
       <mat-sidenav [mode]="handset() ? 'over' : 'side'" [opened]="handset() ? opened() : true" (closed)="opened.set(false)" class="nav" [fixedInViewport]="true">
         <a class="brand" routerLink="/assess" (click)="handset() && opened.set(false)">
@@ -68,6 +70,7 @@ interface NavGroup { title: string; items: NavItem[]; }
             <div class="blurb">{{ current().blurb }}</div>
           </div>
           <span class="spacer"></span>
+          <button mat-icon-button class="replay" (click)="intro.set(true)" matTooltip="Replay the intro" aria-label="Replay the intro"><mat-icon>play_circle</mat-icon></button>
           <span class="author-pill" matTooltip="Designed and built by Nitin Rawat"><mat-icon>person</mat-icon>Nitin Rawat</span>
           <span class="env-pill" matTooltip="All checks run against the local API on :5292"><span class="dot"></span>Local API</span>
         </header>
@@ -154,6 +157,7 @@ interface NavGroup { title: string; items: NavItem[]; }
       white-space: nowrap;
     }
     .author-pill mat-icon { font-size: 16px; width: 16px; height: 16px; }
+    .replay { color: var(--mi-text-3); margin-right: 4px; }
     .env-pill .dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2); }
 
     .content { max-width: 1240px; margin: 0 auto; padding: 28px 28px 64px; }
@@ -187,6 +191,16 @@ export class AppComponent {
   private readonly router = inject(Router);
   readonly handset = toSignal(this.bp.observe('(max-width: 900px)').pipe(map(r => r.matches)), { initialValue: false });
   readonly opened = signal(false);
+
+  private static readonly INTRO_KEY = 'mi.intro.seen';
+  readonly intro = signal(AppComponent.shouldPlayIntro());
+  private static shouldPlayIntro(): boolean {
+    try { return sessionStorage.getItem(AppComponent.INTRO_KEY) !== '1'; } catch { return false; }
+  }
+  closeIntro(): void {
+    this.intro.set(false);
+    try { sessionStorage.setItem(AppComponent.INTRO_KEY, '1'); } catch { /* storage unavailable */ }
+  }
 
   readonly groups: NavGroup[] = [
     { title: 'Agentic', items: [
