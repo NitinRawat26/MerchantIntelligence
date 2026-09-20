@@ -26,7 +26,8 @@ locally and environment variables on the host.
 | `Sanctions:MatchThreshold` | `0.85` | Fuzzy name-match threshold |
 | `Sanctions:IncludePeps` | `false` | Also load the large OpenSanctions PEP dataset |
 | `Sanctions:IncludeRawGovernmentLists` | `true` | Load OFAC SDN and UN XML in addition to OpenSanctions |
-| `Sanctions:EnableAdverseMedia` | `true` | GDELT adverse-media search |
+| `Sanctions:EnableAdverseMedia` | `true` | Multi-source adverse-media search of business and owners |
+| `Sanctions:AdverseMediaSources` | `["gdelt","googlenews","bingnews","wikipedia","courtlistener"]` | Free, keyless sources queried in parallel per subject; unknown keys fail at startup. Remove `gdelt` to avoid its 5 s/request throttle entirely |
 | `Platform:DatabasePath` | `data/platform.db` | SQLite file; `:memory:` for tests |
 | `Platform:ModelsDirectory` | `models` | Where model ops writes retrained/promoted models |
 | `Match:Endpoint`, `Match:ApiKey` | null | MATCH-compatible service; otherwise `NotConfigured` |

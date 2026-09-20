@@ -18,7 +18,13 @@ HTML that is processed deterministically.
 | **OpenSanctions** `targets.simple.csv` (+ PEP dataset) | Sanctions/PEP screening | no | **CC BY-NC 4.0** — commercial use needs an OpenSanctions licence |
 | **OFAC SDN** CSV | Sanctions screening | no | Public domain |
 | **UN Security Council consolidated list** XML | Sanctions screening | no | Public domain |
-| **GDELT** | Adverse-media search | no | `Sanctions:EnableAdverseMedia`; noisy, informational |
+| **GDELT** DOC 2.0 | Adverse-media search (news, last 3 months, tone) | no | `Sanctions:AdverseMediaSources` `gdelt`; ~1 request / 5 s per IP — calls serialised with 5.2 s gap + one retry on 429 |
+| **Google News RSS** | Adverse-media search (headlines + snippets) | no | `googlenews`; unlimited, primary fallback when GDELT throttles |
+| **Bing News RSS** | Adverse-media search (headlines + snippets) | no | `bingnews` |
+| **Wikipedia** search API | Adverse-media (encyclopaedic controversies / legal history) | no | `wikipedia`; CC BY-SA content, snippets only |
+| **CourtListener** search API | Adverse-media (US court opinions and dockets naming the subject) | no | `courtlistener`; Free Law Project, public domain records |
+
+Adverse-media sources run in parallel per subject; results are merged, de-duplicated and graded against the risk lexicon (see [KYB and Compliance](KYB-and-Compliance#adverse-media--compositeadversemediaprovider)). Any source succeeding counts as coverage with the failed ones named; all failing is *media unavailable*, never clear.
 | **RDAP** registries | Website compliance (domain age / expiry) | no | Availability varies per TLD |
 | **Merchant websites** | Website compliance, MCC validation, prohibited-business text | no | Plain HTTP GET, 15 s, 4 MB, UA `MerchantIntelligenceBot/1.0`; robots.txt not consulted; JavaScript not executed |
 | **Mastercard MATCH** | MATCH inquiry | acquirer credentials (`Match:Endpoint`, `Match:ApiKey`) or `Match:LocalListPath` | Without either, result is `NotConfigured` / `found: null` — unknown, never clear |

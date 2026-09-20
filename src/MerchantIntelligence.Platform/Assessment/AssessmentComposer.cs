@@ -114,6 +114,7 @@ internal static class AssessmentComposer
         var outcomes = new List<CheckOutcome>();
         var narrative = new List<string>();
         var next = new List<string>();
+        var adverseMedia = new List<AdverseMediaEvidence>();
 
         // Identity
         if (v is null) { outcomes.Add(new("Business identity", "Not run", "Registry verification failed or was unavailable.", RiskTier.Medium, false)); next.Add("Re-run entity verification or obtain a certificate of incorporation manually."); }
@@ -178,16 +179,21 @@ internal static class AssessmentComposer
                 : string.Join(" ", hits.Select(h => $"{h.Subject.Name}: {h.Hits.Count} hit(s) – {string.Join("; ", h.Hits.Take(2).Select(x => $"{x.Entity.Name} [{x.Entity.ListName}] {x.Score:P0}"))}."));
             var mediaNote = s.Subjects.Select(x => x.AdverseMedia).Where(x => x is not null).ToList();
             var mediaChecked = MediaChecked(s);
+            var mention = s.Flags.Any(x => x.Code == "ADVERSE_MEDIA_MENTION");
             if (mediaNote.Count > 0)
                 detail += mediaChecked
-                    ? $" Adverse media: {mediaNote.Sum(x => x!.NegativeCount)} negative of {mediaNote.Sum(x => x!.ArticleCount)} article(s)."
+                    ? " " + MediaSummary(s)
                     : $" Adverse media NOT checked ({mediaNote.First(x => !x!.Succeeded)!.Error}) – media result is unknown, not clear.";
             var result = sanctions ? "SANCTIONS MATCH" : pep ? "PEP match" : media ? "Adverse media" : hits.Count > 0 ? "Possible match"
-                : mediaChecked ? "Clear" : "Lists clear · media unavailable";
+                : mention ? "Clear · media mentions" : mediaChecked ? "Clear" : "Lists clear · media unavailable";
             var severity = !mediaChecked && s.OverallRisk == RiskTier.Low ? RiskTier.Medium : s.OverallRisk;
             outcomes.Add(new("Sanctions / PEP / media", result, detail, severity, mediaChecked || hits.Count > 0));
-            narrative.Add($"Screening: {(sanctions ? "a confirmed sanctions match was found – this is a hard stop." : hits.Count > 0 ? "possible matches need analyst disposition." : mediaChecked ? "no sanctions, PEP or adverse-media findings." : "no sanctions or PEP list hits, but adverse media could not be checked so the media dimension remains a coverage gap.")} {detail}");
-            if (!mediaChecked) next.Add("Re-run adverse-media screening (GDELT lookup failed or was rate-limited) before final approval.");
+            narrative.Add($"Screening: {(sanctions ? "a confirmed sanctions match was found – this is a hard stop." : hits.Count > 0 ? "possible matches need analyst disposition." : media ? "no sanctions or PEP list hits, but adverse media ties a screened name to risk terms – see the adverse-media evidence." : mediaChecked ? "no sanctions, PEP or adverse-media findings." : "no sanctions or PEP list hits, but adverse media could not be checked so the media dimension remains a coverage gap.")} {detail}");
+            foreach (var line in MediaNarrative(s)) narrative.Add(line);
+            adverseMedia.AddRange(MediaEvidence(s));
+            if (!mediaChecked) next.Add("Re-run adverse-media screening (every news/records source failed or was rate-limited) before final approval.");
+            if (media) next.Add("Review each adverse-media article: confirm the named party is this applicant/owner (not a namesake), then record the disposition.");
+            if (mention && !media) next.Add("Adverse-media mentions are indirect (risk term not in the same sentence as the name); spot-check the cited articles.");
             if (hits.Count > 0 && !sanctions) next.Add("Disposition each possible sanctions match (confirm or discount with date of birth / nationality evidence).");
             if (pep) next.Add("Apply enhanced due diligence: source of wealth and senior approval for the politically exposed person.");
         }
@@ -321,8 +327,48 @@ internal static class AssessmentComposer
         var coverageGaps = outcomes.Where(o => !o.Covered).Select(o => $"{o.Check}: {o.Result} – {o.Detail}")
             .Concat(score?.CoverageGaps.Select(g => $"Score component not covered: {g}") ?? []).ToList();
         return new AssessmentExplainability(headline, narrative, outcomes, findings, score?.Components ?? [], score?.ReasonCodes ?? [],
-            explanation?.Contributions ?? [], rules?.MatchedRules ?? [], rules?.DecidingRule, coverageGaps, score?.HardStops ?? [], next.Distinct().ToList());
+            explanation?.Contributions ?? [], rules?.MatchedRules ?? [], rules?.DecidingRule, coverageGaps, score?.HardStops ?? [], next.Distinct().ToList(), adverseMedia);
     }
+
+    /// <summary>One-line media roll-up for the check outcome: counts, the sources that answered, and any that did not.</summary>
+    internal static string MediaSummary(ScreeningReport s)
+    {
+        var results = s.Subjects.Select(x => x.AdverseMedia).Where(x => x is not null).Select(x => x!).ToList();
+        var statuses = results.SelectMany(r => r.Providers ?? []).ToList();
+        var ok = statuses.Where(p => p.Succeeded).Select(p => p.Provider).Distinct().ToList();
+        var failed = statuses.Where(p => !p.Succeeded).Select(p => p.Provider).Distinct().ToList();
+        var text = $"Adverse media: {results.Sum(r => r.NegativeCount)} negative, {results.Sum(r => r.MentionCount)} indirect mention(s) of {results.Sum(r => r.ArticleCount)} article(s)/record(s)";
+        if (ok.Count > 0) text += $" from {string.Join(", ", ok)}";
+        text += ".";
+        if (failed.Count > 0) text += $" Source(s) unavailable: {string.Join(", ", failed)} – covered by the remaining sources.";
+        return text;
+    }
+
+    /// <summary>Per-subject narrative lines naming the risk terms and quoting the sentence in which they co-occur with the name.</summary>
+    internal static IEnumerable<string> MediaNarrative(ScreeningReport s)
+    {
+        foreach (var sub in s.Subjects)
+        {
+            var m = sub.AdverseMedia;
+            if (m is null || !m.Succeeded) continue;
+            var negatives = m.Articles.Where(a => a.Tone == "negative").ToList();
+            if (negatives.Count == 0) continue;
+            var terms = negatives.SelectMany(a => a.MatchedTerms ?? []).GroupBy(t => t, StringComparer.OrdinalIgnoreCase)
+                .OrderByDescending(g => g.Count()).Select(g => $"{g.Key} ×{g.Count()}").Take(8);
+            var examples = negatives.Take(3).Select(a =>
+                $"\"{(string.IsNullOrEmpty(a.Context) ? a.Title : a.Context)}\" ({a.Source}{(a.Published is { } d ? $", {d:yyyy-MM-dd}" : "")}, via {a.Provider ?? m.Provider})");
+            yield return $"Adverse media – {sub.Subject.Name} ({sub.Subject.Role}): {negatives.Count} article(s) place the name in the same sentence as {string.Join(", ", terms)}. {string.Join(" ", examples)}";
+        }
+    }
+
+    internal static IEnumerable<AdverseMediaEvidence> MediaEvidence(ScreeningReport s) =>
+        s.Subjects.Where(x => x.AdverseMedia is { Succeeded: true })
+            .SelectMany(x => x.AdverseMedia!.Articles
+                .Where(a => a.Tone is "negative" or "mention")
+                .Select(a => new AdverseMediaEvidence(x.Subject.Name, a.Title, a.Source, a.Provider ?? x.AdverseMedia.Provider, a.Published, a.Tone,
+                    a.MatchedTerms ?? [], a.Category, a.Context, a.Url.ToString())))
+            .OrderBy(e => e.Tone == "negative" ? 0 : 1).ThenByDescending(e => e.Published ?? DateTimeOffset.MinValue)
+            .Take(30);
 
     internal static AssessmentIntakeSummary Summarise(AssessmentIntake i, UploadedDocument? bank, UploadedDocument? fin) => new(
         i.Business, i.Owners, i.BusinessDescription, i.MerchantCategoryCode, i.AnnualVolume, i.AverageTicket, i.HighestTicket, i.ExistingRelationship,

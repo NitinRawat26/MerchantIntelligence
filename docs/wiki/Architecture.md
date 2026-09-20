@@ -55,7 +55,7 @@ flowchart LR
     SPA -->|/api proxy| API[".NET API :5292 / $PORT"]
     API --> SQL[("SQLite data/platform.db")]
     API --> FS["data/sanctions cache · models/*.zip"]
-    API --> EXT["GLEIF · SEC EDGAR · Census · Nominatim/Overpass · OpenSanctions · OFAC · UN · GDELT · RDAP · merchant websites"]
+    API --> EXT["GLEIF · SEC EDGAR · Census · Nominatim/Overpass · OpenSanctions · OFAC · UN · GDELT · Google News · Bing News · Wikipedia · CourtListener · RDAP · merchant websites"]
     API -. optional keys .-> OPT["OpenCorporates · Companies House · Foursquare · Google Places · MATCH endpoint"]
     API -->|signed HTTPS| WH["Webhook subscribers"]
 ```

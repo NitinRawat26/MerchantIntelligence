@@ -96,7 +96,7 @@ export const FIELD_HINTS: Record<string, string> = {
     'P&L / balance-sheet analysis: margins, leverage, liquidity ratios → findings; statement revenue is compared with declared volume and fills Prior-year revenue when blank.\n' +
     'Optional: blank = check skipped and listed as a coverage gap.',
   ownerFullName:
-    'Screening: screened as an individual against OFAC / UN / EU / OpenSanctions + PEP lists and GDELT adverse media. A sanctions match is a hard stop (score capped, Decline); PEP → PEP_MATCH reason code.\n' +
+    'Screening: screened as an individual against OFAC / UN / EU / OpenSanctions + PEP lists and multi-source adverse media (GDELT, Google News, Bing News, Wikipedia, CourtListener). A sanctions match is a hard stop (score capped, Decline); PEP → PEP_MATCH reason code.\n' +
     'MATCH / TMF inquiry (principal).',
   ownerDateOfBirth:
     'Screening: birth year matching the listing adds +8% to the match score (raises severity to High); a different year subtracts 15% (helps clear false positives).',

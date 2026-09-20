@@ -44,7 +44,19 @@ public static class KybServiceCollectionExtensions
             services.AddSingleton<ISanctionsListSource, OfacSdnSource>();
             services.AddSingleton<ISanctionsListSource, UnConsolidatedSource>();
         }
-        services.AddSingleton<IAdverseMediaProvider, GdeltAdverseMediaProvider>();
+        foreach (var source in sanctionsOptions.AdverseMediaSources)
+        {
+            switch (source.Trim().ToLowerInvariant())
+            {
+                case "gdelt": services.AddSingleton<IAdverseMediaSource, GdeltAdverseMediaSource>(); break;
+                case "googlenews": services.AddSingleton<IAdverseMediaSource, GoogleNewsAdverseMediaSource>(); break;
+                case "bingnews": services.AddSingleton<IAdverseMediaSource, BingNewsAdverseMediaSource>(); break;
+                case "wikipedia": services.AddSingleton<IAdverseMediaSource, WikipediaAdverseMediaSource>(); break;
+                case "courtlistener": services.AddSingleton<IAdverseMediaSource, CourtListenerAdverseMediaSource>(); break;
+                default: throw new ArgumentException($"Unknown adverse-media source '{source}'. Known: gdelt, googlenews, bingnews, wikipedia, courtlistener.");
+            }
+        }
+        services.AddSingleton<IAdverseMediaProvider, CompositeAdverseMediaProvider>();
         services.AddSingleton<SanctionsScreeningService>();
 
         services.AddSingleton(ProhibitedBusinessDetector.Default);

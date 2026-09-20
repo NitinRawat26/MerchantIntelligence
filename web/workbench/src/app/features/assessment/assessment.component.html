@@ -264,6 +264,20 @@
             <h3>Detailed narrative</h3>
             @for (p of r.explainability.narrative; track $index) { <p class="narrative">{{ p }}</p> }
 
+            @if (r.explainability.adverseMedia?.length) {
+              <h3>Adverse media evidence ({{ r.explainability.adverseMedia!.length }})</h3>
+              <p class="muted">Negative = the screened name and a risk term occur in the same sentence or headline; mention = both occur in the article but not together. Confirm the named party is this applicant before relying on an item.</p>
+              <ul class="articles">@for (e of r.explainability.adverseMedia!; track e.url) {
+                <li>
+                  <span class="pill small" [class]="e.tone === 'negative' ? 'bad' : 'warn'">{{ e.tone }}</span>
+                  <strong>{{ e.subject }}</strong> – <a [href]="e.url" target="_blank" rel="noopener">{{ e.title }}</a>
+                  <span class="muted">{{ e.source }}@if (e.published) { · {{ e.published | date:'yyyy-MM-dd' }} } · via {{ e.provider }}</span>
+                  <div class="muted"><strong>Risk terms:</strong> {{ e.matchedTerms.join(', ') }}@if (e.category) { ({{ e.category }}) }</div>
+                  @if (e.context) { <div class="muted"><em>“{{ e.context }}”</em></div> }
+                </li>
+              }</ul>
+            }
+
             @if (r.explainability.analystNextSteps.length) {
               <h3>Recommended analyst actions</h3>
               <ul class="next-steps">@for (s of r.explainability.analystNextSteps; track s) { <li>{{ s }}</li> }</ul>
@@ -307,15 +321,32 @@
                 <mat-expansion-panel [expanded]="sub.potentialMatch">
                   <mat-expansion-panel-header>
                     <mat-panel-title><mat-icon [class]="sub.potentialMatch ? 'text-high' : 'text-low'">{{ sub.potentialMatch ? 'warning' : 'check_circle' }}</mat-icon>&nbsp;{{ sub.subject.name }} <span class="muted">&nbsp;· {{ sub.subject.role }}</span></mat-panel-title>
-                    <mat-panel-description>{{ sub.hits.length }} hit(s)@if (sub.adverseMedia; as am) { · media {{ am.negativeCount }}/{{ am.articleCount }} negative@if (!am.succeeded) { (lookup failed) } }</mat-panel-description>
+                    <mat-panel-description>{{ sub.hits.length }} hit(s)@if (sub.adverseMedia; as am) {@if (am.succeeded) { · media {{ am.negativeCount }} negative@if (am.mentionCount) { · {{ am.mentionCount }} mention(s) } of {{ am.articleCount }}@if (am.error) { · partial sources } } @else { · media unavailable }}</mat-panel-description>
                   </mat-expansion-panel-header>
                   @for (h of sub.hits; track h.entity.id) {
                     <div class="hit"><strong>{{ h.entity.name }}</strong> <span class="pill small bad">{{ h.entity.listName }}</span> <span class="muted">{{ h.entity.type }} · {{ h.score | percent }} · {{ h.entity.programs.join(', ') }}</span>
                       <div class="muted">{{ h.reasons.join('; ') }}</div></div>
                   }
-                  @if (sub.adverseMedia?.articles?.length) {
+                  @if (sub.adverseMedia; as am) {
                     <h4>Adverse media</h4>
-                    <ul class="articles">@for (a of sub.adverseMedia!.articles; track a.url) { <li><a [href]="a.url" target="_blank" rel="noopener">{{ a.title }}</a> <span class="muted">{{ a.source }} · {{ a.tone }}</span></li> }</ul>
+                    @if (am.providers?.length) {
+                      <p class="muted">Sources: @for (p of am.providers!; track p.provider) { <span class="pill small" [class]="p.succeeded ? 'neutral' : 'bad'" [matTooltip]="p.error ?? (p.articleCount + ' article(s)')">{{ p.provider }}@if (p.succeeded) { ({{ p.articleCount }}) } @else { – unavailable }</span> }</p>
+                    }
+                    @if (!am.succeeded) {
+                      <p class="text-high">Not checked – {{ am.error }}. Media result is unknown, not clear.</p>
+                    } @else if (am.articles.length) {
+                      <ul class="articles">@for (a of am.articles; track a.url) {
+                        <li>
+                          <span class="pill small" [class]="a.tone === 'negative' ? 'bad' : a.tone === 'mention' ? 'warn' : 'neutral'">{{ a.tone }}</span>
+                          <a [href]="a.url" target="_blank" rel="noopener">{{ a.title }}</a>
+                          <span class="muted">{{ a.source }}@if (a.published) { · {{ a.published | date:'yyyy-MM-dd' }} }@if (a.provider) { · via {{ a.provider }} }</span>
+                          @if (a.matchedTerms?.length) { <div class="muted"><strong>Risk terms:</strong> {{ a.matchedTerms!.join(', ') }}@if (a.category) { ({{ a.category }}) }</div> }
+                          @if (a.context) { <div class="muted"><em>“{{ a.context }}”</em></div> }
+                        </li>
+                      }</ul>
+                    } @else {
+                      <p class="muted">Search completed – no articles or records found for this name.</p>
+                    }
                   }
                   <mi-flags [flags]="sub.flags" emptyText="No screening flags."></mi-flags>
                 </mat-expansion-panel>

@@ -23,7 +23,7 @@ flowchart TD
     end
     subgraph KYB [KYB &amp; screening agent — stage 1]
         S1["Identity verification<br/>GLEIF · EDGAR · Census"]
-        S2["Sanctions / PEP / media<br/>OpenSanctions · OFAC · UN · GDELT"]
+        S2["Sanctions / PEP / media<br/>OpenSanctions · OFAC · UN · news/records"]
         S6["MATCH / TMF<br/>NotConfigured → unknown"]
         KR["review: re-screen registry aliases<br/>ALIAS_RESCREENED · MATCH_UNAVAILABLE"]
     end
@@ -123,7 +123,7 @@ and adds `LOCAL_PRESENCE_CONFIRMED`; a near miss adds `LOCAL_PRESENCE_PARTIAL`; 
 | Endpoint | What it does | Sources |
 |----------|--------------|---------|
 | `POST verify-business` | Matches the declared legal name / address / registration number against corporate registries; flags `NEW_ENTITY`, `NAME_MISMATCH`, `REGISTERED_ADDRESS_MISMATCH`, `INACTIVE_ENTITY`, `VIRTUAL_OFFICE_ADDRESS`, `ENTITY_NOT_FOUND`, `LOCAL_PRESENCE_CONFIRMED` / `_PARTIAL` / `_NOT_FOUND` | GLEIF LEI, SEC EDGAR, US Census geocoder, OpenStreetMap Nominatim + Overpass, (OpenCorporates, Companies House, Foursquare Places, Google Places) |
-| `POST screen` | Fuzzy sanctions / PEP screening of the business and its beneficial owners (aliases, DOB, nationality aware) plus adverse-media search | OpenSanctions consolidated list (OFAC, EU, UN, UK HMT, …), OFAC SDN, UN Security Council, GDELT news |
+| `POST screen` | Fuzzy sanctions / PEP screening of the business and its beneficial owners (aliases, DOB, nationality aware) plus adverse-media search | OpenSanctions consolidated list (OFAC, EU, UN, UK HMT, …), OFAC SDN, UN Security Council, GDELT + Google News + Bing News RSS, Wikipedia, CourtListener |
 | `GET screen/lists` | Status / row counts of the loaded sanctions lists | |
 | `POST website-compliance` | Card-brand website requirements: TLS, privacy / terms / refund / delivery policies, contact details, currency, payment marks, checkout, legal-name disclosure, placeholder detection, domain age & expiry, prohibited content → score 0-100 and grade A-F | Site crawl, RDAP |
 | `POST prohibited-business` | Classifies text / a business description against 23 prohibited, restricted and high-risk categories (CBD, crypto, adult, firearms, nutraceuticals, MLM, gambling, …) with MCC awareness | `Resources/restricted-categories.json` |

@@ -52,12 +52,62 @@ OSM alone, absence is weak evidence). `Kyb:LocalPresenceEnabled=false` disables 
   (default `data/sanctions`, ~100 MB, 30–60 s) and refreshed every `Sanctions:RefreshInterval` (24 h).
 * `SanctionsIndex` builds an in-memory index; `SanctionsScreeningService` screens the legal name,
   trading name and each beneficial owner (aliases, DOB and nationality aware) with
-  `Sanctions:MatchThreshold` (0.85) and runs a GDELT adverse-media search
-  (`Sanctions:EnableAdverseMedia`).
+  `Sanctions:MatchThreshold` (0.85) and runs a multi-source adverse-media search
+  (`Sanctions:EnableAdverseMedia`, sources in `Sanctions:AdverseMediaSources`).
 * Result: `Clear` / `PotentialMatch` / `Match` / `Unavailable` with per-hit list, score and source
   URL. A `Match` sets the `SANCTIONS_MATCH` hard stop. If no list could be loaded the result is
   *Unavailable*, not clear. The KYB agent re-screens any alias discovered by registry verification
   (`ALIAS_RESCREENED`).
+
+### Adverse media — `CompositeAdverseMediaProvider`
+
+All sources are free and keyless; they run **in parallel per subject** and are merged:
+
+| Key | Source | Query | Notes |
+|---|---|---|---|
+| `gdelt` | GDELT DOC 2.0 (`ArtList`, last 3 months, tone) | `"<name>" (16 query terms)` | rate-limited ~1 req / 5 s per IP → calls are serialised process-wide with a 5.2 s gap and one retry on HTTP 429 |
+| `googlenews` | Google News RSS | `"<name>" (16 query terms)` | headlines + snippets, unlimited |
+| `bingnews` | Bing News RSS | `"<name>" (first 8 query terms)` | headlines + snippets |
+| `wikipedia` | MediaWiki search API | `"<name>" first 10 query terms` | encyclopaedic snippets (controversies, legal history) |
+| `courtlistener` | CourtListener search API | exact name only | US court opinions / dockets |
+
+Merge rules: de-duplicate by normalised title (publisher suffix stripped) or URL; order negative →
+mention → neutral; keep up to 40 articles but preserve total counts; record a
+`AdverseMediaProviderStatus` per source. **Any** source succeeding → `Succeeded=true` with
+`Error` naming the failed ones (partial coverage, still counts as checked); **all** failing →
+`Succeeded=false` = *media unavailable*, a coverage gap, never "clear".
+
+**Risk lexicon (`AdverseMediaLexicon.Categories`)** — matched whole-word, case-insensitive,
+longest term first:
+
+| Category | Terms |
+|---|---|
+| Financial crime | fraud, fraudulent, money laundering, laundering, embezzlement, embezzled, ponzi, scam, bribery, bribe, kickback, tax evasion, wire fraud, racketeering, extortion, forgery |
+| Criminal proceedings | indicted, indictment, arrested, arrest, convicted, conviction, charged with, pleaded guilty, guilty, sentenced, felony, prison, criminal charges |
+| Civil / litigation | lawsuit, sued, class action, settlement, judgment against, bankruptcy, insolvency, receivership, liquidation, default judgment |
+| Regulatory | sanctions, sanctioned, fined, penalty, enforcement action, investigation, probe, subpoena, cease and desist, consent order, license revoked, banned, deregistered |
+| Payments / card risk | chargeback, chargebacks, counterfeit, data breach, skimming, bust-out, shell company, transaction laundering, terminated merchant |
+| Organised crime / terrorism | terrorism, terrorist, cartel, trafficking, organized crime, organised crime, smuggling |
+
+`QueryTerms` (the subset sent to search engines): fraud, laundering, indicted, lawsuit, scam,
+embezzlement, bribery, sanctions, arrested, convicted, ponzi, chargeback, counterfeit,
+investigation, fined, bankruptcy. Grading always uses the full lexicon regardless of the query.
+
+**Grading (`AdverseMediaAnalyzer.Grade`)** — the headline and every sentence of the snippet are
+tested for the subject (individuals: full name or first+last token; organisations: all tokens after
+stripping `LLC`/`Inc`/`Ltd`/`Corp`/`Co`/… ) and for lexicon terms:
+
+* **negative** — name and a term in the *same sentence or headline*; that sentence becomes `Context`,
+  terms → `MatchedTerms`, categories → `Category`.
+* **mention** — name and terms in the same article but never the same sentence.
+* **neutral** — otherwise.
+
+Flags: `ADVERSE_MEDIA` (Medium; High when ≥ 3 negatives or any *Organised crime / terrorism* term)
+with terms, categories, sources and the quoted lead sentence; `ADVERSE_MEDIA_MENTION` (Low). The
+evidence is carried as `AdverseMediaEvidence` into the assessment brief: check-outcome detail,
+per-subject narrative, the **Adverse media evidence** table in the PDF and Explainability tab, and
+per-source status pills in the KYB tab. Grading is lexical — analysts must confirm the named party
+is the applicant and not a namesake.
 
 Licensing: OpenSanctions bulk data is CC BY-NC 4.0 (commercial use needs their licence); OFAC and
 UN lists are public domain.
