@@ -50,6 +50,7 @@ interface NavGroup { title: string; items: NavItem[]; }
           <a class="nav-item" href="/swagger" target="_blank" rel="noopener">
             <mat-icon>api</mat-icon><span>API reference</span><mat-icon class="ext">open_in_new</mat-icon>
           </a>
+          <div class="author">Built by <strong>Nitin Rawat</strong></div>
         </div>
       </mat-sidenav>
 
@@ -67,6 +68,7 @@ interface NavGroup { title: string; items: NavItem[]; }
             <div class="blurb">{{ current().blurb }}</div>
           </div>
           <span class="spacer"></span>
+          <span class="author-pill" matTooltip="Designed and built by Nitin Rawat"><mat-icon>person</mat-icon>Nitin Rawat</span>
           <span class="env-pill" matTooltip="All checks run against the local API on :5292"><span class="dot"></span>Local API</span>
         </header>
         <main class="content"><router-outlet></router-outlet></main>
@@ -124,6 +126,8 @@ interface NavGroup { title: string; items: NavItem[]; }
     }
     .nav-item .ext { margin-left: auto; font-size: 15px; width: 15px; height: 15px; opacity: 0.6; }
     .nav-footer { padding: 12px; border-top: 1px solid rgba(255, 255, 255, 0.06); }
+    .author { padding: 10px 14px 2px; font-size: 11px; letter-spacing: .02em; color: rgba(255, 255, 255, 0.45); }
+    .author strong { color: rgba(255, 255, 255, 0.8); font-weight: 600; }
 
     /* ---- Top bar ---- */
     .topbar {
@@ -144,6 +148,12 @@ interface NavGroup { title: string; items: NavItem[]; }
       background: var(--mi-surface); border: 1px solid var(--mi-border); font-size: 12px; font-weight: 500; color: var(--mi-text-2);
       white-space: nowrap;
     }
+    .author-pill {
+      display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; margin-right: 10px; border-radius: 999px;
+      background: var(--mi-surface); border: 1px solid var(--mi-border); font-size: 12px; font-weight: 500; color: var(--mi-text-2);
+      white-space: nowrap;
+    }
+    .author-pill mat-icon { font-size: 16px; width: 16px; height: 16px; }
     .env-pill .dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2); }
 
     .content { max-width: 1240px; margin: 0 auto; padding: 28px 28px 64px; }
