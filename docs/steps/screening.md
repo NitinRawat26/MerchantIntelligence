@@ -58,16 +58,24 @@ Names on sanctions/PEP lists are rarely used by fraudsters, but the GDELT advers
 
 Lists are downloaded to `Sanctions:CacheDirectory` (default `data/sanctions`), reused for `RefreshInterval` (24 h), and rebuilt into an in-memory `SanctionsIndex`. Each list's status (`ListName`, `EntityCount`, `LoadedAt`, `Error`) is recorded in the report so the analyst knows what the subjects were screened *against*.
 
-### Adverse media (`IAdverseMediaProvider`)
-**GDELT DOC 2.0** (`api.gdeltproject.org`, keyless, rate-limited), enabled by `Sanctions:EnableAdverseMedia` (default `true`). Query per subject:
+### Adverse media (`IAdverseMediaProvider` → `CompositeAdverseMediaProvider`)
+Enabled by `Sanctions:EnableAdverseMedia` (default `true`); the free, keyless sources in `Sanctions:AdverseMediaSources` are queried **in parallel per subject** and merged:
 
-```text
-"<subject name>" (fraud OR laundering OR indicted OR indictment OR lawsuit OR scam OR embezzlement
-                  OR bribery OR sanctions OR arrested OR convicted OR ponzi OR chargeback
-                  OR counterfeit OR investigation)
-timespan=3months · maxrecords=25 · sort=hybridrel
-```
-An article is "negative" when its **title** contains one of those terms. A GDELT rate-limit / error is captured as `AdverseMediaResult(Succeeded=false, Error=…)` — *not* as zero articles.
+| Source | Endpoint | What it contributes | Rate handling |
+|---|---|---|---|
+| `gdelt` | GDELT DOC 2.0 (`timespan=3months`, `maxrecords=25`) | global news index, titles + tone | one request per 5.2 s process-wide (shared gate), one retry after HTTP 429 |
+| `googlenews` | Google News RSS (`"<name>" (fraud OR indicted OR …)`) | headlines + description snippets, publisher stripped from title | none needed |
+| `bingnews` | Bing News RSS | headlines + snippets | none needed |
+| `wikipedia` | MediaWiki search API | encyclopaedic snippets (legal history, controversies) | none needed |
+| `courtlistener` | CourtListener search API | US court opinions/dockets naming the subject | none needed |
+
+Every article is graded by `AdverseMediaAnalyzer` against a categorised **risk lexicon** (financial crime, criminal proceedings, civil/litigation, regulatory, payments/card risk, organised crime/terrorism):
+
+* **negative** – the subject's name and a risk term occur in the **same sentence or headline**; the sentence is kept as `Context` and the terms as `MatchedTerms` / `Category`.
+* **mention** – name and risk terms occur in the article/snippet but never in the same sentence (softer signal, `ADVERSE_MEDIA_MENTION`, Low).
+* **neutral** – no name–term relationship.
+
+Stories seen in several sources are de-duplicated on normalised title/URL; negatives sort first and the top 40 are kept (counts stay whole). Each source's outcome is recorded in `AdverseMediaResult.Providers`; the search is `Succeeded` when **any** source answered, with the failed ones named in `Error` ("1 of 5 source(s) unavailable: GDELT …"). Only when *every* source fails is the result `Succeeded=false` — and that is a coverage gap, never zero articles.
 
 ---
 
@@ -88,7 +96,7 @@ flowchart TD
     F4 -- no --> E
     F4 -- yes --> F5[Adjust: type mismatch −0.10<br/>birth-year match +0.08 / mismatch −0.15<br/>country match +0.05 / mismatch −0.05]
     F5 --> F6{score ≥ 0.85 → hit}
-    F6 --> G[GDELT adverse-media search<br/>failure → Succeeded=false]
+    F6 --> G[Composite adverse-media search<br/>GDELT gated 5 s · Google News · Bing News · Wikipedia · CourtListener<br/>grade: name + risk term in same sentence → negative<br/>all sources fail → Succeeded=false]
     G --> H{hits?}
     H -- yes --> H1{top ≥ 0.95, or ≥ 0.90 with<br/>DOB / country corroboration}
     H1 -- yes --> S1[SANCTIONS_MATCH High]
@@ -96,8 +104,10 @@ flowchart TD
     H -- yes --> P{any hit from a PEP list / programme?}
     P -- yes --> S3[PEP_MATCH Medium]
     G --> M{media Succeeded and NegativeCount > 0}
-    M -- yes --> S4[ADVERSE_MEDIA<br/>≥3 negative → High else Medium]
-    S1 & S2 & S3 & S4 --> R[SubjectScreeningResult]
+    M -- yes --> S4[ADVERSE_MEDIA with terms, category,<br/>source, date and quoted sentence<br/>≥3 negative or organised crime → High else Medium]
+    G --> M2{MentionCount > 0}
+    M2 -- yes --> S5[ADVERSE_MEDIA_MENTION Low]
+    S1 & S2 & S3 & S4 & S5 --> R[SubjectScreeningResult]
     R --> O[OverallRisk = max flag severity, Low if none<br/>ScreeningReport → ctx.Screening]
     O --> AG[KYB agent: registry alias re-screened<br/>and merged into the report]
 ```
@@ -205,12 +215,12 @@ Analyst rule of thumb: **"Clear"** in the brief means *lists loaded, media check
 | `ADVERSE_MEDIA` Medium | 1–2 negative-title articles | Read them; check whether about *this* entity/person; note in file. |
 | `ADVERSE_MEDIA` High | ≥ 3 articles | Treat as material; likely Refer; consider decline if articles concern fraud/chargebacks. |
 | `ALIAS_RESCREENED` with hits | Registry name hit while declared name did not | Strong indicator of deliberate name variation — escalate. |
-| Media unavailable | GDELT down | Re-run before final approval. |
+| Media unavailable | every news/records source down or rate-limited | Re-run before final approval. |
 
 ### False positives / negatives
 * **Common names** (Mohammed Ali, John Smith, "Global Trading LLC") generate possible matches; DOB and nationality on owners are the main defence. The 0.7 single-token cap in `TokenSetRatio` prevents "Ali" alone from scoring high.
 * **Transliteration** (Bout / But / Butt) is handled by Jaro-Winkler on normalised strings, but ordering of patronymics can still push scores under 0.85 → false negative. Where the merchant is high-risk, analysts should search OpenSanctions manually with alternate spellings.
-* **GDELT title matching** is crude: "Investigation into new coffee trend" contains "investigation" and counts as negative; conversely a damning article whose title lacks the keywords is neutral.
+* **Lexicon matching is lexical, not semantic**: a sentence such as "Jane Roe praised the fraud investigation team" still grades negative because name and term share a sentence; the quoted `Context` is surfaced precisely so the analyst can dismiss it. Namesakes are not resolved – the brief instructs the analyst to confirm the named party is the applicant.
 * **Ownership-based sanctions (OFAC 50 % rule)** are not evaluated — an entity owned by a sanctioned person but not itself listed will pass unless the owner is declared and screened.
 * Screening is point-in-time; lists change daily and there is no post-boarding re-screen in this workflow.
 
