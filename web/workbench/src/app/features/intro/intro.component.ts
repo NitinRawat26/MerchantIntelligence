@@ -1,16 +1,60 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, computed, inject, output, signal, viewChild } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 
 /** Scenes of the intro film; each scene owns a set of positions the SVG elements transition to. */
-type Scene = 'cup' | 'signals' | 'steps' | 'agents' | 'pipeline' | 'score';
+type Scene = 'cup' | 'signals' | 'steps' | 'agents' | 'pipeline' | 'memo' | 'score';
 const SCENES: { name: Scene; ms: number }[] = [
   { name: 'cup', ms: 3600 },
   { name: 'signals', ms: 3800 },
   { name: 'steps', ms: 3600 },
   { name: 'agents', ms: 3200 },
   { name: 'pipeline', ms: 5600 },
+  { name: 'memo', ms: 16400 },
   { name: 'score', ms: 0 }
+];
+
+/** Camera path over the memo page: section anchor, zoom factor and dwell time. */
+const MEMO_SHOTS: { target: string; zoom: number; ms: number }[] = [
+  { target: 'm-top', zoom: 1, ms: 2200 },
+  { target: 'm-presence', zoom: 1.4, ms: 2800 },
+  { target: 'm-website', zoom: 1.4, ms: 2400 },
+  { target: 'm-credit', zoom: 1.35, ms: 3000 },
+  { target: 'm-score', zoom: 1.3, ms: 2600 },
+  { target: 'm-rule', zoom: 1.4, ms: 2200 },
+  { target: 'm-bottom', zoom: 1, ms: 1200 }
+];
+
+interface MemoCheck { check: string; result: string; detail: string; sev: 'Low' | 'Medium'; id?: string; }
+const MEMO_CHECKS: MemoCheck[] = [
+  { check: 'Business identity', result: 'Match (94%)', detail: "Best match 'NITIN COFFEE CO LLC' from Texas Secretary of State (name 100 %, address 88 %); entity active since 2011.", sev: 'Low' },
+  { id: 'm-presence', check: 'Local presence', result: 'Confirmed (96%)', detail: "'Nitin Coffee Co' via OpenStreetMap (Overpass), 38 m from the declared address (cafe / coffee_shop); name match 100 %, category consistent with MCC 5814.", sev: 'Low' },
+  { check: 'Sanctions / PEP / media', result: 'Lists clear', detail: 'All 2 subject(s) clear against 3 loaded list(s) (OpenSanctions/sanctions, OFAC SDN, UN Security Council); no adverse media.', sev: 'Low' },
+  { id: 'm-website', check: 'Website compliance', result: 'Grade A', detail: 'Grade A (91/100) over 7 page(s). All card-brand disclosure checks passed. Domain registered 2010-04-12; TLS valid; refund, privacy and contact pages present.', sev: 'Low' },
+  { check: 'Prohibited / restricted', result: 'Acceptable', detail: 'No prohibited or restricted category detected (highest score 0.04).', sev: 'Low' },
+  { check: 'MCC validation', result: 'Consistent', detail: 'Declared MCC 5814 (Fast Food Restaurants, Low risk) is Consistent with website evidence at 84% agreement.', sev: 'Low' },
+  { check: 'MATCH / TMF', result: 'Clear', detail: 'No MATCH record for the entity or its principals.', sev: 'Low' },
+  { check: 'Bank statement', result: '6m · 0 flag(s)', detail: '6 month(s) 2025-01-01–2025-06-30, 92 transactions. Average monthly inflows $78,400, card deposits $74,900; 0 NSF, 0 returned items.', sev: 'Low' },
+  { check: 'P&L / balance sheet', result: '0 flag(s)', detail: 'Revenue $1,000,000, net income $118,000. Gross margin 0.62 (Healthy), Net margin 0.12 (Healthy), Current ratio 3.3.', sev: 'Low' },
+  { check: 'Volume plausibility', result: '100/100', detail: 'Plausible (100/100). Implied transactions / day: 61.6 – Normal. Average ticket $40 within 6–40 benchmark for MCC 5814.', sev: 'Low' },
+  { check: 'Credit model', result: 'Approved (96 %)', detail: 'Champion model predicts Approved with 96 % confidence (approve probability 96 %; baseline 93 %).', sev: 'Low' },
+  { check: 'Recommended terms', result: 'Band A', detail: 'Risk band A (composite 0.00). Reserve: none. Pricing: IC+ 20 bps + $0.10/txn, T+1 settlement.', sev: 'Low' }
+];
+const MEMO_SCORE: [string, string, string, string, string][] = [
+  ['Identity & KYB', '25%', '88/100', '22.0', 'Registry match 94 %, presence confirmed, owners verified'],
+  ['Screening', '15%', '100/100', '15.0', 'No sanctions, PEP, media or MATCH hits'],
+  ['Web & category', '15%', '86/100', '12.9', 'Grade A website, MCC consistent, nothing restricted'],
+  ['Financial health', '20%', '82/100', '16.4', 'Healthy margins, stable card deposits, no NSF'],
+  ['Credit model', '15%', '96/100', '14.4', 'P(Approve) 96 %, above 93 % baseline'],
+  ['Plausibility & profile', '10%', '82/100', '8.2', 'Volume plausible; single location, modest headcount']
+];
+const MEMO_SHAP: [string, string, string, string, string][] = [
+  ['ExistingRelationship', 'True', 'False', '+3.9%', 'Increases'],
+  ['YearsInBusiness', '15', '6', '+1.6%', 'Increases'],
+  ['AnnualVolume', '900,000', '500,000', '-0.9%', 'Decreases'],
+  ['AverageTicket', '40.00', '60.00', '+0.2%', 'Neutral'],
+  ['MerchantCategoryCode', '5814', '5812', '0.0%', 'Neutral'],
+  ['MatchFound', 'False', 'False', '0.0%', 'Neutral']
 ];
 
 interface Pt { x: number; y: number; }
@@ -188,6 +232,84 @@ const STEP_ORDER = ['website', 'prohibited', 'mcc', 'verification', 'screening',
         </g>
       </svg>
 
+      @if (scene() === 'memo') {
+        <div class="memo-view" #memoView>
+          <article class="memo" #memoPage [style.transform]="memoTransform()">
+            <header class="m-head" id="m-top">
+              <div>
+                <div class="m-title">Merchant Intelligence · Underwriting Assessment</div>
+                <div class="m-sub">Nitin Coffee Co LLC (t/a Nitin Coffee Co)</div>
+              </div>
+              <div class="m-badge"><b>APPROVE</b><span>Score 889/1000 · VeryLow</span></div>
+            </header>
+            <p class="m-headline">APPROVE — Nitin Coffee Co LLC: score 889/1000 (VeryLow), 12 of 12 checks covered (100% score-signal coverage), 0 high / 0 medium finding(s).</p>
+            <p>Long-established card-present coffeehouse with a verified registry record, confirmed storefront and clean screening. Financials and card deposits support the declared volume; the credit model approves with high confidence.</p>
+            <h4>Assessment</h4>
+            <dl>
+              <dt>Reference</dt><dd>ASMT-DEMO-NCC-0001</dd>
+              <dt>Analyst</dt><dd>analyst</dd>
+              <dt>Rule set</dt><dd>v3 · deciding rule AUTO_APPROVE</dd>
+              <dt>Coverage</dt><dd>12 of 12 checks covered · 100% score-signal coverage</dd>
+            </dl>
+            <h4>Merchant intake</h4>
+            <dl>
+              <dt>Legal name</dt><dd>Nitin Coffee Co LLC</dd>
+              <dt>Address</dt><dd>600 Congress Ave, Austin, TX 78701, US</dd>
+              <dt>Website</dt><dd>https://nitincoffee.co</dd>
+              <dt>Description</dt><dd>Independent coffeehouse serving brewed coffee, espresso drinks and pastries in-store.</dd>
+              <dt>MCC</dt><dd>5814</dd>
+              <dt>Declared volume</dt><dd>$900,000 / year · avg ticket $40 · max $400</dd>
+              <dt>Delivery / CNP</dt><dd>0 days · 30% card-not-present</dd>
+              <dt>Owners</dt><dd>Nitin Rawat 100% (Owner)</dd>
+            </dl>
+            <h4>Check outcomes</h4>
+            <table>
+              <thead><tr><th>Check</th><th>Result</th><th>Detail</th><th>Severity</th></tr></thead>
+              <tbody>
+                @for (c of memoChecks; track c.check) {
+                  <tr [attr.id]="c.id ?? null" [class.focus]="memoFocus() === c.id">
+                    <td><b>{{ c.check }}</b></td><td>{{ c.result }}</td><td class="small">{{ c.detail }}</td><td class="sev">{{ c.sev }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+            <h4 id="m-score">Unified risk score</h4>
+            <table [class.focus]="memoFocus() === 'm-score'">
+              <thead><tr><th>Component</th><th>Weight</th><th>Score</th><th>Weighted</th><th>Detail</th></tr></thead>
+              <tbody>
+                @for (r of memoScore; track r[0]) {
+                  <tr><td>{{ r[0] }}</td><td>{{ r[1] }}</td><td>{{ r[2] }}</td><td>{{ r[3] }}</td><td class="small">{{ r[4] }}</td></tr>
+                }
+                <tr class="total"><td>Unified score</td><td></td><td></td><td>88.9 → 889</td><td class="small">Tier VeryLow · no hard stops · no coverage gaps</td></tr>
+              </tbody>
+            </table>
+            <h4 id="m-credit">Credit model explainability (Shapley contributions)</h4>
+            <table [class.focus]="memoFocus() === 'm-credit'">
+              <thead><tr><th>Feature</th><th>Value</th><th>Baseline</th><th>Contribution</th><th>Direction</th></tr></thead>
+              <tbody>
+                @for (r of memoShap; track r[0]) {
+                  <tr><td>{{ r[0] }}</td><td>{{ r[1] }}</td><td class="muted">{{ r[2] }}</td><td [class.pos]="r[3].startsWith('+')" [class.neg]="r[3].startsWith('-')">{{ r[3] }}</td><td>{{ r[4] }}</td></tr>
+                }
+              </tbody>
+            </table>
+            <p class="small italic">Decision Approved with 96.3% confidence. P(Approved) moved from 93.1% for a typical merchant to 96.3%; main drivers: ExistingRelationship=True (+3.9 pts), YearsInBusiness=15 (+1.6 pts).</p>
+            <h4 id="m-rule">Policy rules</h4>
+            <div class="rule" [class.focus]="memoFocus() === 'm-rule'">
+              <code>AUTO_APPROVE</code><span class="out">Approve</span><span class="small">Strong score, adequate coverage, no high-severity findings (priority 100)</span>
+            </div>
+            <h4>Recommended terms</h4>
+            <dl>
+              <dt>Risk band</dt><dd>A</dd>
+              <dt>Reserve</dt><dd>None</dd>
+              <dt>Pricing</dt><dd>Interchange + 20 bps + $0.10 per transaction</dd>
+              <dt>Settlement</dt><dd>T+1</dd>
+              <dt>Monitoring</dt><dd>Standard velocity and chargeback monitoring</dd>
+            </dl>
+            <footer class="m-foot" id="m-bottom">Illustrative memo for a fictional merchant · Merchant Intelligence by Nitin Rawat · page 1 of 1</footer>
+          </article>
+        </div>
+      }
+
       @if (scene() === 'score') {
         <footer class="verdict-foot">
           <div class="chips">
@@ -258,6 +380,34 @@ const STEP_ORDER = ['website', 'prohibited', 'mcc', 'verification', 'screening',
     .stage-link.flow { animation: flow .7s linear infinite; }
     @keyframes flow { to { stroke-dashoffset: -40; } }
     .film[data-scene='score'] .edge, .film[data-scene='score'] .stage-link, .film[data-scene='score'] .agent, .film[data-scene='score'] .step { opacity: .18; }
+    .film[data-scene='memo'] .stage { opacity: .12; transition: opacity .8s; }
+
+    /* memo */
+    .memo-view { position: absolute; left: 50%; top: 64px; bottom: 24px; width: min(720px, 92vw); margin-left: calc(min(720px, 92vw) / -2); overflow: hidden; border-radius: 6px; box-shadow: 0 30px 80px rgba(0,0,0,.6); animation: fade .8s ease both; }
+    .memo { position: absolute; left: 0; top: 0; width: 100%; box-sizing: border-box; padding: 34px 40px 40px; background: #fff; color: #1e293b; font-size: 10.5px; line-height: 1.45; transform-origin: 0 0; transition: transform 1.5s cubic-bezier(.65,0,.35,1); }
+    .m-head { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 8px; border-bottom: 1px solid #d0d7de; }
+    .m-title { font-size: 17px; font-weight: 600; }
+    .m-sub { font-size: 13px; color: #64748b; margin-top: 2px; }
+    .m-badge { width: 150px; text-align: center; }
+    .m-badge b { display: block; background: #16a34a; color: #fff; font-size: 14px; padding: 6px; }
+    .m-badge span { display: block; font-size: 9px; color: #64748b; margin-top: 3px; }
+    .m-headline { font-weight: 600; font-size: 11.5px; margin: 10px 0 4px; }
+    .memo p { margin: 0 0 8px; }
+    .memo h4 { margin: 14px 0 4px; font-size: 11px; font-weight: 600; color: #0f172a; border-bottom: 1px solid #d0d7de; padding-bottom: 3px; }
+    .memo dl { display: grid; grid-template-columns: 130px 1fr; gap: 2px 10px; margin: 0; }
+    .memo dt { color: #64748b; } .memo dd { margin: 0; }
+    .memo table { width: 100%; border-collapse: collapse; }
+    .memo th { background: #f0f4f8; text-align: left; padding: 4px; font-size: 9.5px; font-weight: 600; }
+    .memo td { padding: 4px; border-bottom: .5px solid #d0d7de; vertical-align: top; }
+    .memo .small { font-size: 9.5px; } .memo .muted { color: #64748b; } .memo .italic { font-style: italic; }
+    .memo .sev { color: #16a34a; font-weight: 600; }
+    .memo .pos { color: #16a34a; } .memo .neg { color: #dc2626; }
+    .memo .total td { font-weight: 600; border-top: 1.5px solid #64748b; }
+    .memo .rule { display: flex; gap: 12px; align-items: baseline; padding: 4px; }
+    .memo code { font-family: 'Courier New', monospace; font-size: 9.5px; font-weight: 600; }
+    .memo .out { color: #16a34a; font-weight: 600; }
+    .memo .focus { outline: 2px solid #22c55e; outline-offset: 2px; background: rgba(34,197,94,.08); transition: outline-color .4s, background .4s; }
+    .m-foot { margin-top: 22px; padding-top: 6px; border-top: 1px solid #d0d7de; font-size: 9px; color: #64748b; text-align: center; }
 
     /* score */
     .verdict { transform: translate(600px, 330px) scale(.8); }
@@ -293,14 +443,23 @@ export class IntroComponent {
   readonly shownScore = signal(0);
   readonly verdict = signal<{ score: number; tier: string; outcome: string; coveragePercent: number } | null>(null);
 
-  readonly showSteps = computed(() => ['steps', 'agents', 'pipeline', 'score'].includes(this.scene()));
-  readonly showAgents = computed(() => ['agents', 'pipeline', 'score'].includes(this.scene()));
+  readonly memoChecks = MEMO_CHECKS;
+  readonly memoScore = MEMO_SCORE;
+  readonly memoShap = MEMO_SHAP;
+  readonly memoFocus = signal<string | null>(null);
+  readonly memoTransform = signal('translateY(0) scale(1)');
+  private readonly memoView = viewChild<ElementRef<HTMLElement>>('memoView');
+  private readonly memoPage = viewChild<ElementRef<HTMLElement>>('memoPage');
+
+  readonly showSteps = computed(() => ['steps', 'agents', 'pipeline', 'memo', 'score'].includes(this.scene()));
+  readonly showAgents = computed(() => ['agents', 'pipeline', 'memo', 'score'].includes(this.scene()));
   readonly caption = computed(() => ({
     cup: 'A merchant applies. One application, one question: can we board them safely?',
     signals: 'Every field on the application is a signal — identity, web, volume, ownership, documents.',
     steps: 'Signals merge into 14 assessment checks…',
     agents: '…which group into four specialised agents.',
     pipeline: 'The workflow wires the checks into a pipeline and evidence flows through it.',
+    memo: 'Every finding lands in an audit-ready underwriting memo — the analyst reads evidence, not opinions.',
     score: 'One unified 0–1000 risk score, a policy outcome, and an audit-ready case.'
   } as Record<Scene, string>)[this.scene()]);
   readonly tierColor = computed(() => {
@@ -341,10 +500,36 @@ export class IntroComponent {
     }
   }
 
+  private runMemoCamera(): void {
+    let at = 50;
+    for (const shot of MEMO_SHOTS) {
+      this.timers.push(setTimeout(() => this.aimMemo(shot.target, shot.zoom), at));
+      at += shot.ms;
+    }
+  }
+
+  private aimMemo(target: string, zoom: number): void {
+    const view = this.memoView()?.nativeElement, page = this.memoPage()?.nativeElement;
+    const el = page?.querySelector<HTMLElement>(`#${target}`);
+    if (!view || !page || !el) return;
+    const viewH = view.clientHeight;
+    const pageH = page.offsetHeight;
+    let y: number;
+    if (target === 'm-top') y = 0;
+    else if (target === 'm-bottom') y = Math.max(0, pageH - viewH);
+    else y = Math.max(0, el.offsetTop + el.offsetHeight / 2 - viewH / (2 * zoom));
+    y = Math.min(y, Math.max(0, pageH - viewH / zoom));
+    this.memoTransform.set(`translateY(${-y * zoom}px) scale(${zoom})`);
+    this.memoFocus.set(zoom > 1 ? target : null);
+  }
+
   private enter(scene: Scene): void {
     this.scene.set(scene);
     if (scene === 'pipeline') {
       STEP_ORDER.forEach((id, i) => this.timers.push(setTimeout(() => this.litSteps.update(s => new Set([...s, id])), 600 + i * 300)));
+    }
+    if (scene === 'memo') {
+      this.runMemoCamera();
     }
     if (scene === 'score') {
       this.verdict.set(VERDICT);
