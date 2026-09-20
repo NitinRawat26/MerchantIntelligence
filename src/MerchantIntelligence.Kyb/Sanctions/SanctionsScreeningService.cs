@@ -23,8 +23,11 @@ public sealed class SanctionsOptions
     /// <summary>Also download the raw OFAC SDN and UN XML lists in addition to the OpenSanctions consolidation.</summary>
     public bool IncludeRawGovernmentLists { get; set; } = true;
 
-    /// <summary>Run GDELT adverse-media search for each subject.</summary>
+    /// <summary>Run adverse-media search (news, encyclopaedia and court records) for each subject.</summary>
     public bool EnableAdverseMedia { get; set; } = true;
+
+    /// <summary>Free sources queried in parallel per subject: gdelt, googlenews, bingnews, wikipedia, courtlistener.</summary>
+    public string[] AdverseMediaSources { get; set; } = ["gdelt", "googlenews", "bingnews", "wikipedia", "courtlistener"];
 }
 
 /// <summary>Downloads (with disk cache), parses and indexes the configured lists; screens subjects against them.</summary>
@@ -61,19 +64,13 @@ public sealed class SanctionsScreeningService
     {
         var index = await GetIndexAsync(ct);
         var results = new List<SubjectScreeningResult>();
-        foreach (var subject in subjects)
+        // Media lookups for all subjects start together; rate-limited sources serialise themselves internally.
+        var mediaTasks = subjects.Select(s => SearchMediaAsync(s, ct)).ToList();
+        for (var i = 0; i < subjects.Count; i++)
         {
+            var subject = subjects[i];
             var hits = index.Search(subject, _options.MatchThreshold);
-            AdverseMediaResult? media = null;
-            if (_options.EnableAdverseMedia && _adverseMedia is not null)
-            {
-                try { media = await _adverseMedia.SearchAsync(subject, ct); }
-                catch (Exception ex) when (!ct.IsCancellationRequested)
-                {
-                    _logger.LogWarning(ex, "Adverse media lookup failed for {Subject}", subject.Name);
-                    media = new AdverseMediaResult(_adverseMedia.Name, false, 0, 0, Array.Empty<AdverseMediaArticle>(), ex.Message);
-                }
-            }
+            var media = await mediaTasks[i];
 
             var flags = new List<KybScreeningFlag>();
             if (hits.Count > 0)
@@ -89,8 +86,8 @@ public sealed class SanctionsScreeningService
                 if (hits.Any(h => h.Entity.ListName.Contains("peps", StringComparison.OrdinalIgnoreCase) || h.Entity.Programs.Any(p => p.Contains("PEP", StringComparison.OrdinalIgnoreCase))))
                     flags.Add(new KybScreeningFlag("PEP_MATCH", $"{subject.Name} matches a politically exposed person record.", RiskTier.Medium));
             }
-            if (media is { Succeeded: true, NegativeCount: > 0 })
-                flags.Add(new KybScreeningFlag("ADVERSE_MEDIA", $"{subject.Name}: {media.NegativeCount} negative-tone article(s) in the last 3 months mentioning fraud/laundering/etc.", media.NegativeCount >= 3 ? RiskTier.High : RiskTier.Medium));
+            if (media is { Succeeded: true })
+                flags.AddRange(AdverseMediaFlags(subject, media));
 
             results.Add(new SubjectScreeningResult(subject, hits.Count > 0, hits, media, flags));
         }
@@ -98,6 +95,50 @@ public sealed class SanctionsScreeningService
         var allFlags = results.SelectMany(r => r.Flags).ToList();
         var overall = allFlags.Count == 0 ? RiskTier.Low : allFlags.Max(f => f.Severity);
         return new ScreeningReport(results, _statuses, overall, allFlags);
+    }
+
+    private async Task<AdverseMediaResult?> SearchMediaAsync(ScreeningSubject subject, CancellationToken ct)
+    {
+        if (!_options.EnableAdverseMedia || _adverseMedia is null) return null;
+        try { return await _adverseMedia.SearchAsync(subject, ct); }
+        catch (Exception ex) when (!ct.IsCancellationRequested)
+        {
+            _logger.LogWarning(ex, "Adverse media lookup failed for {Subject}", subject.Name);
+            return new AdverseMediaResult(_adverseMedia.Name, false, 0, 0, Array.Empty<AdverseMediaArticle>(), ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Negative articles (subject and risk term in the same sentence/headline) raise ADVERSE_MEDIA with the matched terms
+    /// and a quoted excerpt; risk terms elsewhere in an article naming the subject raise the softer ADVERSE_MEDIA_MENTION.
+    /// </summary>
+    internal static IEnumerable<KybScreeningFlag> AdverseMediaFlags(ScreeningSubject subject, AdverseMediaResult media)
+    {
+        var negatives = media.Articles.Where(a => a.Tone == "negative").ToList();
+        if (negatives.Count > 0)
+        {
+            var terms = negatives.SelectMany(a => a.MatchedTerms ?? Array.Empty<string>()).Distinct(StringComparer.OrdinalIgnoreCase).Take(8).ToList();
+            var categories = negatives.Select(a => a.Category).Where(c => !string.IsNullOrEmpty(c)).Distinct().Take(4).ToList();
+            var sources = negatives.Select(a => a.Provider ?? a.Source).Distinct().ToList();
+            var lead = negatives[0];
+            var excerpt = string.IsNullOrEmpty(lead.Context) ? lead.Title : lead.Context;
+            yield return new KybScreeningFlag(
+                "ADVERSE_MEDIA",
+                $"{subject.Name}: {negatives.Count} article(s) tie the name to {string.Join(", ", terms)}" +
+                (categories.Count > 0 ? $" [{string.Join("; ", categories)}]" : string.Empty) +
+                $" across {string.Join(", ", sources)}. E.g. \"{excerpt}\" ({lead.Source}{(lead.Published is { } d ? $", {d:yyyy-MM-dd}" : string.Empty)}).",
+                negatives.Count >= 3 || negatives.Any(a => a.Category?.Contains("Organised crime", StringComparison.OrdinalIgnoreCase) == true) ? RiskTier.High : RiskTier.Medium);
+        }
+
+        var mentions = media.Articles.Where(a => a.Tone == "mention").ToList();
+        if (mentions.Count > 0)
+        {
+            var terms = mentions.SelectMany(a => a.MatchedTerms ?? Array.Empty<string>()).Distinct(StringComparer.OrdinalIgnoreCase).Take(6).ToList();
+            yield return new KybScreeningFlag(
+                "ADVERSE_MEDIA_MENTION",
+                $"{subject.Name}: named in {mentions.Count} article(s)/record(s) that also discuss {string.Join(", ", terms)}, but not in the same sentence – analyst should confirm relevance. E.g. \"{mentions[0].Title}\" ({mentions[0].Source}).",
+                RiskTier.Low);
+        }
     }
 
     public async Task<SanctionsIndex> GetIndexAsync(CancellationToken ct)
@@ -162,50 +203,4 @@ public interface IAdverseMediaProvider
 {
     string Name { get; }
     Task<AdverseMediaResult> SearchAsync(ScreeningSubject subject, CancellationToken ct);
-}
-
-/// <summary>GDELT 2.0 DOC API: free global news index with tone scoring, no key required.</summary>
-public sealed class GdeltAdverseMediaProvider : IAdverseMediaProvider
-{
-    private static readonly string[] RiskTerms =
-    {
-        "fraud", "laundering", "indicted", "indictment", "lawsuit", "scam", "embezzlement", "bribery",
-        "sanctions", "arrested", "convicted", "ponzi", "chargeback", "counterfeit", "investigation"
-    };
-
-    private readonly IHttpClientFactory _factory;
-
-    public GdeltAdverseMediaProvider(IHttpClientFactory factory) => _factory = factory;
-
-    public string Name => "GDELT DOC 2.0";
-
-    public async Task<AdverseMediaResult> SearchAsync(ScreeningSubject subject, CancellationToken ct)
-    {
-        var client = _factory.CreateClient(SanctionsOptions.HttpClientName);
-        var query = $"\"{subject.Name}\" ({string.Join(" OR ", RiskTerms)})";
-        var url = $"https://api.gdeltproject.org/api/v2/doc/doc?query={Uri.EscapeDataString(query)}&mode=artlist&format=json&maxrecords=25&timespan=3months&sort=hybridrel";
-        using var response = await client.GetAsync(url, ct);
-        if ((int)response.StatusCode == 429)
-            return new AdverseMediaResult(Name, false, 0, 0, Array.Empty<AdverseMediaArticle>(), "GDELT rate limit reached; retry later.");
-        response.EnsureSuccessStatusCode();
-        var body = await response.Content.ReadAsStringAsync(ct);
-        if (string.IsNullOrWhiteSpace(body) || !body.TrimStart().StartsWith('{'))
-            return new AdverseMediaResult(Name, true, 0, 0, Array.Empty<AdverseMediaArticle>());
-
-        using var doc = JsonDocument.Parse(body);
-        if (!doc.RootElement.TryGetProperty("articles", out var articles))
-            return new AdverseMediaResult(Name, true, 0, 0, Array.Empty<AdverseMediaArticle>());
-
-        var list = new List<AdverseMediaArticle>();
-        foreach (var a in articles.EnumerateArray())
-        {
-            if (!Uri.TryCreate(a.GetProperty("url").GetString(), UriKind.Absolute, out var u)) continue;
-            DateTimeOffset? published = a.TryGetProperty("seendate", out var sd)
-                && DateTimeOffset.TryParseExact(sd.GetString(), "yyyyMMdd'T'HHmmss'Z'", null, System.Globalization.DateTimeStyles.AssumeUniversal, out var p) ? p : null;
-            var title = a.TryGetProperty("title", out var t) ? t.GetString() ?? string.Empty : string.Empty;
-            var tone = RiskTerms.Any(term => title.Contains(term, StringComparison.OrdinalIgnoreCase)) ? "negative" : "neutral";
-            list.Add(new AdverseMediaArticle(title, u, a.TryGetProperty("domain", out var d) ? d.GetString() ?? u.Host : u.Host, published, tone));
-        }
-        return new AdverseMediaResult(Name, true, list.Count, list.Count(l => l.Tone == "negative"), list);
-    }
 }
