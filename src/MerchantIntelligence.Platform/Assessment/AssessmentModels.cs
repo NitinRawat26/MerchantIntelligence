@@ -61,6 +61,19 @@ public sealed record ExplanationItem(string Section, string Code, string Message
 
 public sealed record CheckOutcome(string Check, string Result, string Detail, RiskTier Severity, bool Covered);
 
+/// <summary>An article or record that ties a screened subject to a risk term, with the sentence in which they co-occur.</summary>
+public sealed record AdverseMediaEvidence(
+    string Subject,
+    string Title,
+    string Source,
+    string Provider,
+    DateTimeOffset? Published,
+    string Tone,
+    IReadOnlyList<string> MatchedTerms,
+    string? Category,
+    string? Context,
+    string Url);
+
 public sealed record AssessmentExplainability(
     string Headline,
     IReadOnlyList<string> Narrative,
@@ -73,7 +86,8 @@ public sealed record AssessmentExplainability(
     string? DecidingRule,
     IReadOnlyList<string> CoverageGaps,
     IReadOnlyList<string> HardStops,
-    IReadOnlyList<string> AnalystNextSteps);
+    IReadOnlyList<string> AnalystNextSteps,
+    IReadOnlyList<AdverseMediaEvidence> AdverseMedia);
 
 public sealed record AssessmentDecision(
     string Outcome,                  // Approve | Refer | Decline

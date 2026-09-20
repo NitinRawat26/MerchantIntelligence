@@ -159,3 +159,58 @@ public sealed class CompositeAdverseMediaProviderTests
         Assert.Equal(2025, a.Published!.Value.Year);
     }
 }
+
+public sealed class AdverseMediaExplainabilityTests
+{
+    private static readonly ScreeningSubject Owner = new("Jane Roe", null, "US", true, "Owner");
+
+    private static ScreeningReport Report(AdverseMediaResult media) =>
+        new(
+            [new SubjectScreeningResult(Owner, false, [], media, [])],
+            [new SanctionsListStatus("OFAC SDN", 100, DateTimeOffset.UtcNow, null)],
+            MerchantIntelligence.MccValidation.Taxonomy.RiskTier.Low,
+            []);
+
+    [Fact]
+    public void Summary_lists_answering_sources_and_flags_unavailable_ones_as_partial()
+    {
+        var media = new AdverseMediaResult("Adverse media (multi-source)", true, 12, 2, [], "1 of 2 source(s) unavailable",
+            [new AdverseMediaProviderStatus("GDELT DOC 2.0", false, 0, "429"), new AdverseMediaProviderStatus("Google News", true, 12, null)], 1);
+
+        var text = MerchantIntelligence.Platform.Assessment.AssessmentComposer.MediaSummary(Report(media));
+
+        Assert.Contains("2 negative, 1 indirect mention(s) of 12", text);
+        Assert.Contains("from Google News", text);
+        Assert.Contains("unavailable: GDELT DOC 2.0", text);
+    }
+
+    [Fact]
+    public void Narrative_and_evidence_quote_the_sentence_that_ties_the_name_to_the_risk_term()
+    {
+        var article = new AdverseMediaArticle("Jane Roe indicted", new Uri("https://news.example/1"), "news.example",
+            new DateTimeOffset(2024, 5, 1, 0, 0, 0, TimeSpan.Zero), "negative",
+            MatchedTerms: ["indicted"], Category: "Criminal proceedings", Context: "Jane Roe was indicted on Tuesday.", Provider: "Google News");
+        var mention = article with { Title = "Roe cafe review", Url = new Uri("https://news.example/2"), Tone = "mention", Context = null };
+        var media = new AdverseMediaResult("Adverse media (multi-source)", true, 2, 1, [mention, article], null, null, 1);
+
+        var lines = MerchantIntelligence.Platform.Assessment.AssessmentComposer.MediaNarrative(Report(media)).ToList();
+        var evidence = MerchantIntelligence.Platform.Assessment.AssessmentComposer.MediaEvidence(Report(media)).ToList();
+
+        var line = Assert.Single(lines);
+        Assert.Contains("Jane Roe (Owner)", line);
+        Assert.Contains("indicted ×1", line);
+        Assert.Contains("\"Jane Roe was indicted on Tuesday.\" (news.example, 2024-05-01, via Google News)", line);
+        Assert.Equal(2, evidence.Count);
+        Assert.Equal("negative", evidence[0].Tone);
+        Assert.Equal("Criminal proceedings", evidence[0].Category);
+        Assert.Equal("https://news.example/1", evidence[0].Url);
+    }
+
+    [Fact]
+    public void Failed_lookup_yields_no_narrative_or_evidence()
+    {
+        var media = new AdverseMediaResult("Adverse media (multi-source)", false, 0, 0, [], "All adverse-media sources failed");
+        Assert.Empty(MerchantIntelligence.Platform.Assessment.AssessmentComposer.MediaNarrative(Report(media)));
+        Assert.Empty(MerchantIntelligence.Platform.Assessment.AssessmentComposer.MediaEvidence(Report(media)));
+    }
+}

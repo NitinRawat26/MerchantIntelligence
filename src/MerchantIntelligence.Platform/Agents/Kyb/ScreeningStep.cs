@@ -22,6 +22,9 @@ public sealed class ScreeningStep(SanctionsScreeningService screening) : IAssess
         if (ctx.Param(Descriptor.Id, "includeOwners", true))
             subjects.AddRange(intake.Owners.Select(o => new ScreeningSubject(o.FullName, o.DateOfBirth, o.Nationality, true, o.Role ?? "Beneficial owner")));
         ctx.Screening = await ctx.RunAsync(Descriptor, () => screening.ScreenAsync(subjects, ctx.CancellationToken),
-            s => $"{s.Subjects.Count} subject(s) screened · {s.Subjects.Count(x => x.PotentialMatch)} potential match(es) · overall {s.OverallRisk}");
+            s => $"{s.Subjects.Count} subject(s) screened · {s.Subjects.Count(x => x.PotentialMatch)} potential match(es) · " +
+                 $"{s.Subjects.Sum(x => x.AdverseMedia?.NegativeCount ?? 0)} adverse-media article(s)" +
+                 (s.Subjects.Any(x => x.AdverseMedia is { Succeeded: false }) ? " (media unavailable)" : "") +
+                 $" · overall {s.OverallRisk}");
     }
 }

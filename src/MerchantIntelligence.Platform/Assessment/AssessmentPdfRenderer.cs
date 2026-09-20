@@ -193,6 +193,41 @@ public static class AssessmentPdfRenderer
                             });
                     }
 
+                    if (r.Explainability.AdverseMedia.Count > 0)
+                    {
+                        Section(col, "Adverse media evidence");
+                        col.Item().PaddingBottom(4).Text("Negative = the screened name and a risk term appear in the same sentence or headline; Mention = both appear in the article but not together. Confirm the named party is this applicant before relying on an item.")
+                            .FontSize(8).FontColor(Muted);
+                        col.Item().Table(t =>
+                        {
+                            t.ColumnsDefinition(c => { c.ConstantColumn(90); c.ConstantColumn(52); c.RelativeColumn(3); c.RelativeColumn(2); });
+                            t.Header(h =>
+                            {
+                                foreach (var title in new[] { "Subject", "Tone", "Article / record and matched sentence", "Risk terms" })
+                                    h.Cell().BorderBottom(1).BorderColor(Line).Padding(3).Text(title).SemiBold().FontSize(8.5f);
+                            });
+                            foreach (var e in r.Explainability.AdverseMedia)
+                            {
+                                t.Cell().BorderBottom(0.5f).BorderColor(Line).Padding(3).Text(e.Subject).FontSize(8.5f);
+                                t.Cell().BorderBottom(0.5f).BorderColor(Line).Padding(3).Text(e.Tone == "negative" ? "Negative" : "Mention").FontSize(8.5f).SemiBold()
+                                    .FontColor(e.Tone == "negative" ? Decline : Refer);
+                                t.Cell().BorderBottom(0.5f).BorderColor(Line).Padding(3).Text(txt =>
+                                {
+                                    txt.Span(e.Title).FontSize(8.5f).SemiBold();
+                                    txt.Span($"  {e.Source}{(e.Published is { } d ? $" · {d:yyyy-MM-dd}" : "")} · via {e.Provider}").FontSize(7.5f).FontColor(Muted);
+                                    if (!string.IsNullOrEmpty(e.Context) && !string.Equals(e.Context, e.Title, StringComparison.Ordinal))
+                                        txt.Span($"\n“{e.Context}”").FontSize(8).Italic();
+                                    txt.Span($"\n{e.Url}").FontSize(6.5f).FontColor(Muted);
+                                });
+                                t.Cell().BorderBottom(0.5f).BorderColor(Line).Padding(3).Text(txt =>
+                                {
+                                    txt.Span(string.Join(", ", e.MatchedTerms)).FontSize(8.5f);
+                                    if (!string.IsNullOrEmpty(e.Category)) txt.Span($"\n{e.Category}").FontSize(7.5f).FontColor(Muted);
+                                });
+                            }
+                        });
+                    }
+
                     if (r.Terms is { } terms)
                     {
                         KeyValues(col, "Recommended commercial terms", new (string, string)[]
@@ -227,7 +262,7 @@ public static class AssessmentPdfRenderer
                         }
                     });
 
-                    col.Item().PaddingTop(6).Text("Data sources: GLEIF, SEC EDGAR, US Census geocoder, OFAC SDN, UN consolidated list, OpenSanctions, GDELT, RDAP and the merchant's own website. " +
+                    col.Item().PaddingTop(6).Text("Data sources: GLEIF, SEC EDGAR, US Census geocoder, OFAC SDN, UN consolidated list, OpenSanctions, GDELT, Google News, Bing News, Wikipedia, CourtListener, RDAP and the merchant's own website. " +
                         "Where a source was unavailable the check is reported as a coverage gap and is never treated as clear. Model outputs are decision support, not a decision.")
                         .FontSize(7.5f).FontColor(Muted);
                 });
