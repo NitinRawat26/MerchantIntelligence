@@ -69,7 +69,23 @@ Enabled by `Sanctions:EnableAdverseMedia` (default `true`); the free, keyless so
 | `wikipedia` | MediaWiki search API | encyclopaedic snippets (legal history, controversies) | none needed |
 | `courtlistener` | CourtListener search API | US court opinions/dockets naming the subject | none needed |
 
-Every article is graded by `AdverseMediaAnalyzer` against a categorised **risk lexicon** (financial crime, criminal proceedings, civil/litigation, regulatory, payments/card risk, organised crime/terrorism):
+#### Risk lexicon (`AdverseMediaLexicon`)
+The complete set of words and phrases searched for in every headline, snippet and record, grouped by the risk category they denote. Matching is **whole-word, case-insensitive, culture-invariant** (`\bterm\b`), so "fraud" does not match "defrauded" but "wire fraud" is caught as its own multi-word term; longer terms are tested first so "money laundering" is reported once, not as both "money laundering" and "laundering".
+
+| Category | Terms | Why it matters to an acquirer |
+|---|---|---|
+| **Financial crime** | fraud, fraudulent, money laundering, laundering, embezzlement, embezzled, ponzi, scam, bribery, bribe, kickback, tax evasion, wire fraud, racketeering, extortion, forgery | Direct predictors of merchant fraud, bust-out and AML exposure |
+| **Criminal proceedings** | indicted, indictment, arrested, arrest, convicted, conviction, charged with, pleaded guilty, guilty, sentenced, felony, prison, criminal charges | Shows a matter has reached prosecution stage – far stronger than an allegation |
+| **Civil / litigation** | lawsuit, sued, class action, settlement, judgment against, bankruptcy, insolvency, receivership, liquidation, default judgment | Solvency and reputational risk; bankruptcy/receivership bear directly on reserve sizing |
+| **Regulatory** | sanctions, sanctioned, fined, penalty, enforcement action, investigation, probe, subpoena, cease and desist, consent order, license revoked, banned, deregistered | Regulator action against the business or a principal; licence loss can make the MCC unboardable |
+| **Payments / card risk** | chargeback, chargebacks, counterfeit, data breach, skimming, bust-out, shell company, transaction laundering, terminated merchant | Card-scheme specific: MATCH-type behaviour, PCI incidents, factoring/transaction laundering |
+| **Organised crime / terrorism** | terrorism, terrorist, cartel, trafficking, organized crime, organised crime, smuggling | Any single co-located hit escalates the `ADVERSE_MEDIA` flag to **High** |
+
+**Query terms.** A compact 16-word subset (`QueryTerms`) is what is actually sent to the search engines so the result set is already biased toward risk coverage: `fraud, laundering, indicted, lawsuit, scam, embezzlement, bribery, sanctions, arrested, convicted, ponzi, chargeback, counterfeit, investigation, fined, bankruptcy`. Per source: GDELT and Google News use all 16 (`"<name>" (fraud OR laundering OR …)`), Bing News the first 8, Wikipedia the first 10, CourtListener searches the exact name only (court records are inherently adverse). Grading afterwards always uses the **full lexicon**, so a term that was not in the query (e.g. "receivership") is still detected in the returned text.
+
+**Subject matching inside a sentence.** For individuals the sentence must contain the full name, or the first **and** last name token (middle names/initials are often dropped by the press). For organisations, legal suffixes and stop-words (`LLC`, `Inc`, `Ltd`, `Corp`, `Co`, `Company`, `Limited`, `PLC`, `GmbH`, `Holdings`, `Group`, `the`, `and`, `of`, …) are stripped and every remaining token must appear, so "Blue Ocean Bakery was sued" matches subject "Blue Ocean Bakery LLC". HTML tags are removed and entities decoded before matching. Sentence boundaries are `.`, `!`, `?` followed by a capital/quote, and line breaks; the headline is treated as its own sentence.
+
+Every article is graded by `AdverseMediaAnalyzer` against that lexicon:
 
 * **negative** – the subject's name and a risk term occur in the **same sentence or headline**; the sentence is kept as `Context` and the terms as `MatchedTerms` / `Category`.
 * **mention** – name and risk terms occur in the article/snippet but never in the same sentence (softer signal, `ADVERSE_MEDIA_MENTION`, Low).
@@ -139,9 +155,23 @@ ScreeningReport(
 | `SANCTIONS_MATCH` | High | confirmed match (see §3.2) — **hard stop** |
 | `SANCTIONS_POSSIBLE_MATCH` | Medium | hit(s) ≥ 0.85 not meeting confirmation criteria |
 | `PEP_MATCH` | Medium | any hit whose list name contains "peps" or programme contains "PEP" |
-| `ADVERSE_MEDIA` | Medium (< 3 negative) / High (≥ 3) | negative-title articles in the last 3 months |
+| `ADVERSE_MEDIA` | Medium (< 3 negative) / High (≥ 3, or any *Organised crime / terrorism* term) | articles/records where the name and a risk term share a sentence or headline. Message lists the matched terms, categories, contributing sources, and quotes the lead sentence with publisher and date |
+| `ADVERSE_MEDIA_MENTION` | Low | name and risk terms present in the same article but never in the same sentence – analyst to confirm relevance |
 
-Timeline summary: `4 subject(s) screened · 1 potential match(es) · overall Medium`.
+Each `SubjectScreeningResult.AdverseMedia` carries: `ArticleCount`, `NegativeCount`, `MentionCount`, up to 40 `Articles` (each with `Title`, `Url`, `Source`, `Published`, `Tone`, `Snippet`, `MatchedTerms`, `Category`, `Context`, `Provider`), `Providers` (per-source succeeded/count/error) and `Error` naming any source that failed.
+
+Timeline summary: `4 subject(s) screened · 1 potential match(es) · 2 adverse-media article(s) · overall Medium` (suffixed `(media unavailable)` when every source failed for a subject).
+
+### Where the evidence surfaces
+
+| Surface | Content |
+|---|---|
+| Check outcome *Sanctions / PEP / media* (brief, PDF table, UI) | result `Clear` / `Clear · media mentions` / `Adverse media` / `Lists clear · media unavailable`; detail line `Adverse media: N negative, M indirect mention(s) of T article(s)/record(s) from Google News, Wikipedia … Source(s) unavailable: GDELT …` |
+| Detailed narrative | one paragraph per subject with negatives: term frequency (`fraud ×3, indicted ×1`) and up to three quoted sentences with publisher, date and source |
+| **Adverse media evidence** section (PDF and Explainability tab) | table of every negative/mention item: subject, tone, title, publisher · date · via source, quoted sentence, matched terms + category, URL |
+| All findings | the `ADVERSE_MEDIA` / `ADVERSE_MEDIA_MENTION` flag messages as reason codes |
+| Recommended analyst actions | "confirm the named party is this applicant (not a namesake)" for negatives; spot-check for mentions; re-run when media unavailable |
+| KYB tab, per subject | source pills (count or *unavailable*), then each article with tone pill, risk terms, category and quoted context |
 
 ---
 
@@ -152,7 +182,7 @@ flowchart LR
     S[ctx.Screening] --> LL{ListsLoaded?<br/>any list with EntityCount>0 and no error}
     LL -- no --> N["SanctionsMatch = PepMatch = AdverseMedia = null<br/>Screening component UNCOVERED"]
     LL -- yes --> SM[SanctionsMatch / PepMatch booleans]
-    LL -- yes --> MC{MediaChecked?<br/>every subject's GDELT call succeeded}
+    LL -- yes --> MC{MediaChecked?<br/>every subject had at least one<br/>media source answer}
     MC -- no --> AN[AdverseMedia = null]
     MC -- yes --> AM[AdverseMedia boolean]
     SM & AM --> SC[score: Screening component 15 %]
