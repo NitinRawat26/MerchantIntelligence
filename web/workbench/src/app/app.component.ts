@@ -192,14 +192,13 @@ export class AppComponent {
   readonly handset = toSignal(this.bp.observe('(max-width: 900px)').pipe(map(r => r.matches)), { initialValue: false });
   readonly opened = signal(false);
 
-  private static readonly INTRO_KEY = 'mi.intro.seen';
-  readonly intro = signal(AppComponent.shouldPlayIntro());
-  private static shouldPlayIntro(): boolean {
-    try { return sessionStorage.getItem(AppComponent.INTRO_KEY) !== '1'; } catch { return false; }
+  private static readonly LANDING_PATHS = new Set(['', '/', '/assess']);
+  readonly intro = signal(AppComponent.isLanding(location.pathname));
+  private static isLanding(path: string): boolean {
+    return AppComponent.LANDING_PATHS.has(path.replace(/\/+$/, '') || '/');
   }
   closeIntro(): void {
     this.intro.set(false);
-    try { sessionStorage.setItem(AppComponent.INTRO_KEY, '1'); } catch { /* storage unavailable */ }
   }
 
   readonly groups: NavGroup[] = [
