@@ -1,10 +1,12 @@
 
 # MerchantIntelligence
 
-A suite of tools for merchant acquiring pre-checks and credit checks, built in C# / .NET 10. A full
+A suite of tools for merchant acquiring pre-checks and credit checks, built in C# / .NET 10 and Angular. A full
 assessment runs as a **Microsoft Agent Framework workflow** of four rule-based agents over 13
-pluggable checks; the workflow (agents, checks, order, failure policy) is data you edit in the UI, and
-no LLM or external model is involved anywhere.
+pluggable checks; the workflow (agents, checks, order, failure policy) is data you edit in the UI
+his is a true Agent-framework-orchestrated deterministic pipeline and no LLM or external model is involved anywhere.
+
+#### [Website][Merchant Intel](https://merchant-intelligence-3gtq.onrender.com/assess). -- #### [Wiki](https://github.com/NitinRawat26/MerchantIntelligence/blob/base/docs/wiki/Home.md) -- #### [14 Steps](https://github.com/NitinRawat26/MerchantIntelligence/blob/base/docs/steps/README.md)
 
 #### Functional flow
 
@@ -427,7 +429,3 @@ the two taxonomies do not align one-to-one. EDGAR also skews towards large, fina
 and technology filers, so small-merchant categories (restaurants, salons, local retail) are
 thin; the catalog keyword provider and schema.org provider cover those until real
 merchant-labelled data is added.
-
-#### Working Website [Merchant Intel](https://merchant-intelligence-3gtq.onrender.com/assess)
-#### [Wiki](https://github.com/NitinRawat26/MerchantIntelligence/blob/base/docs/wiki/Home.md)
-#### [Steps](https://github.com/NitinRawat26/MerchantIntelligence/blob/base/docs/steps/README.md)
