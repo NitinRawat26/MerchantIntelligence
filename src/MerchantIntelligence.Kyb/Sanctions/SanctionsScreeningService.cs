@@ -28,6 +28,11 @@ public sealed class SanctionsOptions
 
     /// <summary>Free sources queried in parallel per subject: gdelt, googlenews, bingnews, wikipedia, courtlistener.</summary>
     public string[] AdverseMediaSources { get; set; } = ["gdelt", "googlenews", "bingnews", "wikipedia", "courtlistener"];
+
+    public const int DefaultAdverseMediaSourceTimeoutSeconds = 12;
+
+    /// <summary>Per-source deadline for one subject; a source that has not answered by then is reported as unavailable rather than holding the screening step.</summary>
+    public int AdverseMediaSourceTimeoutSeconds { get; set; } = DefaultAdverseMediaSourceTimeoutSeconds;
 }
 
 /// <summary>Downloads (with disk cache), parses and indexes the configured lists; screens subjects against them.</summary>

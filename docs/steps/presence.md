@@ -50,7 +50,7 @@ That is why the fold-in caps the lifted verification confidence at **70 %** and 
 
 | Provider | Enabled | Query | Notes |
 |---|---|---|---|
-| **OpenStreetMap (Overpass)** | always | `nwr(around:{radius},{lat},{lon})[name]` — every named node/way/relation within the radius, up to 80 | Two public endpoints tried in order (`overpass-api.de`, `overpass.kumi.systems`); rate-limited; SMB coverage is partial and volunteer-maintained |
+| **OpenStreetMap (Overpass)** | always | `nwr(around:{radius},{lat},{lon})[name]` — every named node/way/relation within the radius, up to 80 | Two public endpoints tried in order (`overpass-api.de`, `overpass.kumi.systems`); rate-limited, each mirror gets a 10 s server budget and a 12 s client deadline before the next is tried; SMB coverage is partial and volunteer-maintained |
 | **Foursquare Places** | `Kyb:FoursquareApiKey` | text search on name, `ll`, radius ≥ 500 m, limit 10 | Good US SMB coverage; free tier |
 | **Google Places (New) Text Search** | `Kyb:GooglePlacesApiKey` | `places:searchText` with circular location bias radius ≥ 500 m | Best coverage; billing account required |
 

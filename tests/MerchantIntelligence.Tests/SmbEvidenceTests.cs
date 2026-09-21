@@ -3,6 +3,8 @@ using MerchantIntelligence.Kyb.Compliance;
 using MerchantIntelligence.Kyb.Registry;
 using MerchantIntelligence.MccValidation.Taxonomy;
 using MerchantIntelligence.Kyb;
+using MerchantIntelligence.Kyb.Prohibited;
+using MerchantIntelligence.Platform.Agents.PreCheck;
 using MerchantIntelligence.Platform.Assessment;
 using MerchantIntelligence.Platform.Licensing;
 using MerchantIntelligence.Platform.Profiling;
@@ -510,5 +512,51 @@ public class LicensingTests
         Assert.Empty(a.Flags);
         Assert.True(a.Covered);
         Assert.False(LicensingAssessor.IsRegulated(7372));
+    }
+}
+
+public class BrochureSiteTests
+{
+    private static readonly MerchantProfile Small = new(EntityType.MultiMemberLlc, false, MerchantSegment.Small, RegistryScope.Local, 1, [], [], []);
+    private static readonly MerchantProfile Enterprise = new(EntityType.PublicCorporation, false, MerchantSegment.Enterprise, RegistryScope.Global, 40, [], [], []);
+
+    private static AssessmentIntake Intake(double cnpShare) => new(
+        new BusinessIdentity("Test Grill LLC", "Test Grill", null, null, "1 Main St", "Louisville", "KY", null, "US", "https://example.test"),
+        [], null, 5812, 400_000m, 25m, 200m, false, CardNotPresentShare: cnpShare, HasPhysicalLocation: true);
+
+    private static WebsiteComplianceResult Scan(CheckStatus checkout) => new(new Uri("https://example.test"), true, 61, "C",
+    [
+        new ComplianceCheck("REFUND_POLICY", "Refund policy", CheckStatus.Fail, "Not found.", RiskTier.High),
+        new ComplianceCheck("DELIVERY_POLICY", "Delivery policy", CheckStatus.Fail, "Not found.", RiskTier.Medium),
+        new ComplianceCheck("PRIVACY_POLICY", "Privacy policy", CheckStatus.Fail, "Not found.", RiskTier.Medium),
+        new ComplianceCheck("CUSTOMER_SERVICE_CONTACT", "Contact", CheckStatus.Fail, "None.", RiskTier.High),
+        new ComplianceCheck("CHECKOUT_PRESENT", "Purchase flow", checkout, "…", RiskTier.Medium)
+    ], null, new ProhibitedBusinessResult(BusinessPolicy.Acceptable, [], []), []);
+
+    [Fact]
+    public void Card_present_smb_brochure_site_softens_terms_of_sale_but_keeps_privacy_and_contact()
+    {
+        var r = WebsiteStep.ApplyBrochureSiteRules(Scan(CheckStatus.Warn), Intake(0.05), Small);
+        Assert.Equal(RiskTier.Low, r.Checks.Single(c => c.Code == "REFUND_POLICY").Severity);
+        Assert.Equal(RiskTier.Low, r.Checks.Single(c => c.Code == "DELIVERY_POLICY").Severity);
+        Assert.Contains("Brochure site", r.Checks.Single(c => c.Code == "REFUND_POLICY").Detail);
+        Assert.Equal(RiskTier.Medium, r.Checks.Single(c => c.Code == "PRIVACY_POLICY").Severity);
+        Assert.Equal(RiskTier.High, r.Checks.Single(c => c.Code == "CUSTOMER_SERVICE_CONTACT").Severity);
+    }
+
+    [Fact]
+    public void Ordering_link_on_low_cnp_smb_site_caps_at_medium_for_analyst_confirmation()
+    {
+        var r = WebsiteStep.ApplyBrochureSiteRules(Scan(CheckStatus.Pass), Intake(0.05), Small);
+        Assert.Equal(RiskTier.Medium, r.Checks.Single(c => c.Code == "REFUND_POLICY").Severity);
+        Assert.Contains("ordering link", r.Checks.Single(c => c.Code == "REFUND_POLICY").Detail);
+        Assert.Equal(RiskTier.Medium, r.Checks.Single(c => c.Code == "DELIVERY_POLICY").Severity);
+    }
+
+    [Fact]
+    public void Material_cnp_volume_or_larger_segment_keeps_full_severity()
+    {
+        Assert.Equal(RiskTier.High, WebsiteStep.ApplyBrochureSiteRules(Scan(CheckStatus.Warn), Intake(0.40), Small).Checks.Single(c => c.Code == "REFUND_POLICY").Severity);
+        Assert.Equal(RiskTier.High, WebsiteStep.ApplyBrochureSiteRules(Scan(CheckStatus.Warn), Intake(0.05), Enterprise).Checks.Single(c => c.Code == "REFUND_POLICY").Severity);
     }
 }

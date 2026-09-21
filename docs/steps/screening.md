@@ -63,7 +63,7 @@ Enabled by `Sanctions:EnableAdverseMedia` (default `true`); the free, keyless so
 
 | Source | Endpoint | What it contributes | Rate handling |
 |---|---|---|---|
-| `gdelt` | GDELT DOC 2.0 (`timespan=3months`, `maxrecords=25`) | global news index, titles + tone | one request per 5.2 s process-wide (shared gate), one retry after HTTP 429 |
+| `gdelt` | GDELT DOC 2.0 (`timespan=3months`, `maxrecords=25`) | global news index, titles + tone | one request per 5.2 s process-wide (shared gate), one retry after HTTP 429; if the retry is also throttled the source backs off for 60 s and fails fast for every subject in that window |
 | `googlenews` | Google News RSS (`"<name>" (fraud OR indicted OR …)`) | headlines + description snippets, publisher stripped from title | none needed |
 | `bingnews` | Bing News RSS | headlines + snippets | none needed |
 | `wikipedia` | MediaWiki search API | encyclopaedic snippets (legal history, controversies) | none needed |
@@ -91,7 +91,7 @@ Every article is graded by `AdverseMediaAnalyzer` against that lexicon:
 * **mention** – name and risk terms occur in the article/snippet but never in the same sentence (softer signal, `ADVERSE_MEDIA_MENTION`, Low).
 * **neutral** – no name–term relationship.
 
-Stories seen in several sources are de-duplicated on normalised title/URL; negatives sort first and the top 40 are kept (counts stay whole). Each source's outcome is recorded in `AdverseMediaResult.Providers`; the search is `Succeeded` when **any** source answered, with the failed ones named in `Error` ("1 of 5 source(s) unavailable: GDELT …"). Only when *every* source fails is the result `Succeeded=false` — and that is a coverage gap, never zero articles.
+Every source gets `Sanctions:AdverseMediaSourceTimeoutSeconds` (default 12 s) per subject; one that has not answered by then is cancelled and recorded as `no response within 12 s`, so a slow or throttled source bounds the screening step instead of holding it for minutes. Stories seen in several sources are de-duplicated on normalised title/URL; negatives sort first and the top 40 are kept (counts stay whole). Each source's outcome is recorded in `AdverseMediaResult.Providers`; the search is `Succeeded` when **any** source answered, with the failed ones named in `Error` ("1 of 5 source(s) unavailable: GDELT …"). Only when *every* source fails is the result `Succeeded=false` — and that is a coverage gap, never zero articles.
 
 ---
 
