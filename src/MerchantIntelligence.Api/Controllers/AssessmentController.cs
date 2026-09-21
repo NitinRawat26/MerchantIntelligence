@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using MerchantIntelligence.Platform.Assessment;
+using MerchantIntelligence.Platform.Profiling;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MerchantIntelligence.Api.Controllers;
@@ -23,6 +24,8 @@ public sealed class AssessmentRequest
     public bool OffersFreeTrials { get; set; }
     [Range(0, 1_000_000)] public int? EmployeeCount { get; set; }
     [Range(0, 100_000)] public int? LocationCount { get; set; }
+    /// <summary>Legal form of the applicant (SoleProprietorship, SingleMemberLlc, MultiMemberLlc, Partnership, SCorporation, CCorporation, PublicCorporation, NonProfit, Government, Trust, Other). Inferred when omitted.</summary>
+    public EntityType? EntityType { get; set; }
     [Range(0, 200)] public decimal? YearsInBusiness { get; set; }
     [Range(0, double.MaxValue)] public decimal? PriorYearRevenue { get; set; }
     [Range(0, int.MaxValue)] public int? WebsiteProductCount { get; set; }
@@ -38,7 +41,7 @@ public sealed class AssessmentRequest
     public AssessmentIntake ToIntake() => new(Business.ToIdentity(), Owners.Select(o => o.ToOwner()).ToList(), BusinessDescription, MerchantCategoryCode,
         AnnualVolume, AverageTicket, HighestTicket, ExistingRelationship, DeliveryDays, CardNotPresentShare, OffersSubscriptions, OffersFreeTrials,
         EmployeeCount, YearsInBusiness, PriorYearRevenue, WebsiteProductCount, HasPhysicalLocation, BankStatementCsv, FinancialStatementText,
-        ExternalRef, Actor, CreateCase, LocationCount);
+        ExternalRef, Actor, CreateCase, LocationCount, EntityType);
 }
 
 [ApiController]

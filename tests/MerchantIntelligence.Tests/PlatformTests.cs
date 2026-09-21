@@ -8,6 +8,7 @@ using MerchantIntelligence.Platform.Cases;
 using MerchantIntelligence.Platform.Integrations;
 using MerchantIntelligence.Platform.ModelOps;
 using MerchantIntelligence.Platform.Rules;
+using MerchantIntelligence.Platform.Profiling;
 using MerchantIntelligence.Platform.Scoring;
 using MerchantIntelligence.Platform.Storage;
 using MerchantIntelligence.Platform.Webhooks;
@@ -93,6 +94,30 @@ public sealed class UnifiedRiskScorerTests
     {
         Assert.NotEmpty(Scorer.Score(new UnifiedRiskInput(ProhibitedVerdict: BusinessPolicy.Prohibited)).HardStops);
         Assert.NotEmpty(Scorer.Score(new UnifiedRiskInput(MatchFound: true)).HardStops);
+    }
+
+    [Fact]
+    public void Smb_profile_reweights_components_and_drops_not_applicable_ones_from_coverage()
+    {
+        var input = new UnifiedRiskInput(CreditDecision: Credit(0.9), KybRisk: RiskTier.Low, BusinessVerified: true, EntityAgeMonths: 60,
+            SanctionsMatch: false, PepMatch: false, AdverseMedia: false, ProhibitedVerdict: BusinessPolicy.Acceptable,
+            VolumePlausibilityScore: 85, TermsRiskBand: "B");
+
+        var standard = Scorer.Score(input);
+        Assert.Contains("WebsiteCompliance", standard.CoverageGaps);
+        Assert.Equal(0.30, standard.Components.Single(c => c.Name == "CreditModel").Weight);
+
+        var smb = Scorer.Score(input with { Segment = MerchantSegment.Small, NotApplicableComponents = new HashSet<string> { "WebsiteCompliance" } });
+        Assert.DoesNotContain(smb.Components, c => c.Name == "WebsiteCompliance");
+        Assert.Empty(smb.CoverageGaps);
+        Assert.Equal(100, smb.CoveragePercent);
+        Assert.Equal(0.25, smb.Components.Single(c => c.Name == "Kyb").Weight);
+        Assert.Equal(0.15, smb.Components.Single(c => c.Name == "VolumePlausibility").Weight);
+
+        // The segment alone must not soften a bad outcome.
+        var bad = input with { CreditDecision = Credit(0.1), KybRisk = RiskTier.High };
+        Assert.Equal(Scorer.Score(bad).RecommendedAction, Scorer.Score(bad with { Segment = MerchantSegment.Micro }).RecommendedAction);
+        Assert.NotEqual("Approve", Scorer.Score(bad with { Segment = MerchantSegment.Micro }).RecommendedAction);
     }
 
     [Fact]

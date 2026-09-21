@@ -4,7 +4,7 @@
     <mat-card-header>
       <mat-icon mat-card-avatar>checklist_rtl</mat-icon>
       <mat-card-title>Full merchant assessment</mat-card-title>
-      <mat-card-subtitle>One intake → the active workflow runs four rule-based agents (Pre-check · KYB &amp; screening · Financial &amp; credit · Decision &amp; case) over every check (identity · sanctions/PEP/media · website · prohibited business · MCC · MATCH · statements · plausibility · credit model · terms · unified score · policy rules) → decision, full explainability and a PDF memo.</mat-card-subtitle>
+      <mat-card-subtitle>One intake → the active workflow runs five rule-based agents (Profile · Pre-check · KYB &amp; screening · Financial &amp; credit · Decision &amp; case) over every check (identity · sanctions/PEP/media · website · prohibited business · MCC · MATCH · statements · plausibility · credit model · terms · unified score · policy rules) → decision, full explainability and a PDF memo.</mat-card-subtitle>
     </mat-card-header>
     <mat-card-content>
       <div class="presets">
@@ -59,9 +59,13 @@
           <span class="cb"><mat-checkbox formControlName="existingRelationship">Existing relationship with acquirer</mat-checkbox><mi-field-hint class="inline" for="existingRelationship"></mi-field-hint></span>
         </div>
 
-        <h3><mat-icon>storefront</mat-icon> Size &amp; footprint <span class="muted">(volume plausibility)</span></h3>
+        <h3><mat-icon>storefront</mat-icon> Legal form, size &amp; footprint <span class="muted">(profile agent · volume plausibility)</span></h3>
         <div class="grid-4">
           <mat-form-field appearance="outline"><mat-label>Employees</mat-label><input matInput type="number" formControlName="employeeCount"><mi-field-hint matSuffix for="employeeCount"></mi-field-hint></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Entity type</mat-label>
+            <mat-select formControlName="entityType"><mat-option value="">Infer from name / owners</mat-option>@for (t of entityTypes; track t.value) {<mat-option [value]="t.value">{{ t.label }}</mat-option>}</mat-select>
+            <mi-field-hint matSuffix for="entityType"></mi-field-hint>
+          </mat-form-field>
           <mat-form-field appearance="outline"><mat-label>Locations</mat-label><input matInput type="number" formControlName="locationCount"><mi-field-hint matSuffix for="locationCount"></mi-field-hint></mat-form-field>
           <mat-form-field appearance="outline"><mat-label>Years in business</mat-label><input matInput type="number" step="0.5" formControlName="yearsInBusiness"><mi-field-hint matSuffix for="yearsInBusiness"></mi-field-hint></mat-form-field>
           <mat-form-field appearance="outline"><mat-label>Prior-year revenue</mat-label><input matInput type="number" formControlName="priorYearRevenue"><span matTextPrefix>$&nbsp;</span><mat-hint>Taken from the P&amp;L when blank</mat-hint><mi-field-hint matSuffix for="priorYearRevenue"></mi-field-hint></mat-form-field>
@@ -448,7 +452,17 @@
 
           @if (r.agents?.length) {
             <mat-tab label="Agents">
-              <p class="muted">Four rule-based agents (Microsoft Agent Framework executors, no model) each ran their checks and reviewed the results. Advisories explain how missing evidence affects the decision without stopping the run; actions are extra work an agent did on its own; observations are cross-checks between results. The score, policy rules and hard stops above remain the deciding authority.</p>
+              @if (r.profile; as pf) {
+                <section class="profile-card">
+                  <h4><mat-icon>badge</mat-icon> Merchant profile <span class="pill small neutral">{{ pf.segment }}</span> <span class="pill small neutral">{{ pf.entityType }}@if (pf.entityTypeInferred) { (inferred) }</span> <span class="pill small neutral">registry: {{ pf.registryScope }}</span> @if (pf.locationCount > 1) { <span class="pill small neutral">{{ pf.locationCount }} locations</span> }</h4>
+                  <ul class="rule-list">@for (rs of pf.reasons; track $index) { <li>{{ rs }}</li> }</ul>
+                  @if (pf.notApplicable.length) {
+                    <p class="muted">Not applicable to this profile (skipped, excluded from coverage): @for (n of pf.notApplicable; track n.stepId) { <span class="pill small warn" [matTooltip]="n.reason">{{ n.stepId }}</span> }</p>
+                  }
+                  @for (f of pf.findings; track f.code) { <p class="lane-summary"><code>{{ f.code }}</code> <span [class]="severityClass(f.severity)">{{ f.severity }}</span> {{ f.message }}</p> }
+                </section>
+              }
+              <p class="muted">Five rule-based agents (Microsoft Agent Framework executors, no model) each ran their checks and reviewed the results. Advisories explain how missing evidence affects the decision without stopping the run; actions are extra work an agent did on its own; observations are cross-checks between results. The score, policy rules and hard stops above remain the deciding authority.</p>
               <div class="agent-lanes">
                 @for (a of r.agents; track a.id) {
                   <section [class]="'agent-lane ' + a.status.toLowerCase()">

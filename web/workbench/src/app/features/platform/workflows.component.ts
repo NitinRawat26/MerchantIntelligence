@@ -30,7 +30,7 @@ import { AGENT_ICONS, WorkflowDesignerComponent } from './workflow-designer.comp
         <mat-card-header>
           <mat-icon mat-card-avatar>account_tree</mat-icon>
           <mat-card-title>Assessment workflows</mat-card-title>
-          <mat-card-subtitle>Four rule-based agents own the checks the Full Assessment runs · design which agent runs after which, under what condition, and how each agent orders its checks · executed as a Microsoft Agent Framework workflow, no model involved</mat-card-subtitle>
+          <mat-card-subtitle>Five rule-based agents own the checks the Full Assessment runs · the Profile agent is pinned first and scopes the run · design which agent runs after which, under what condition, and how each agent orders its checks · executed as a Microsoft Agent Framework workflow, no model involved</mat-card-subtitle>
         </mat-card-header>
         <mat-card-content>
           <mi-status [loading]="loading()" [error]="error()"></mi-status>

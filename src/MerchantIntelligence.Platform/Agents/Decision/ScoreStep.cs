@@ -23,13 +23,15 @@ public sealed class ScoreStep(UnifiedRiskScorer scorer, RulesEngine rules, RuleS
         var registriesReachable = v is not null && AssessmentComposer.RegistriesReachable(v);
         var listsLoaded = s is not null && AssessmentComposer.ListsLoaded(s);
         ctx.ScoreInput = new UnifiedRiskInput(ctx.Application, ctx.Credit, ctx.KybRisk,
-            !registriesReachable ? null : v!.Status is VerificationStatus.Verified or VerificationStatus.PartialMatch,
+            !registriesReachable ? null : v!.Status switch { VerificationStatus.Verified or VerificationStatus.PartialMatch => true, VerificationStatus.NotFound => false, _ => null },
             v?.EntityAgeMonths,
             !listsLoaded ? null : s!.Flags.Any(f => f.Code == "SANCTIONS_MATCH"),
             !listsLoaded ? null : s!.Flags.Any(f => f.Code == "PEP_MATCH"),
             !listsLoaded || !AssessmentComposer.MediaChecked(s!) ? null : s!.Flags.Any(f => f.Code == "ADVERSE_MEDIA"),
             ctx.Prohibited?.Verdict, ctx.Website?.Score, ctx.Plausibility?.PlausibilityScore, ctx.Terms?.RiskBand,
-            ctx.Match?.Availability == MatchAvailability.Available ? ctx.Match.Found : null, ctx.Signals);
+            ctx.Match?.Availability == MatchAvailability.Available ? ctx.Match.Found : null, ctx.Signals,
+            ctx.Profile?.Segment,
+            ctx.Profile?.NotApplicable.SelectMany(n => ScoreWeights.ComponentsOfStep(n.StepId)).ToHashSet());
         ctx.Rules = await ctx.RunAsync(Descriptor, () =>
         {
             ctx.Score = scorer.Score(ctx.ScoreInput);

@@ -145,13 +145,23 @@ public sealed class WorkflowAgentConfig
     public AgentStepOrder StepOrder { get; set; } = AgentStepOrder.Parallel;
 }
 
+/// <summary>What an agent contributes to the run.</summary>
+public enum AgentKind
+{
+    /// <summary>Gathers evidence and reviews it; the normal case.</summary>
+    Evidence,
+    /// <summary>Profiles the applicant and scopes the rest of the run. Exactly one, always first, cannot be disabled.</summary>
+    Profiling
+}
+
 /// <summary>Static description of an agent: its mandate and the steps it owns by default.</summary>
 public sealed record WorkflowAgentDescriptor(
     string Id,
     string Name,
     string Mandate,
     string Description,
-    IReadOnlyList<string> DefaultSteps);
+    IReadOnlyList<string> DefaultSteps,
+    AgentKind Kind = AgentKind.Evidence);
 
 /// <summary>
 /// Where an agent sits in the run: which stage it executes in, which agents it waits for, the incoming transitions that
@@ -172,7 +182,8 @@ public sealed record WorkflowStepDescriptor(
     IReadOnlyList<string> DependsOn,
     IReadOnlyList<string> Consumes,
     bool Required,
-    IReadOnlyList<WorkflowParamDescriptor> Params);
+    IReadOnlyList<WorkflowParamDescriptor> Params,
+    bool Profiling = false);
 
 /// <summary>The resolved execution plan for a definition: stages, warnings and a Mermaid diagram of the graph.</summary>
 public sealed record WorkflowPlan(

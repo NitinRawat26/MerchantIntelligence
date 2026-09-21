@@ -61,7 +61,7 @@ record WorkflowAgentDescriptor(Id, Name, Mandate, Description, DefaultSteps[]);
 | `steps[].dependsOn` | `null` keeps the catalogue defaults; a list overrides them |
 | `steps[].params` | Validated against the step's `Params` descriptors |
 | `agents[].steps` | Ownership; every step must be owned by exactly one agent |
-| `agents[].enabled` | Disabled agent → all its steps skipped |
+| `agents[].enabled` | Disabled agent → all its steps skipped. The `Profiling` agent (`profile`) cannot be disabled |
 | `agents[].stepOrder` | `Parallel` (default): the agent's steps are dispatched together and only `dependsOn` sequences them · `Ordered`: steps run in `slot` order |
 | `steps[].slot` | Position inside an `Ordered` agent; equal slots run together; omitted → list position. Ignored when the agent is `Parallel` |
 | `steps[].stopGate` | Rule evaluated right after the step: `when` = `HardStop` · `Failed` · `HighSeverityFlag` · `Flag` (+ `code`); `scope` = `Agent` (skip the agent's remaining non-required steps) · `Workflow` (skip them in every agent still to run); `forceOutcome` = `None` · `Refer` · `Decline` (Approve can never be forced). A fired gate marks the owning agent **Failed**. Not allowed on `score` / `case` |
@@ -75,9 +75,33 @@ the planner keeps the dependency and emits a warning ("'plausibility' is slotted
 needs their output – it runs after them").
 
 The embedded default is `Platform/Resources/default-workflow.json` (all agents `Parallel`, no
-stop-gates, the four `Always` transitions above). Stored versions are `Upgrade`d on read so older
+stop-gates, the profile agent first, the `Always` transitions above). Stored versions are `Upgrade`d on read so older
 definitions gain new steps/agents (disabled-by-default rules apply) and the new fields' defaults;
 a legacy definition without `transitions` keeps its dependency-inferred agent order.
+
+## Profile-first governance
+
+The catalogue carries one agent of kind `Profiling` (`profile`, steps `entity` + `segment`, both
+marked `Profiling` in their descriptor). It classifies the applicant from intake alone and publishes
+the `MerchantProfile` every other agent reads, so the planner treats it differently from the four
+evidence agents:
+
+* exactly one profiling agent must be present and enabled — a workflow without it, or with it
+  disabled, fails validation ("… profiles the applicant and decides which checks apply; it must run
+  first and cannot be disabled");
+* it owns every `Profiling` step and no evidence step; profile steps may not depend on evidence
+  steps and may not carry a stop-gate (they scope the run, they do not decide it);
+* no transition may point **into** it ("Transition 'kyb' → 'profile' is not allowed: the profiling
+  agent always runs first, nothing can run before it");
+* every evidence step receives an implicit dependency on the profile steps, so the profile agent
+  always forms stage 1 on its own and every other agent `WaitsFor` it, whatever the transitions say;
+* `WorkflowPlan.ProfileAgentId` / `ProfileSteps` expose the result to the runner and the UI.
+
+At run time the runner consults `ctx.Profile.NotApplicable` before starting any evidence step and
+skips the step with an audit line ("Not applicable to a Small multi-member LLC: …"). The designer
+mirrors the rules client-side: the profile node is pinned (no drag, no incoming port, no remove, no
+disable), its steps cannot be dragged to other lanes or gated, and evidence steps cannot be dropped
+into its lane. See [steps/profile.md](../steps/profile.md).
 
 ## Planner
 
@@ -86,7 +110,8 @@ a legacy definition without `transitions` keeps its dependency-inferred agent or
 1. **Validation** (throws `WorkflowValidationException`): name present, ≥1 step, unknown/duplicate
    step or agent ids, self- or unknown dependencies, unknown params, every catalogue step and agent
    listed, step owned by two agents or by none, negative slots, a `Flag` stop-gate without a code, a
-   stop-gate on a deciding step, transitions to/from unknown agents, self-transitions, duplicate
+   stop-gate on a deciding or profiling step, a missing/disabled/second profiling agent, a profile step
+   owned elsewhere or depending on evidence, a transition into the profiling agent, transitions to/from unknown agents, self-transitions, duplicate
    transitions, dependency cycles between steps, and cycles between agents *through transitions or
    step dependencies* ("Make the flow run one way only"). Missing **required** steps (`score`) fail
    validation. List position of a step no longer implies order.
@@ -94,7 +119,7 @@ a legacy definition without `transitions` keeps its dependency-inferred agent or
    pushed to the earliest group after all its active dependencies (dependency wins, warning emitted).
    Steps in one group run concurrently (`WorkflowAgentPlan.StepStages`).
 3. **Agent stages**: from `transitions` (a target sits after every source) merged with cross-agent
-   `dependsOn`; agents with neither share a stage (default: Pre-check ∥ KYB → Financial → Decision).
+   `dependsOn`, after the profiling agent, which always forms the first stage alone (default: Profile → Pre-check ∥ KYB ∥ Financial → Decision).
    `WorkflowAgentPlan.RunsWhen` lists the incoming transitions, `WaitsFor` the agents it waits on.
 4. **Warnings**: degraded steps (dependency disabled), disabled agents, dependency-forced slots,
    conditional agents ("runs only when 'kyb' fails; otherwise it is skipped"), agents behind a
@@ -145,13 +170,13 @@ persists the `AssessmentResult` (including `agents[]`), and `AssessmentPdfRender
 
 ## Current capabilities vs. designed extensions
 
-Supported today: fixed set of four agents, step ownership, enable/disable, `dependsOn` overrides,
+Supported today: fixed set of five agents (profile pinned first), step ownership, enable/disable, `dependsOn` overrides,
 per-step params, `onFail` policy, per-agent `Ordered` / `Parallel` with `slot`s, per-step
 stop-gates (trigger, scope, forced outcome), agent transitions (`Always` / `Success` / `Fail`) with
 skipped-agent reporting, legacy `haltOnHardStop`, versioning/rollback.
 
 Discussed but **not implemented** (design notes only): nested sub-agents (`agents[].children[]` —
-a child is an agent definition parented to one of the four, compiled as a sub-workflow by its
+a child is an agent definition parented to one of the evidence agents, compiled as a sub-workflow by its
 parent executor), dynamic top-level agent creation, an `else` fallback route on transitions,
 `skipRemaining` / `cancelParallel` stop-gate effects, and configurable review rules. `dependsOn`
 remains a hard data constraint that any ordering feature must respect.

@@ -4,10 +4,11 @@ One page per assessment step, written for three readers at once: the **analyst**
 
 Everything documented here describes the behaviour of the current implementation; proposed extensions are not included.
 
-## The 14 steps
+## The 16 steps
 
 | # | Step | Agent | Page | Answers |
 |---|---|---|---|---|
+| 0 | `entity`, `segment` | Profile | [profile.md](profile.md) | What legal form and size is this merchant, how many locations, which registers and checks therefore apply? |
 | 1 | `website` | Pre-check | [website.md](website.md) | Is the merchant's site compliant with card-brand disclosure expectations, and does it look like an operating business? |
 | 2 | `prohibited` | Pre-check | [prohibited.md](prohibited.md) | Is the business type prohibited, restricted or high-risk under acceptable-use policy? |
 | 3 | `mcc` | Pre-check | [mcc.md](mcc.md) | Does the declared MCC match what the business actually does? |
@@ -27,6 +28,9 @@ Everything documented here describes the behaviour of the current implementation
 
 ```mermaid
 flowchart LR
+    subgraph S0["Stage 0 · Profile agent"]
+        EN[entity] --> SG[segment]
+    end
     subgraph S1["Stage 1 · Pre-check agent"]
         W[website] --> P[prohibited]
         W --> M[mcc]
@@ -44,6 +48,9 @@ flowchart LR
     subgraph S4["Stage 3 · Decision agent"]
         T[terms] --> SCO[score] --> CA[case]
     end
+    S0 --> S1
+    S0 --> S2
+    S0 --> S3
     S1 --> S2
     S2 --> S3
     PL --> T
@@ -53,6 +60,7 @@ flowchart LR
 Text form of the dependency graph:
 
 ```text
+Profile   : entity → segment            (always first; every step below implicitly depends on it)
 Pre-check : website → prohibited ∥ mcc
 KYB       : verification → presence ∥ screening ∥ match
 Financial : bank ∥ financials → plausibility ∥ credit
@@ -60,10 +68,11 @@ Decision  : terms → score → case
 ```
 
 ### Orchestration facts that matter when reading any page
-* **Four rule-based agents** (`precheck`, `kyb`, `financial`, `decision`) own the 14 steps. The agent framework provides stage gates, streaming events and per-agent reviews; the agents themselves are deterministic C# — there is no LLM reasoning anywhere in the decision path.
+* **Five rule-based agents** (`profile`, `precheck`, `kyb`, `financial`, `decision`) own the 16 steps. The Profile agent is pinned first by the planner and cannot be disabled, fed by a transition or gated; it decides registry scope, segment weights and which steps are not applicable. The agent framework provides stage gates, streaming events and per-agent reviews; the agents themselves are deterministic C# — there is no LLM reasoning anywhere in the decision path.
 * **Dependencies are soft.** A step runs once its dependencies have *finished* (succeeded, failed or skipped); it copes with missing upstream results rather than blocking. The exceptions are explicit workflow stop-gates (hard stop / failed / high-severity / named flag) that can skip the remainder of an agent or the workflow and force Refer or Decline.
 * **Step failure policy** is configurable per step: `Skip` (coverage gap, default), `Refer` (continue but force Refer), `Abort`.
 * **Unknown is never clear.** Unavailable providers, failed lookups and unloaded lists are surfaced as `Inconclusive` / `Unavailable` statuses and coverage gaps, not as passes. Several pages call out where numeric coverage can still be high enough to auto-approve while a critical check (screening lists, MATCH) never ran — analysts must read the step outcomes, not only the score.
+* **Not applicable is a third state.** Steps the profile marks not applicable (e.g. `financials` for a Micro merchant, `website` for a card-present shop without a site) are skipped with the reason in the audit log and leave the coverage denominator — they are neither passes nor gaps.
 * **Financial documents are optional.** `bank` and `financials` run only when statements or inline figures are provided; `plausibility` and `credit` run regardless.
 
 ## How the steps feed the decision

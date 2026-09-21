@@ -14,6 +14,7 @@ using MerchantIntelligence.Platform.ModelOps;
 using MerchantIntelligence.Platform.Rules;
 using MerchantIntelligence.Platform.Scoring;
 using MerchantIntelligence.Platform.Storage;
+using MerchantIntelligence.Platform.Profiling;
 using MerchantIntelligence.Underwriting.Explainability;
 using MerchantIntelligence.Underwriting.Financials;
 using MerchantIntelligence.Underwriting.Plausibility;
@@ -109,12 +110,25 @@ internal static class AssessmentComposer
     internal static AssessmentExplainability BuildExplainability(AssessmentIntake intake, AssessmentDecision decision, BusinessVerificationResult? v, ScreeningReport? s,
         WebsiteComplianceResult? w, ProhibitedBusinessResult? p, MccValidationResult? m, MatchResult? match, CashFlowAnalysis? b, FinancialStatementAnalysis? f,
         VolumePlausibilityResult? pl, DecisionResult? credit, DecisionExplanation? explanation, TermsRecommendation? terms, UnifiedRiskScore? score,
-        RulesEvaluation? rules, IReadOnlyList<RiskSignal> signals, LocalPresenceResult? lp = null)
+        RulesEvaluation? rules, IReadOnlyList<RiskSignal> signals, LocalPresenceResult? lp = null, MerchantProfile? profile = null)
     {
         var outcomes = new List<CheckOutcome>();
         var narrative = new List<string>();
         var next = new List<string>();
         var adverseMedia = new List<AdverseMediaEvidence>();
+
+        // Profile – scopes the run; it is reported so the reader knows which questions were asked and why.
+        if (profile is not null)
+        {
+            var entity = MerchantProfiler.Describe(profile.EntityType) + (profile.EntityTypeInferred ? " (inferred)" : "");
+            var locations = profile.LocationCount > 1 ? $", {profile.LocationCount} locations" : "";
+            var skipped = profile.NotApplicable.Count == 0 ? "all checks applicable"
+                : $"not applicable: {string.Join(", ", profile.NotApplicable.Select(n => n.StepId))}";
+            var worst = profile.Findings.Count == 0 ? RiskTier.Low : profile.Findings.Max(pf => pf.Severity);
+            outcomes.Add(new("Merchant profile", $"{profile.Segment} · {entity}", $"Registry scope {profile.RegistryScope}{locations}; {skipped}. Weights: {(profile.IsSmb ? "SMB" : "standard")} table.", worst, true));
+            narrative.Add($"Profile: {profile.Segment} {entity}{locations}. {string.Join(" ", profile.Reasons.Take(3))}");
+            foreach (var pf in profile.Findings) narrative.Add($"Profile finding {pf.Code}: {pf.Message}");
+        }
 
         // Identity
         if (v is null) { outcomes.Add(new("Business identity", "Not run", "Registry verification failed or was unavailable.", RiskTier.Medium, false)); next.Add("Re-run entity verification or obtain a certificate of incorporation manually."); }
@@ -125,6 +139,21 @@ internal static class AssessmentComposer
             narrative.Add($"Identity: registry verification could not be completed because every public source failed. {detail}");
             next.Add("Re-run entity verification once public registries are reachable, or obtain registration documents manually.");
         }
+        else if (v.Status == VerificationStatus.NotApplicable)
+        {
+            var detail = "No company register holds this legal form (sole proprietorship / public body); registries were not consulted. Identity rests on owner KYC, local presence and bank-statement evidence.";
+            outcomes.Add(new("Business identity", "Not applicable", detail, RiskTier.Low, false));
+            narrative.Add($"Identity: registry verification is not applicable to this legal form. {detail}");
+            if (v.LocalPresence?.Status != LocalPresenceStatus.Confirmed) next.Add("Confirm the owner's identity and the trading location directly (owner ID, DBA / assumed-name filing, lease or utility bill).");
+        }
+        else if (v.Status == VerificationStatus.Inconclusive)
+        {
+            var gap = v.Flags.FirstOrDefault(f => f.Code == "LOCAL_REGISTRY_UNAVAILABLE")?.Message
+                ?? $"The registers expected to hold this entity did not answer ({string.Join(", ", v.Sources.Select(x => x.Source + (x.Succeeded ? "" : " – failed")))}).";
+            outcomes.Add(new("Business identity", "Inconclusive", gap, RiskTier.Medium, false));
+            narrative.Add($"Identity: registry verification is inconclusive – {gap}");
+            next.Add("Verify via the state / national company register or request the certificate of formation.");
+        }
         else
         {
             var sev = v.Status is VerificationStatus.Verified ? RiskTier.Low : v.Status is VerificationStatus.PartialMatch ? RiskTier.Medium : RiskTier.High;
@@ -134,7 +163,9 @@ internal static class AssessmentComposer
                   + (v.EntityAgeMonths is { } age ? $"; entity age {age} months" : "") + (v.Address is { } a ? $"; address {(a.Verified ? "verified" : "not verified")} via {a.Provider}" : "") + ".";
             outcomes.Add(new("Business identity", $"{v.Status} ({v.ConfidencePercent:F0}%)", detail, sev, true));
             narrative.Add($"Identity: the legal entity is {v.Status.ToString().ToLowerInvariant()} with {v.ConfidencePercent:F0}% confidence. {detail}");
-            if (v.Status is VerificationStatus.NotFound or VerificationStatus.Inconclusive) next.Add("Request registration documents; public registry coverage (GLEIF / SEC EDGAR) is limited for small private companies.");
+            if (v.Status is VerificationStatus.NotFound) next.Add(v.Scope == RegistryQueryScope.All
+                ? "Request registration documents; public registry coverage (GLEIF / SEC EDGAR) is limited for small private companies."
+                : "The entity is absent from the company registers that should list it; request the certificate of formation and confirm the registered name.");
             else if (v.BestMatch is null && v.LocalPresence?.Status == LocalPresenceStatus.Confirmed) next.Add("Identity rests on local-presence evidence only; request a certificate of formation or state registration to confirm the legal entity.");
         }
 
@@ -376,5 +407,5 @@ internal static class AssessmentComposer
         i.WebsiteProductCount, i.HasPhysicalLocation,
         bank?.FileName ?? (i.BankStatementCsv is null ? null : "inline CSV"),
         fin?.FileName ?? (i.FinancialStatementText is null ? null : "inline text"),
-        i.ExternalRef, i.Actor, i.LocationCount);
+        i.ExternalRef, i.Actor, i.LocationCount, i.EntityType);
 }

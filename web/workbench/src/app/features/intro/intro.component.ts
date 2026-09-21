@@ -27,6 +27,7 @@ const MEMO_SHOTS: { target: string; zoom: number; ms: number }[] = [
 
 interface MemoCheck { check: string; result: string; detail: string; sev: 'Low' | 'Medium'; id?: string; }
 const MEMO_CHECKS: MemoCheck[] = [
+  { check: 'Merchant profile', result: 'Mid · LLC', detail: 'Multi-member LLC declared; $900k annual volume → Small, 50 employees lift the segment to Mid. Registry scope Local (state register authoritative); every evidence check applicable, standard weight table.', sev: 'Low' },
   { check: 'Business identity', result: 'Match (94%)', detail: "Best match 'NITIN COFFEE CO LLC' from Texas Secretary of State (name 100 %, address 88 %); entity active since 2011.", sev: 'Low' },
   { id: 'm-presence', check: 'Local presence', result: 'Confirmed (96%)', detail: "'Nitin Coffee Co' via OpenStreetMap (Overpass), 38 m from the declared address (cafe / coffee_shop); name match 100 %, category consistent with MCC 5814.", sev: 'Low' },
   { check: 'Sanctions / PEP / media', result: 'Lists clear', detail: 'All 2 subject(s) clear against 3 loaded list(s) (OpenSanctions/sanctions, OFAC SDN, UN Security Council); no adverse media.', sev: 'Low' },
@@ -63,14 +64,18 @@ interface StepDef { id: string; label: string; agent: string; }
 interface SignalDef { id: string; label: string; step: string; }
 
 const AGENTS: AgentDef[] = [
-  // Pre-check, KYB and Financial start together (their first steps have no dependencies); Decision waits for all three.
-  { id: 'precheck', name: 'Pre-check agent', mandate: 'Website · prohibited · MCC', steps: ['website', 'prohibited', 'mcc'], x: 15, y: 150, w: 870, h: 118, layout: 'row' },
-  { id: 'kyb', name: 'KYB agent', mandate: 'Identity · presence · screening · MATCH', steps: ['verification', 'presence', 'screening', 'match'], x: 15, y: 291, w: 870, h: 118, layout: 'row' },
-  { id: 'financial', name: 'Financial agent', mandate: 'Bank · P&L · plausibility · credit', steps: ['bank', 'financials', 'plausibility', 'credit'], x: 15, y: 432, w: 870, h: 118, layout: 'row' },
-  { id: 'decision', name: 'Decision agent', mandate: 'Terms · score · case', steps: ['terms', 'score', 'case'], x: 955, y: 150, w: 230, h: 400, layout: 'column' }
+  // Profile runs first and alone; Pre-check, KYB and Financial then start together; Decision waits for all three.
+  { id: 'profile', name: 'Profile agent', mandate: 'Entity · segment · plan', steps: ['entity', 'segment'], x: -85, y: 150, w: 200, h: 400, layout: 'column' },
+  { id: 'precheck', name: 'Pre-check agent', mandate: 'Website · prohibited · MCC', steps: ['website', 'prohibited', 'mcc'], x: 135, y: 150, w: 850, h: 118, layout: 'row' },
+  { id: 'kyb', name: 'KYB agent', mandate: 'Identity · presence · screening · MATCH', steps: ['verification', 'presence', 'screening', 'match'], x: 135, y: 291, w: 850, h: 118, layout: 'row' },
+  { id: 'financial', name: 'Financial agent', mandate: 'Bank · P&L · plausibility · credit', steps: ['bank', 'financials', 'plausibility', 'credit'], x: 135, y: 432, w: 850, h: 118, layout: 'row' },
+  { id: 'decision', name: 'Decision agent', mandate: 'Terms · score · case', steps: ['terms', 'score', 'case'], x: 1055, y: 150, w: 230, h: 400, layout: 'column' }
 ];
+const PROFILE = 0, LANES = [1, 2, 3], DECISION = 4;
 
 const STEPS: StepDef[] = [
+  { id: 'entity', label: 'Entity type', agent: 'profile' },
+  { id: 'segment', label: 'Segment & plan', agent: 'profile' },
   { id: 'website', label: 'Website compliance', agent: 'precheck' },
   { id: 'prohibited', label: 'Prohibited business', agent: 'precheck' },
   { id: 'mcc', label: 'MCC validation', agent: 'precheck' },
@@ -88,6 +93,8 @@ const STEPS: StepDef[] = [
 ];
 
 const SIGNALS: SignalDef[] = [
+  { id: 'ent', label: 'Entity · LLC', step: 'entity' },
+  { id: 'loc', label: '1 location', step: 'segment' },
   { id: 'url', label: 'nitincoffee.co', step: 'website' },
   { id: 'desc', label: 'Independent coffeehouse', step: 'prohibited' },
   { id: 'mcc', label: 'MCC 5814', step: 'mcc' },
@@ -107,6 +114,7 @@ const SIGNALS: SignalDef[] = [
 
 /** Dependency edges rendered as the pipeline (same shape the workflow runner enforces). */
 const EDGES: [string, string][] = [
+  ['entity', 'segment'],
   ['website', 'prohibited'],
   ['verification', 'presence'],
   ['bank', 'plausibility'], ['financials', 'plausibility'], ['plausibility', 'credit'], ['match', 'credit'],
@@ -116,7 +124,7 @@ const EDGES: [string, string][] = [
 /** Illustrative outcome for a long-standing, low-risk card-present coffeehouse. */
 const VERDICT = { score: 889, tier: 'VeryLow', outcome: 'Approve', coveragePercent: 100 };
 
-const STEP_ORDER = ['website', 'prohibited', 'mcc', 'verification', 'screening', 'match', 'presence', 'bank', 'financials', 'plausibility', 'credit', 'terms', 'score', 'case'];
+const STEP_ORDER = ['entity', 'segment', 'website', 'prohibited', 'mcc', 'verification', 'screening', 'match', 'presence', 'bank', 'financials', 'plausibility', 'credit', 'terms', 'score', 'case'];
 
 @Component({
   selector: 'app-intro',
@@ -133,7 +141,7 @@ const STEP_ORDER = ['website', 'prohibited', 'mcc', 'verification', 'screening',
         <button mat-stroked-button class="skip" (click)="finish()"><mat-icon>skip_next</mat-icon>Skip intro</button>
       </header>
 
-      <svg class="stage" viewBox="0 0 1200 700" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+      <svg class="stage" viewBox="-100 0 1400 700" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
         <defs>
           <linearGradient id="agentFill" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stop-color="#1e293b" stop-opacity=".95"/><stop offset="1" stop-color="#0f172a" stop-opacity=".95"/>
@@ -198,12 +206,15 @@ const STEP_ORDER = ['website', 'prohibited', 'mcc', 'verification', 'screening',
             }
           </g>
         }
-        <text class="lane-note" [class.show]="showAgents()" x="450" y="578" text-anchor="middle">Three agents run in parallel</text>
-        <text class="lane-note" [class.show]="showAgents()" x="1070" y="578" text-anchor="middle">…then Decision</text>
-        <!-- Stage connectors: each parallel lane feeds the Decision agent -->
-        @for (i of [0, 1, 2]; track i) {
+        <text class="lane-note" [class.show]="showAgents()" x="15" y="578" text-anchor="middle">Profile first</text>
+        <text class="lane-note" [class.show]="showAgents()" x="560" y="578" text-anchor="middle">…then three agents run in parallel</text>
+        <text class="lane-note" [class.show]="showAgents()" x="1170" y="578" text-anchor="middle">…then Decision</text>
+        <!-- Stage connectors: Profile feeds each parallel lane, each lane feeds the Decision agent -->
+        @for (i of lanes; track i) {
           <path class="stage-link" [class.show]="scene() === 'pipeline' || scene() === 'score'" [class.flow]="scene() === 'pipeline'"
-                [attr.d]="laneLink(agents[i], agents[3])"/>
+                [attr.d]="laneLink(agents[profileIndex], agents[i])"/>
+          <path class="stage-link" [class.show]="scene() === 'pipeline' || scene() === 'score'" [class.flow]="scene() === 'pipeline'"
+                [attr.d]="laneLink(agents[i], agents[decisionIndex])"/>
         }
 
         <!-- Pipeline edges -->
@@ -327,7 +338,7 @@ const STEP_ORDER = ['website', 'prohibited', 'mcc', 'verification', 'screening',
         <footer class="verdict-foot">
           <div class="chips">
             <span class="chip">Coverage {{ verdict()?.coveragePercent ?? '—' }}%</span>
-            <span class="chip">14 checks · 4 agents · 1 decision</span>
+            <span class="chip">16 checks · 5 agents · 1 decision</span>
             <span class="chip ok">Illustrative result for a low-risk coffeehouse</span>
           </div>
           <button mat-flat-button color="primary" class="enter" (click)="finish()">Enter the workbench<mat-icon>arrow_forward</mat-icon></button>
@@ -453,6 +464,9 @@ export class IntroComponent {
   readonly done = output<void>();
 
   readonly agents = AGENTS;
+  readonly lanes = LANES;
+  readonly profileIndex = PROFILE;
+  readonly decisionIndex = DECISION;
   readonly steps = STEPS;
   readonly signals = SIGNALS.map((s, i) => ({ ...s, w: Math.max(120, s.label.length * 7 + 44), delay: (i * 90) % 700 }));
   readonly edges = EDGES.map(([from, to], i) => ({ id: `${from}-${to}`, from, to, delay: i * 60 }));
@@ -476,8 +490,8 @@ export class IntroComponent {
   readonly caption = computed(() => ({
     cup: 'A merchant applies. One application, one question: can we board them safely?',
     signals: 'Every field on the application is a signal — identity, web, volume, ownership, documents.',
-    steps: 'Signals merge into 14 assessment checks…',
-    agents: '…which group into four agents: Pre-check, KYB and Financial run in parallel, then Decision.',
+    steps: 'Signals merge into 16 assessment checks…',
+    agents: '…which group into five agents: Profile classifies the applicant first, then Pre-check, KYB and Financial run in parallel, then Decision.',
     pipeline: 'The workflow wires the checks into a pipeline and evidence flows through it.',
     memo: 'Every finding lands in an audit-ready underwriting memo — the analyst reads evidence, not opinions.',
     score: 'One unified 0–1000 risk score, a policy outcome, and an audit-ready case.'
@@ -496,12 +510,11 @@ export class IntroComponent {
 
   constructor() {
     STEP_ORDER.forEach((id, i) => {
-      const row = Math.floor(i / 5), col = i % 5;
-      const offset = row === 2 ? 110 : 0;
-      this.stepGrid.set(id, { x: 160 + col * 220 + offset, y: 250 + row * 90 });
+      const row = Math.floor(i / 4), col = i % 4;
+      this.stepGrid.set(id, { x: 270 + col * 220, y: 215 + row * 88 });
     });
     for (const a of AGENTS) a.steps.forEach((id, i) => this.stepAgent.set(id, a.layout === 'row'
-      ? { x: a.x + 115 + i * 215, y: a.y + 80 }
+      ? { x: a.x + 115 + i * 210, y: a.y + 80 }
       : { x: a.x + a.w / 2, y: a.y + 100 + i * 100 }));
     this.signals.forEach((s, i) => {
       const angle = (i / this.signals.length) * Math.PI * 2 - Math.PI / 2;

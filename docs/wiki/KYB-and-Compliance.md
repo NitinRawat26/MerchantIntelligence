@@ -24,10 +24,20 @@ Flags: `NEW_ENTITY`, `NAME_MISMATCH`, `REGISTERED_ADDRESS_MISMATCH`, `INACTIVE_E
 `VIRTUAL_OFFICE_ADDRESS`, `ENTITY_NOT_FOUND`. A source that errors is *Unavailable* and excluded; if
 every source is unavailable the whole check is *Unavailable*, never "verified".
 
-**Coverage note.** Small merchants (a local restaurant, a sole trader) hold no LEI and file nothing
-with the SEC, so registry verification reports them `NotFound`. That is the reason for the separate
-*local presence* step below. Ticker symbols are not captured today; there is no merchant-segment
-("SMB vs public company") classification in the code — it has been discussed as a future addition.
+**Registry scope.** Each provider declares a `RegistryReach` (`Global`: GLEIF, SEC EDGAR; `Local`:
+OpenCorporates, Companies House) and `VerifyAsync(identity, scope)` takes a `RegistryQueryScope`
+chosen by the Profile agent from the legal form ([steps/profile.md](../steps/profile.md)):
+
+| Scope | Who | Behaviour |
+|---|---|---|
+| `All` / `Global` | public corporations, C-Corps ≥ $10M, unknown legal form | Every provider; a miss everywhere is `NotFound` → `BUSINESS_UNVERIFIED` |
+| `Local` | LLCs, partnerships, S-Corps, trusts, private C-Corps | Company registers are authoritative: hit → `Verified`, miss → `NotFound`; no local provider configured → `Inconclusive` + `LOCAL_REGISTRY_UNAVAILABLE`. GLEIF / EDGAR silence alone can never fail the merchant |
+| `TaxExempt` | non-profits | Company registers queried with the scope recorded (a tax-exempt provider is not wired yet) |
+| `None` | sole proprietorships, public bodies | Nothing queried; `VerificationStatus.NotApplicable`, identity rests on the owner, local presence and bank evidence |
+
+The result carries the `Scope` used. Ticker symbols are still not captured. Small merchants that
+formerly came back `NotFound` from GLEIF / EDGAR are now `Inconclusive` or verified through their
+company register; *local presence* below remains the complementary evidence.
 
 ## Local business presence — `Registry/LocalPresence.cs`
 

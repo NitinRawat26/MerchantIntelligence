@@ -11,6 +11,7 @@ using MerchantIntelligence.MccValidation.Validation;
 using MerchantIntelligence.Platform.Assessment;
 using MerchantIntelligence.Platform.Cases;
 using MerchantIntelligence.Platform.Integrations;
+using MerchantIntelligence.Platform.Profiling;
 using MerchantIntelligence.Platform.Rules;
 using MerchantIntelligence.Platform.Scoring;
 using MerchantIntelligence.Underwriting.Explainability;
@@ -70,6 +71,9 @@ public sealed class AssessmentContext
     public Uri? SiteUrl { get; }
 
     // ---- result slots, one per step ----
+    /// <summary>Set by the Profile agent before any evidence step runs; null only while profiling itself is running.</summary>
+    public EntityAssessment? Entity { get; set; }
+    public MerchantProfile? Profile { get; set; }
     public BusinessVerificationResult? Verification { get; set; }
     public LocalPresenceResult? LocalPresence { get; set; }
     public ScreeningReport? Screening { get; set; }

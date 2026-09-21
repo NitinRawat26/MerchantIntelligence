@@ -11,17 +11,24 @@ None of them uses a model beyond the ML.NET credit predictor's probabilities as 
 ## 1. Unified risk score
 
 Weighted average of per-component 0–100 sub-scores, renormalised over the components actually
-supplied; uncovered components are reported as coverage gaps.
+supplied; uncovered components are reported as coverage gaps. The weight table depends on the
+merchant **segment** published by the Profile agent (`ScoreWeights.Standard` for Mid / Enterprise,
+`ScoreWeights.Smb` for Micro / Small — the SMB table is shown after the slash), and components whose
+step the profile marked *not applicable* are removed from both numerator and denominator rather than
+counted as gaps (`UnifiedRiskInput.Segment`, `NotApplicableComponents`; mapping `website` →
+WebsiteCompliance, `credit` → CreditModel, `plausibility` → VolumePlausibility, `prohibited` →
+BusinessPolicy, `terms` → Pricing). The segment itself never changes a sub-score, a hard stop or a
+rule — it only decides what is weighed. See [steps/profile.md](../steps/profile.md).
 
-| Component | Weight | Sub-score source | Reason codes it can raise |
+| Component | Weight (standard / SMB) | Sub-score source | Reason codes it can raise |
 |-----------|--------|------------------|---------------------------|
-| `CreditModel` | 0.30 | `P(approve)` from the credit model | `MODEL_DECLINE` (High if P(approve) < 0.2), `MODEL_CANCEL_RISK` |
-| `Kyb` | 0.20 | High → 20, Medium → 55, else 90; adjusted for verification and entity age | `KYB_HIGH_RISK`, `BUSINESS_UNVERIFIED` (High), `NEW_ENTITY` |
-| `Screening` | 0.15 | sanctions / PEP / adverse-media booleans (`AdverseMedia` is null — uncovered — when every media source failed) | `SANCTIONS_MATCH` (High, **hard stop**), `PEP_MATCH`, `ADVERSE_MEDIA` (always Medium — media is lexical evidence, never a decline driver on its own), `ADVERSE_MEDIA_MENTION` (Low) |
-| `BusinessPolicy` | 0.10 | Prohibited 0 · Restricted 35 · HighRisk 60 · Acceptable 100 | `PROHIBITED_BUSINESS` (High, **hard stop**), `RESTRICTED_BUSINESS`, `HIGH_RISK_BUSINESS` |
-| `WebsiteCompliance` | 0.10 | website compliance score | `WEBSITE_NON_COMPLIANT` (< 60) |
-| `VolumePlausibility` | 0.10 | plausibility score | `VOLUME_IMPLAUSIBLE` (< 50) |
-| `Pricing` | 0.05 | band A 95 · B 80 · C 60 · D 35 · E 15 | `HEAVY_RESERVE_REQUIRED` (D/E) |
+| `CreditModel` | 0.30 / 0.25 | `P(approve)` from the credit model | `MODEL_DECLINE` (High if P(approve) < 0.2), `MODEL_CANCEL_RISK` |
+| `Kyb` | 0.20 / 0.25 | High → 20, Medium → 55, else 90; adjusted for verification and entity age | `KYB_HIGH_RISK`, `BUSINESS_UNVERIFIED` (High), `NEW_ENTITY` |
+| `Screening` | 0.15 / 0.15 | sanctions / PEP / adverse-media booleans (`AdverseMedia` is null — uncovered — when every media source failed) | `SANCTIONS_MATCH` (High, **hard stop**), `PEP_MATCH`, `ADVERSE_MEDIA` (always Medium — media is lexical evidence, never a decline driver on its own), `ADVERSE_MEDIA_MENTION` (Low) |
+| `BusinessPolicy` | 0.10 / 0.10 | Prohibited 0 · Restricted 35 · HighRisk 60 · Acceptable 100 | `PROHIBITED_BUSINESS` (High, **hard stop**), `RESTRICTED_BUSINESS`, `HIGH_RISK_BUSINESS` |
+| `WebsiteCompliance` | 0.10 / 0.05 | website compliance score | `WEBSITE_NON_COMPLIANT` (< 60) |
+| `VolumePlausibility` | 0.10 / 0.15 | plausibility score | `VOLUME_IMPLAUSIBLE` (< 50) |
+| `Pricing` | 0.05 / 0.05 | band A 95 · B 80 · C 60 · D 35 · E 15 | `HEAVY_RESERVE_REQUIRED` (D/E) |
 | MATCH | – | `matchFound == true` | `MATCH_LISTED` (High, **hard stop**) |
 
 Extra `RiskSignal`s from upstream tools are merged in as reason codes (deduplicated by code).
@@ -29,7 +36,7 @@ Extra `RiskSignal`s from upstream tools are merged in as reason codes (deduplica
 Algorithm:
 
 ```
-coverage = Σ weight(covered) / Σ weight(all)
+coverage = Σ weight(covered) / Σ weight(all applicable)      // not-applicable components excluded
 raw      = Σ weighted(covered) / Σ weight(covered)          (50 if nothing covered)
 raw     -= (raw − 50) × min(0.5, gaps × 0.03 × 2)            // drift towards the middle per gap
 score    = round(clamp(raw, 0, 100) × 10)

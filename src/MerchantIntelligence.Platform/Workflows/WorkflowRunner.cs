@@ -212,6 +212,11 @@ public sealed class WorkflowRunner
                 await ctx.SkipAsync(d, $"Skipped: stop-gate on '{agentStop.StepId}' fired ({agentStop.Reason}) and halts agent '{agent.Descriptor.Id}'.");
                 return;
             }
+            if (evidence && !d.Profiling && ctx.Profile?.NotApplicableReason(d.Id) is { } notApplicable)
+            {
+                await ctx.SkipAsync(d, $"Not applicable to a {ctx.Profile.Segment} {Profiling.MerchantProfiler.Describe(ctx.Profile.EntityType)}: {notApplicable}");
+                return;
+            }
 
             await step.ExecuteAsync(ctx);
 

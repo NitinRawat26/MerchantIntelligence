@@ -78,6 +78,9 @@ export const FIELD_HINTS: Record<string, string> = {
   employeeCount:
     'Volume plausibility only: card volume per employee vs MCC benchmark (above p90 −12, >2× p90 −30 VOLUME_EXCEEDS_HEADCOUNT_CAPACITY; below p10/4 −12 HEADCOUNT_HIGH_FOR_VOLUME, below p10/20 −30 HEADCOUNT_IMPLAUSIBLE_FOR_VOLUME).\n' +
     'Headcount above the MCC ceiling (e.g. 400 for a single restaurant, scaled by Locations) −25 HEADCOUNT_ABOVE_INDUSTRY_CEILING. Blank → skipped (no penalty).',
+  entityType:
+    'Profile agent: the legal form picks the registry strategy (sole prop → no company register, LLC / corp → state & company registers, public → EDGAR / GLEIF, non-profit → tax-exempt lists) and caps or floors the size segment (sole prop ≤ Small, S-Corp ≤ Mid, public ≥ Mid).\n' +
+    'Blank = inferred from the legal-name suffix and owner count, recorded as ENTITY_TYPE_INFERRED.',
   locationCount:
     'Volume plausibility only: raises the headcount ceiling to locations × per-location max for the MCC (e.g. 120 per restaurant) and flags employees per location above that max (−12 HEADCOUNT_HIGH_FOR_LOCATIONS). Blank → single entity assumed.',
   yearsInBusiness:

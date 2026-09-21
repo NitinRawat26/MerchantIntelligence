@@ -56,7 +56,9 @@ public enum VerificationStatus
     Verified,
     PartialMatch,
     NotFound,
-    Inconclusive
+    Inconclusive,
+    /// <summary>No register holds this legal form; identity rests on owner, presence and bank evidence instead.</summary>
+    NotApplicable
 }
 
 public sealed record KybFlag(string Code, string Message, RiskTier Severity);
@@ -70,4 +72,5 @@ public sealed record BusinessVerificationResult(
     AddressVerification? Address,
     IReadOnlyList<RegistrySourceResult> Sources,
     IReadOnlyList<KybFlag> Flags,
-    LocalPresenceResult? LocalPresence = null);
+    LocalPresenceResult? LocalPresence = null,
+    RegistryQueryScope Scope = RegistryQueryScope.All);
