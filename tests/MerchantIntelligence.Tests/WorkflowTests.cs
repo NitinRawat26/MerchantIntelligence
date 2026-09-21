@@ -72,7 +72,7 @@ public sealed class WorkflowTests : IClassFixture<WebApplicationFactory<Program>
         // Profile runs alone first; Pre-check and KYB agents then run concurrently; inside each (Parallel by default) only dependencies sequence steps
         Assert.Equal(["entity"], plan.Stages[0].Steps);
         Assert.Equal(["segment"], plan.Stages[1].Steps);
-        Assert.Equal(["verification", "screening", "website", "mcc", "match", "owners"], plan.Stages[2].Steps);
+        Assert.Equal(["verification", "screening", "website", "mcc", "match", "owners", "licensing"], plan.Stages[2].Steps);
         Assert.Equal(["prohibited", "presence"], plan.Stages[3].Steps);   // prohibited needs website, presence waits for verification
         Assert.Equal(["score"], plan.Stages[^2].Steps);
         Assert.Equal(["case"], plan.Stages[^1].Steps);
@@ -94,7 +94,7 @@ public sealed class WorkflowTests : IClassFixture<WebApplicationFactory<Program>
 
         var upgraded = Planner.Upgrade(old);
         Assert.NotSame(old, upgraded);
-        Assert.Equal(17, upgraded.Steps.Count);
+        Assert.Equal(18, upgraded.Steps.Count);
         Assert.True(upgraded.Steps.FindIndex(s => s.Id == "presence") > upgraded.Steps.FindIndex(s => s.Id == "verification"));
         Assert.Contains("presence", upgraded.Agents!.Single(a => a.Id == "kyb").Steps);
         Assert.Empty(Planner.Plan(upgraded).Warnings);
@@ -213,7 +213,7 @@ public sealed class WorkflowTests : IClassFixture<WebApplicationFactory<Program>
         // stored definitions from before these fields existed still load and get the default flow
         var legacy = JsonSerializer.Deserialize<WorkflowDefinition>("""{"name":"Old","version":"1","steps":[{"id":"score"}]}""", RulesEngine.JsonOptions)!;
         var upgraded = Planner.Upgrade(legacy);
-        Assert.Equal(17, upgraded.Steps.Count);
+        Assert.Equal(18, upgraded.Steps.Count);
         Assert.Equal("profile", upgraded.Agents![0].Id);
         Assert.All(upgraded.Agents!, a => Assert.Equal(AgentStepOrder.Parallel, a.StepOrder));
         Assert.Empty(Planner.Plan(upgraded).Agents.SelectMany(a => a.RunsWhen)); // no transitions → dependency-driven order, as before
@@ -272,10 +272,10 @@ public sealed class WorkflowTests : IClassFixture<WebApplicationFactory<Program>
     {
         var active = await Json(await _client.GetAsync("/api/workflows/active"));
         Assert.Equal("default", active.GetProperty("version").GetString());
-        Assert.Equal(17, active.GetProperty("steps").GetArrayLength());
+        Assert.Equal(18, active.GetProperty("steps").GetArrayLength());
 
         var catalog = await Json(await _client.GetAsync("/api/workflows/catalog"));
-        Assert.Equal(17, catalog.GetArrayLength());
+        Assert.Equal(18, catalog.GetArrayLength());
 
         var draft = Default();
         draft.Name = "No website scan";
@@ -342,7 +342,7 @@ public sealed class WorkflowTests : IClassFixture<WebApplicationFactory<Program>
         }));
 
         var steps = root.GetProperty("steps").EnumerateArray().Select(s => (Id: s.GetProperty("id").GetString()!, Status: s.GetProperty("status").GetString()!, Summary: s.GetProperty("summary").GetString()!)).ToList();
-        Assert.Equal(17, steps.Count);
+        Assert.Equal(18, steps.Count);
         Assert.Equal(def.Steps.Select(s => s.Id), steps.Select(s => s.Id));
         Assert.Equal("Skipped", steps.Single(s => s.Id == "website").Status);
         Assert.Contains("Disabled in workflow 'Lean'", steps.Single(s => s.Id == "website").Summary);

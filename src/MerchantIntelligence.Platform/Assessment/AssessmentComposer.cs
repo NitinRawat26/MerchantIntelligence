@@ -78,11 +78,12 @@ internal static class AssessmentComposer
     }
 
     internal static List<RiskSignal> CollectSignals(BusinessVerificationResult? v, ScreeningReport? s, WebsiteComplianceResult? w, ProhibitedBusinessResult? p,
-        MccValidationResult? m, CashFlowAnalysis? b, FinancialStatementAnalysis? f, VolumePlausibilityResult? pl, OwnerAssessment? owners = null, Financial.BankEvidenceAssessment? bankEvidence = null)
+        MccValidationResult? m, CashFlowAnalysis? b, FinancialStatementAnalysis? f, VolumePlausibilityResult? pl, OwnerAssessment? owners = null, Financial.BankEvidenceAssessment? bankEvidence = null, Licensing.LicensingAssessment? licensing = null)
     {
         var list = new List<RiskSignal>();
         if (v is not null) list.AddRange(v.Flags.Select(x => new RiskSignal("verification", x.Code, x.Message, x.Severity)));
         if (owners is not null) list.AddRange(owners.Flags.Select(x => new RiskSignal("owners", x.Code, x.Message, x.Severity)));
+        if (licensing is not null) list.AddRange(licensing.Flags.Select(x => new RiskSignal("licensing", x.Code, x.Message, x.Severity)));
         if (s is not null) list.AddRange(s.Flags.Select(x => new RiskSignal("screening", x.Code, x.Message, x.Severity)));
         if (w is not null) list.AddRange(w.Checks.Where(c => c.Status == CheckStatus.Fail).Select(c => new RiskSignal("website", $"WEB_{c.Code}", c.Detail, c.Severity)));
         if (p is not null) list.AddRange(p.Flags.Select(x => new RiskSignal("prohibited", x.Code, x.Message, x.Severity)));
@@ -125,7 +126,7 @@ internal static class AssessmentComposer
     internal static AssessmentExplainability BuildExplainability(AssessmentIntake intake, AssessmentDecision decision, BusinessVerificationResult? v, ScreeningReport? s,
         WebsiteComplianceResult? w, ProhibitedBusinessResult? p, MccValidationResult? m, MatchResult? match, CashFlowAnalysis? b, FinancialStatementAnalysis? f,
         VolumePlausibilityResult? pl, DecisionResult? credit, DecisionExplanation? explanation, TermsRecommendation? terms, UnifiedRiskScore? score,
-        RulesEvaluation? rules, IReadOnlyList<RiskSignal> signals, LocalPresenceResult? lp = null, MerchantProfile? profile = null, OwnerAssessment? owners = null, Financial.BankEvidenceAssessment? bankEvidence = null)
+        RulesEvaluation? rules, IReadOnlyList<RiskSignal> signals, LocalPresenceResult? lp = null, MerchantProfile? profile = null, OwnerAssessment? owners = null, Financial.BankEvidenceAssessment? bankEvidence = null, Licensing.LicensingAssessment? licensing = null)
     {
         var outcomes = new List<CheckOutcome>();
         var narrative = new List<string>();
@@ -355,6 +356,19 @@ internal static class AssessmentComposer
             narrative.Add($"Cash flow: {detail}");
         }
 
+        if (licensing is { } lic && (lic.Requirements.Count > 0 || lic.Unrequested.Count > 0))
+        {
+            var worst = lic.Flags.Count == 0 ? RiskTier.Low : lic.Flags.Max(x => x.Severity);
+            var detail = string.Join(" ", lic.Requirements.Select(q => $"{Licensing.LicensingAssessor.Describe(q.Type)}: {q.Status}{(q.Attested is { } a ? $" ({(a.Number ?? "no number")}, {a.IssuingAuthority ?? "issuer not recorded"}{(a.ExpiryDate is { } e ? $", expires {e:yyyy-MM-dd}" : "")})" : "")}."))
+                         + (lic.Unrequested.Count > 0 ? $" Also attested: {string.Join(", ", lic.Unrequested.Select(u => Licensing.LicensingAssessor.Describe(u.Type)))}." : "")
+                         + (lic.Flags.Count > 0 ? $" {string.Join(" ", lic.Flags.Select(x => x.Message))}" : "");
+            outcomes.Add(new("Licences & permits", $"{lic.Requirements.Count(q => q.Attested is not null)}/{lic.Requirements.Count} attested", detail, worst, lic.Covered));
+            narrative.Add($"Licences: {detail}");
+            foreach (var missing in lic.Requirements.Where(q => q.Attested is null))
+                next.Add($"Obtain the merchant's {Licensing.LicensingAssessor.Describe(missing.Type)} (MCC {intake.MerchantCategoryCode}); company registration does not substitute for it.");
+            if (lic.Flags.Any(x => x.Code.StartsWith("LICENSE_EXPIRED"))) next.Add("A required licence has expired: hold boarding until renewal evidence is supplied.");
+        }
+
         // Bank statement as small-merchant evidence (requiredness, account holder, deposits vs declared, payouts)
         if (bankEvidence is { } be)
         {
@@ -498,5 +512,5 @@ internal static class AssessmentComposer
         i.WebsiteProductCount, i.HasPhysicalLocation,
         bank?.FileName ?? (i.BankStatementCsv is null ? null : "inline CSV"),
         fin?.FileName ?? (i.FinancialStatementText is null ? null : "inline text"),
-        i.ExternalRef, i.Actor, i.LocationCount, i.EntityType);
+        i.ExternalRef, i.Actor, i.LocationCount, i.EntityType, i.BankAccountHolderName, i.Licenses);
 }

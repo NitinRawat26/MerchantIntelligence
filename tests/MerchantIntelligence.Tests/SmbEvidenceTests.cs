@@ -3,6 +3,8 @@ using MerchantIntelligence.Kyb.Compliance;
 using MerchantIntelligence.Kyb.Registry;
 using MerchantIntelligence.MccValidation.Taxonomy;
 using MerchantIntelligence.Kyb;
+using MerchantIntelligence.Platform.Assessment;
+using MerchantIntelligence.Platform.Licensing;
 using MerchantIntelligence.Platform.Profiling;
 using Xunit;
 
@@ -449,5 +451,64 @@ public class BankEvidenceTests
         Assert.Contains(r.Flags, f => f.Code == "BANK_NSF_SMB" && f.Severity == RiskTier.High);
         Assert.Contains(r.Flags, f => f.Code == "BANK_NO_CARD_PAYOUTS");
         Assert.Equal(2, r.MonthsWithoutInflows);
+    }
+}
+
+public class LicensingTests
+{
+    private static readonly DateOnly Today = new(2026, 9, 19);
+
+    private static AssessmentIntake Intake(int mcc, params LicenseAttestation[] licenses) => new(
+        new BusinessIdentity("Test Grill LLC", "Test Grill", "US", "KY", "Louisville", "1 Main St"),
+        [new BeneficialOwner("Jane Owner", new DateOnly(1980, 1, 1), "US", "Owner", 100)],
+        null, mcc, 400_000m, 25m, 200m, false, Licenses: licenses.Length == 0 ? null : licenses);
+
+    [Fact]
+    public void Restaurant_without_food_permit_is_missing_not_declined()
+    {
+        var a = LicensingAssessor.Assess(Intake(5812), null, Today);
+        var req = Assert.Single(a.Requirements);
+        Assert.Equal(LicenseType.FoodService, req.Type);
+        Assert.Equal("Missing", req.Status);
+        Assert.False(a.Covered);
+        Assert.Contains(a.Flags, f => f.Code == "LICENSE_MISSING_FOODSERVICE" && f.Severity == RiskTier.Medium);
+    }
+
+    [Fact]
+    public void Bar_requires_food_and_alcohol()
+    {
+        var a = LicensingAssessor.Assess(Intake(5813, new LicenseAttestation(LicenseType.FoodService, "FS-1", "Louisville Metro Health", null, Today.AddYears(1), "permit.pdf")), null, Today);
+        Assert.Equal(2, a.Requirements.Count);
+        Assert.Contains(a.Flags, f => f.Code == "LICENSE_MISSING_ALCOHOL" && f.Severity == RiskTier.High);
+        Assert.DoesNotContain(a.Flags, f => f.Code.StartsWith("LICENSE_MISSING_FOOD"));
+    }
+
+    [Fact]
+    public void Expired_licence_is_high()
+    {
+        var a = LicensingAssessor.Assess(Intake(5812, new LicenseAttestation(LicenseType.FoodService, "FS-1", "Health Dept", Today.AddYears(-2), Today.AddDays(-1), "doc")), null, Today);
+        Assert.Equal("Expired", a.Requirements[0].Status);
+        Assert.Contains(a.Flags, f => f.Code == "LICENSE_EXPIRED_FOODSERVICE" && f.Severity == RiskTier.High);
+    }
+
+    [Fact]
+    public void Incomplete_and_unevidenced_attestation_is_low_and_still_covered()
+    {
+        var a = LicensingAssessor.Assess(Intake(5812, new LicenseAttestation(LicenseType.FoodService, null, null, null, Today.AddDays(30), null)), null, Today);
+        Assert.True(a.Covered);
+        Assert.Equal("Expiring soon", a.Requirements[0].Status);
+        Assert.Contains(a.Flags, f => f.Code == "LICENSE_INCOMPLETE_FOODSERVICE" && f.Severity == RiskTier.Low);
+        Assert.Contains(a.Flags, f => f.Code == "LICENSE_UNEVIDENCED_FOODSERVICE");
+        Assert.Contains(a.Flags, f => f.Code == "LICENSE_EXPIRING_FOODSERVICE");
+    }
+
+    [Fact]
+    public void Unregulated_mcc_has_no_requirements_and_is_covered()
+    {
+        var a = LicensingAssessor.Assess(Intake(7372), null, Today);
+        Assert.Empty(a.Requirements);
+        Assert.Empty(a.Flags);
+        Assert.True(a.Covered);
+        Assert.False(LicensingAssessor.IsRegulated(7372));
     }
 }
