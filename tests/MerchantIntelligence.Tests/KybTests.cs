@@ -291,3 +291,65 @@ public sealed class LocalPresenceTests
         Assert.Contains("429", r.Sources.Single().Error);
     }
 }
+
+public sealed class RegistryScopeTests
+{
+    private sealed class StubRegistry(string name, RegistryReach reach, bool enabled, params RegistryRecord[] records) : IBusinessRegistryProvider
+    {
+        public string Name => name;
+        public RegistryReach Reach => reach;
+        public bool IsEnabled => enabled;
+        public Task<IReadOnlyList<RegistryRecord>> SearchAsync(BusinessIdentity identity, CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<RegistryRecord>>(records);
+    }
+
+    private static BusinessVerificationService Service(params IBusinessRegistryProvider[] providers) =>
+        new(providers, [], new KybOptions(), Microsoft.Extensions.Logging.Abstractions.NullLogger<BusinessVerificationService>.Instance);
+
+    private static readonly BusinessIdentity Cafe = new("Nitin Coffee Co LLC", Country: "US");
+
+    [Fact]
+    public async Task Global_registers_alone_cannot_fail_a_private_company()
+    {
+        var svc = Service(new StubRegistry("GLEIF LEI", RegistryReach.Global, true), new StubRegistry("SEC EDGAR", RegistryReach.Global, true),
+            new StubRegistry("OpenCorporates", RegistryReach.Local, false));
+
+        var all = await svc.VerifyAsync(Cafe, RegistryQueryScope.All);
+        Assert.Equal(VerificationStatus.NotFound, all.Status);
+        Assert.Contains(all.Flags, f => f.Code == "ENTITY_NOT_FOUND");
+
+        var local = await svc.VerifyAsync(Cafe, RegistryQueryScope.Local);
+        Assert.Equal(VerificationStatus.Inconclusive, local.Status);
+        Assert.Equal(RegistryQueryScope.Local, local.Scope);
+        Assert.DoesNotContain(local.Flags, f => f.Code == "ENTITY_NOT_FOUND");
+        var gap = Assert.Single(local.Flags, f => f.Code == "LOCAL_REGISTRY_UNAVAILABLE");
+        Assert.Equal(RiskTier.Low, gap.Severity);
+        Assert.Contains("OpenCorporates", gap.Message);
+    }
+
+    [Fact]
+    public async Task Company_register_miss_is_a_genuine_not_found_and_a_hit_verifies()
+    {
+        var empty = Service(new StubRegistry("GLEIF LEI", RegistryReach.Global, true), new StubRegistry("OpenCorporates", RegistryReach.Local, true));
+        var miss = await empty.VerifyAsync(Cafe, RegistryQueryScope.Local);
+        Assert.Equal(VerificationStatus.NotFound, miss.Status);
+        Assert.Contains(miss.Flags, f => f.Code == "ENTITY_NOT_FOUND" && f.Message.Contains("OpenCorporates"));
+
+        var record = new RegistryRecord("OpenCorporates", "tx-1", "Nitin Coffee Co LLC", "Active", new DateOnly(2015, 4, 1), "us_tx", null, null, "LLC", null);
+        var found = Service(new StubRegistry("OpenCorporates", RegistryReach.Local, true, record));
+        var hit = await found.VerifyAsync(Cafe, RegistryQueryScope.Local);
+        Assert.Equal(VerificationStatus.Verified, hit.Status);
+        Assert.Equal("OpenCorporates", hit.BestMatch!.Record.Source);
+    }
+
+    [Fact]
+    public async Task None_scope_consults_no_register_and_is_not_applicable()
+    {
+        var svc = Service(new StubRegistry("GLEIF LEI", RegistryReach.Global, true, new RegistryRecord("GLEIF LEI", "x", "Nitin Coffee Co LLC", "ACTIVE", null, null, null, null, null, null)));
+        var r = await svc.VerifyAsync(Cafe, RegistryQueryScope.None);
+        Assert.Equal(VerificationStatus.NotApplicable, r.Status);
+        Assert.Empty(r.Sources);
+        Assert.Null(r.BestMatch);
+        Assert.Single(r.Flags, f => f.Code == "REGISTRY_NOT_APPLICABLE" && f.Severity == RiskTier.Low);
+    }
+}

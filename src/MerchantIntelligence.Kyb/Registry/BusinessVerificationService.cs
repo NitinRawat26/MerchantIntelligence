@@ -37,8 +37,28 @@ public sealed class BusinessVerificationService
         _logger = logger;
     }
 
-    public async Task<BusinessVerificationResult> VerifyAsync(BusinessIdentity identity, CancellationToken ct = default)
+    public Task<BusinessVerificationResult> VerifyAsync(BusinessIdentity identity, CancellationToken ct = default) =>
+        VerifyAsync(identity, RegistryQueryScope.All, ct);
+
+    /// <summary>
+    /// Verifies the entity against the registers that are expected to hold it. With <see cref="RegistryQueryScope.Local"/> or
+    /// <see cref="RegistryQueryScope.TaxExempt"/> every register is still asked, but a miss counts only when a company register
+    /// answered – absence from GLEIF / EDGAR is the norm for a private company and yields an inconclusive result, not a
+    /// negative one. With <see cref="RegistryQueryScope.None"/> no register is consulted and the result is NotApplicable.
+    /// </summary>
+    public async Task<BusinessVerificationResult> VerifyAsync(BusinessIdentity identity, RegistryQueryScope scope, CancellationToken ct = default)
     {
+        if (scope == RegistryQueryScope.None)
+        {
+            var addressOnly = await VerifyAddressAsync(identity, ct);
+            var noteFlags = new List<KybFlag>
+            {
+                new("REGISTRY_NOT_APPLICABLE", "No company register holds this legal form; identity is established through the owner, local presence and bank evidence instead.", RiskTier.Low)
+            };
+            AddAddressFlags(identity, addressOnly, noteFlags);
+            return new BusinessVerificationResult(identity, VerificationStatus.NotApplicable, 0, null, null, addressOnly, [], noteFlags, Scope: scope);
+        }
+
         var sourceTasks = _providers.Where(p => p.IsEnabled).Select(async p =>
         {
             try
@@ -64,7 +84,11 @@ public sealed class BusinessVerificationService
 
         var best = sources.SelectMany(s => s.Matches).OrderByDescending(m => m.OverallScore).FirstOrDefault();
         var flags = new List<KybFlag>();
+        var reachOf = _providers.ToDictionary(p => p.Name, p => p.Reach);
+        var localAnswered = sources.Any(s => s.Succeeded && reachOf[s.Source] == RegistryReach.Local);
         var status = Classify(best, sources.Any(s => s.Succeeded));
+        if (best is null && status == VerificationStatus.NotFound && scope != RegistryQueryScope.All && !localAnswered)
+            status = VerificationStatus.Inconclusive;
 
         int? ageMonths = null;
         if (best?.Record.IncorporationDate is DateOnly inc)
@@ -87,19 +111,33 @@ public sealed class BusinessVerificationService
                 && NameMatcher.Normalize(identity.RegistrationNumber).Replace(" ", "") != NameMatcher.Normalize(best.Record.RegistrationNumber).Replace(" ", ""))
                 flags.Add(new KybFlag("REGISTRATION_NUMBER_MISMATCH", $"Declared registration number '{identity.RegistrationNumber}' ≠ registry '{best.Record.RegistrationNumber}'.", RiskTier.High));
         }
+        else if (status == VerificationStatus.Inconclusive && sources.Any(s => s.Succeeded))
+        {
+            var answered = string.Join(", ", sources.Where(s => s.Succeeded).Select(s => s.Source));
+            var silent = string.Join(", ", sources.Where(s => !s.Succeeded && reachOf[s.Source] == RegistryReach.Local).Select(s => s.Source));
+            flags.Add(new KybFlag("LOCAL_REGISTRY_UNAVAILABLE",
+                $"Only global registers answered ({answered}); a private company is not expected to hold an LEI or file with the SEC, so their silence is not evidence against it. Company registers ({(silent.Length == 0 ? "none configured" : silent)}) were unavailable – verify via the state / national register or request formation documents.",
+                RiskTier.Low));
+        }
         else if (sources.Any(s => s.Succeeded))
         {
-            flags.Add(new KybFlag("ENTITY_NOT_FOUND", "No registry record found in any enabled source. Coverage is limited to LEI holders, SEC filers and configured registries.", RiskTier.Medium));
+            flags.Add(new KybFlag("ENTITY_NOT_FOUND", scope == RegistryQueryScope.All
+                ? "No registry record found in any enabled source. Coverage is limited to LEI holders, SEC filers and configured registries."
+                : $"No record in the company registers that answered ({string.Join(", ", sources.Where(s => s.Succeeded && reachOf[s.Source] == RegistryReach.Local).Select(s => s.Source))}); a registered entity of this legal form should appear there.", RiskTier.Medium));
         }
 
         var confidence = best is null ? 0 : Math.Round(best.OverallScore * 100, 1);
+        AddAddressFlags(identity, address, flags);
 
+        return new BusinessVerificationResult(identity, status, confidence, best, ageMonths, address, sources, flags, Scope: scope);
+    }
+
+    private static void AddAddressFlags(BusinessIdentity identity, AddressVerification? address, List<KybFlag> flags)
+    {
         if (!string.IsNullOrWhiteSpace(identity.AddressLine) && VirtualOfficeHint.IsMatch(identity.AddressLine))
             flags.Add(new KybFlag("VIRTUAL_OFFICE_ADDRESS", "Declared address looks like a PO box, mailbox service or registered-agent address.", RiskTier.Medium));
         if (address is { Verified: false, Error: not null } && !string.IsNullOrWhiteSpace(identity.AddressLine) && !address.Error.Contains("only covers", StringComparison.Ordinal))
             flags.Add(new KybFlag("ADDRESS_UNVERIFIED", $"Address could not be geocoded: {address.Error}", RiskTier.Low));
-
-        return new BusinessVerificationResult(identity, status, confidence, best, ageMonths, address, sources, flags);
     }
 
     /// <summary>
@@ -118,7 +156,7 @@ public sealed class BusinessVerificationService
         {
             case LocalPresenceStatus.Confirmed:
                 flags.Add(new KybFlag("LOCAL_PRESENCE_CONFIRMED", $"Business found operating at the declared location: '{pm!.Record.Name}' via {pm.Record.Source}{(pm.DistanceMeters is { } d ? $", {d:F0} m from the declared address" : "")}{(pm.Record.Category is null ? "" : $" ({pm.Record.Category})")}. Confirms trading presence, not legal registration.", RiskTier.Low));
-                if (result.BestMatch is null && status == VerificationStatus.NotFound)
+                if (result.BestMatch is null && status is VerificationStatus.NotFound or VerificationStatus.Inconclusive or VerificationStatus.NotApplicable)
                 {
                     status = VerificationStatus.PartialMatch;
                     confidence = Math.Round(pm.OverallScore * 70, 1);

@@ -125,6 +125,21 @@ internal static class AssessmentComposer
             narrative.Add($"Identity: registry verification could not be completed because every public source failed. {detail}");
             next.Add("Re-run entity verification once public registries are reachable, or obtain registration documents manually.");
         }
+        else if (v.Status == VerificationStatus.NotApplicable)
+        {
+            var detail = "No company register holds this legal form (sole proprietorship / public body); registries were not consulted. Identity rests on owner KYC, local presence and bank-statement evidence.";
+            outcomes.Add(new("Business identity", "Not applicable", detail, RiskTier.Low, false));
+            narrative.Add($"Identity: registry verification is not applicable to this legal form. {detail}");
+            if (v.LocalPresence?.Status != LocalPresenceStatus.Confirmed) next.Add("Confirm the owner's identity and the trading location directly (owner ID, DBA / assumed-name filing, lease or utility bill).");
+        }
+        else if (v.Status == VerificationStatus.Inconclusive)
+        {
+            var gap = v.Flags.FirstOrDefault(f => f.Code == "LOCAL_REGISTRY_UNAVAILABLE")?.Message
+                ?? $"The registers expected to hold this entity did not answer ({string.Join(", ", v.Sources.Select(x => x.Source + (x.Succeeded ? "" : " – failed")))}).";
+            outcomes.Add(new("Business identity", "Inconclusive", gap, RiskTier.Medium, false));
+            narrative.Add($"Identity: registry verification is inconclusive – {gap}");
+            next.Add("Verify via the state / national company register or request the certificate of formation.");
+        }
         else
         {
             var sev = v.Status is VerificationStatus.Verified ? RiskTier.Low : v.Status is VerificationStatus.PartialMatch ? RiskTier.Medium : RiskTier.High;
@@ -134,7 +149,9 @@ internal static class AssessmentComposer
                   + (v.EntityAgeMonths is { } age ? $"; entity age {age} months" : "") + (v.Address is { } a ? $"; address {(a.Verified ? "verified" : "not verified")} via {a.Provider}" : "") + ".";
             outcomes.Add(new("Business identity", $"{v.Status} ({v.ConfidencePercent:F0}%)", detail, sev, true));
             narrative.Add($"Identity: the legal entity is {v.Status.ToString().ToLowerInvariant()} with {v.ConfidencePercent:F0}% confidence. {detail}");
-            if (v.Status is VerificationStatus.NotFound or VerificationStatus.Inconclusive) next.Add("Request registration documents; public registry coverage (GLEIF / SEC EDGAR) is limited for small private companies.");
+            if (v.Status is VerificationStatus.NotFound) next.Add(v.Scope == RegistryQueryScope.All
+                ? "Request registration documents; public registry coverage (GLEIF / SEC EDGAR) is limited for small private companies."
+                : "The entity is absent from the company registers that should list it; request the certificate of formation and confirm the registered name.");
             else if (v.BestMatch is null && v.LocalPresence?.Status == LocalPresenceStatus.Confirmed) next.Add("Identity rests on local-presence evidence only; request a certificate of formation or state registration to confirm the legal entity.");
         }
 

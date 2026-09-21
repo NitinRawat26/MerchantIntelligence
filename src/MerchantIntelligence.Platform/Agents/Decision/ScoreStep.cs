@@ -23,7 +23,7 @@ public sealed class ScoreStep(UnifiedRiskScorer scorer, RulesEngine rules, RuleS
         var registriesReachable = v is not null && AssessmentComposer.RegistriesReachable(v);
         var listsLoaded = s is not null && AssessmentComposer.ListsLoaded(s);
         ctx.ScoreInput = new UnifiedRiskInput(ctx.Application, ctx.Credit, ctx.KybRisk,
-            !registriesReachable ? null : v!.Status is VerificationStatus.Verified or VerificationStatus.PartialMatch,
+            !registriesReachable ? null : v!.Status switch { VerificationStatus.Verified or VerificationStatus.PartialMatch => true, VerificationStatus.NotFound => false, _ => null },
             v?.EntityAgeMonths,
             !listsLoaded ? null : s!.Flags.Any(f => f.Code == "SANCTIONS_MATCH"),
             !listsLoaded ? null : s!.Flags.Any(f => f.Code == "PEP_MATCH"),

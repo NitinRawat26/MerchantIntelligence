@@ -5,9 +5,33 @@ using Microsoft.Extensions.Logging;
 
 namespace MerchantIntelligence.Kyb.Registry;
 
+/// <summary>Which population a registry covers, so verification can ask the registers that are expected to hold a given legal form.</summary>
+public enum RegistryReach
+{
+    /// <summary>LEI holders, SEC filers – large or public entities.</summary>
+    Global,
+    /// <summary>State / national company registers – any registered legal entity.</summary>
+    Local
+}
+
+/// <summary>Which registers a verification should consult, decided from the applicant's legal form and size.</summary>
+public enum RegistryQueryScope
+{
+    /// <summary>Every enabled register.</summary>
+    All,
+    /// <summary>Company registers are authoritative; absence from global registers is expected and not held against the entity.</summary>
+    Local,
+    /// <summary>Tax-exempt registers are authoritative; company registers are consulted as a fallback.</summary>
+    TaxExempt,
+    /// <summary>No register holds this legal form (sole proprietorship, public body); registries are not consulted.</summary>
+    None
+}
+
 public interface IBusinessRegistryProvider
 {
     string Name { get; }
+
+    RegistryReach Reach { get; }
 
     /// <summary>True when the provider can be used with the current configuration (e.g. API key present).</summary>
     bool IsEnabled { get; }
@@ -64,6 +88,7 @@ public sealed class GleifRegistryProvider : IBusinessRegistryProvider
     }
 
     public string Name => "GLEIF LEI";
+    public RegistryReach Reach => RegistryReach.Global;
     public bool IsEnabled => true;
 
     public async Task<IReadOnlyList<RegistryRecord>> SearchAsync(BusinessIdentity identity, CancellationToken ct)
@@ -124,6 +149,7 @@ public sealed class EdgarRegistryProvider : IBusinessRegistryProvider
     }
 
     public string Name => "SEC EDGAR";
+    public RegistryReach Reach => RegistryReach.Global;
     public bool IsEnabled => true;
 
     public async Task<IReadOnlyList<RegistryRecord>> SearchAsync(BusinessIdentity identity, CancellationToken ct)
@@ -206,6 +232,7 @@ public sealed class OpenCorporatesRegistryProvider : IBusinessRegistryProvider
     }
 
     public string Name => "OpenCorporates";
+    public RegistryReach Reach => RegistryReach.Local;
     public bool IsEnabled => !string.IsNullOrWhiteSpace(_options.OpenCorporatesApiToken);
 
     public async Task<IReadOnlyList<RegistryRecord>> SearchAsync(BusinessIdentity identity, CancellationToken ct)
@@ -250,6 +277,7 @@ public sealed class CompaniesHouseRegistryProvider : IBusinessRegistryProvider
     }
 
     public string Name => "UK Companies House";
+    public RegistryReach Reach => RegistryReach.Local;
     public bool IsEnabled => !string.IsNullOrWhiteSpace(_options.CompaniesHouseApiKey);
 
     public async Task<IReadOnlyList<RegistryRecord>> SearchAsync(BusinessIdentity identity, CancellationToken ct)
