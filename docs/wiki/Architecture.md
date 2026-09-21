@@ -12,7 +12,7 @@ src/
   MerchantIntelligence.Kyb                       registry verification, local presence, sanctions/PEP screening, website compliance, prohibited business
   MerchantIntelligence.Underwriting              Shapley explainer, reserve/pricing, volume plausibility, bank & P&L statement parsing
   MerchantIntelligence.Platform                  unified score, rules engine, cases + audit, webhooks, model ops, MATCH boundary,
-                                                 full assessment, workflow engine, the four agents
+                                                 full assessment, workflow engine, the five agents
   MerchantIntelligence.Api                       ASP.NET Core Web API + Swagger; serves the SPA from wwwroot in Docker
 web/workbench                                    Angular 18 + Material workbench (one page per capability)
 tests/MerchantIntelligence.Tests                 xUnit unit + WebApplicationFactory integration tests
@@ -40,7 +40,7 @@ flowchart BT
 * The domain libraries (`CreditDecision`, `MccValidation`, `Kyb`, `Underwriting`) know nothing about
   each other's orchestration; each exposes plain services registered via an `Add*` extension method.
 * `Platform` is the only project that composes them. It owns the workflow engine
-  (`Platform/Workflows`), the four agents and their steps (`Platform/Agents/<Agent>/`), and the
+  (`Platform/Workflows`), the profiler (`Platform/Profiling`), the five agents and their steps (`Platform/Agents/<Agent>/`), and the
   cross-cutting concerns (score, rules, cases, audit, webhooks, model ops).
 * `Api` is thin: controllers map HTTP to services; `Program.cs` wires DI, CORS, the website
   `HttpClient` (15 s timeout, `MerchantIntelligenceBot/1.0` UA, 4 MB cap) and static SPA hosting.
@@ -82,7 +82,7 @@ there is no disk, so all of this resets on redeploy (see [Configuration](Configu
 
 ## Where "agents" fit
 
-The four agents are **deterministic executors** inside a `Microsoft.Agents.AI.Workflows` graph
+The five agents (Profile first, then Pre-check ∥ KYB ∥ Financial, then Decision) are **deterministic executors** inside a `Microsoft.Agents.AI.Workflows` graph
 (Microsoft Agent Framework, the successor of AutoGen + Semantic Kernel). The framework is used for
 its graph runtime — executors, fan-out/fan-in edges, streamed events — not for its LLM agent types.
 `IChatClient`, prompts and tool-calling are not referenced anywhere in the solution. See

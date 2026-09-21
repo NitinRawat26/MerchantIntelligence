@@ -1,16 +1,17 @@
 # Agents and steps
 
-Code: `src/MerchantIntelligence.Platform/Agents/<PreCheck|Kyb|Financial|Decision>/`. Each folder has
+Code: `src/MerchantIntelligence.Platform/Agents/<Profile|PreCheck|Kyb|Financial|Decision>/`. Each folder has
 `<Name>Agent.cs` (the review), one `*Step.cs` per owned check, and a `*Registration.cs` that adds
 them to DI. The per-check functional detail (inputs, finding codes, score effect) is in
 [../full-assessment.md §6](../full-assessment.md#6-the-thirteen-steps).
 
-## The four agents
+## The five agents
 
-The agent set is **fixed** at four. Which steps each owns, and whether it runs, is workflow data.
+The agent set is **fixed** at five. Which steps each owns, and whether it runs, is workflow data — except for the Profile agent (`kind: Profiling`), which the planner requires, pins first, and refuses to let anything run before (see [Assessment workflow](Assessment-Workflow.md#profile-first-governance)).
 
 | Id | Name | Mandate | Default steps | Review (`ReviewAsync`) adds |
 |----|------|---------|---------------|-----------------------------|
+| `profile` | Profile | Classify the applicant — legal form, size segment, locations — and decide which checks apply before any evidence is gathered | `entity`, `segment` | Observations for `ENTITY_*` / `OWNERSHIP_OVER_100` / `SMB_*` profile findings; advisories `NOT_APPLICABLE_<STEP>` (with the reason), `REGISTRY_SCOPE_LOCAL`, `MULTI_LOCATION`. Publishes `MerchantProfile` (segment, entity type, registry scope, not-applicable steps) on the context; never touches risk |
 | `precheck` | Pre-check | Is the application complete and internally consistent? | `website`, `prohibited`, `mcc` | Advisories `NO_WEBSITE`, `WEBSITE_UNREACHABLE`, `NO_BANK_STATEMENT`, `NO_FINANCIALS`, `NO_OWNERS`, `THIN_DESCRIPTION`, `THIN_PROFILE` each with its coverage/confidence effect; observations for MCC inconsistency and non-acceptable business class |
 | `kyb` | KYB & screening | Who is the merchant and are they screenable? | `verification`, `screening`, `match`, `presence` | Compares registry legal/trading names with the declared ones and **re-screens new aliases** (`ALIAS_RESCREENED`, merged into screening); reports registry status, sanctions/PEP hits, `MATCH_UNAVAILABLE` as coverage — never as clear |
 | `financial` | Financial & credit | Do the numbers hold together? | `bank`, `financials`, `plausibility`, `credit` | `STATEMENT_VS_DECLARED`, `NSF_EVENTS`, `MULTIPLE_PROCESSORS`, `VOLUME_EXCEEDS_REVENUE`, `LOSS_MAKING`, `MODEL_VS_PLAUSIBILITY` |
@@ -20,14 +21,16 @@ Reviews are plain C# over structured step results. They emit `AgentFinding`s (co
 message, action) into the `AgentReport` that appears in `AssessmentResult.agents[]`, the NDJSON
 stream (`{"type":"agent"}`), the `/assess` agents tab and the PDF.
 
-## The 14 steps
+## The 16 steps
 
 | Id | Name | `dependsOn` (default) | Required | Params | Domain service |
 |----|------|-----------------------|----------|--------|----------------|
+| `entity` | Entity type (profiling) | – | **yes** (profile) | | `MerchantProfiler.ClassifyEntity` (Platform) |
+| `segment` | Size segment & plan (profiling) | `entity` | **yes** (profile) | | `MerchantProfiler.Profile` (Platform) |
 | `website` | Website compliance scan | – | | | `WebsiteComplianceScanner` (Kyb) |
 | `prohibited` | Prohibited & restricted business | `website` | | | `ProhibitedBusinessDetector` (Kyb) |
 | `mcc` | MCC validation | – | | | `MccValidationService` (MccValidation) |
-| `verification` | Business identity verification | – | | | `BusinessVerificationService` (Kyb) |
+| `verification` | Business identity verification (registry scope from the profile: `Local` / `Global` / `TaxExempt` / `None`) | – | | | `BusinessVerificationService` (Kyb) |
 | `screening` | Sanctions / PEP / adverse-media (GDELT, Google News, Bing News, Wikipedia, CourtListener via `CompositeAdverseMediaProvider`; articles graded negative / mention / neutral against the risk lexicon) | – | | `includeTradingName`, `includeOwners` (bool, default true) | `SanctionsScreeningService` (Kyb) |
 | `match` | MATCH / terminated-merchant inquiry | – | | | `IMatchProvider` (Platform) |
 | `presence` | Local business presence | `verification` | | | `LocalPresenceService` (Kyb) |
@@ -52,6 +55,14 @@ Notes
   dependant *degraded* (warning) rather than blocked.
 * `score` is the only *required* step; validation fails if it is disabled. `case` is optional and
   runs after `score`.
+* Every evidence step carries an **implicit** dependency on the profile steps added by the planner;
+  the profile steps are marked `Profiling` in their descriptor, cannot be disabled, removed, gated
+  or moved to another agent.
+* Steps the profile marks **not applicable** (`financials` for Micro/Small without a P&L,
+  `website`/`mcc` for a card-present SMB without a site, `verification`/`credit` for public bodies)
+  are skipped by the runner before they start, with the segment/entity reason in the audit log.
+  They are neither passes nor coverage gaps; the scorer drops their component from the coverage
+  denominator. Full detail: [steps/profile.md](../steps/profile.md).
 * Steps whose input is missing skip themselves with an explanatory message (`website` without a
   URL, `bank` without an upload, `presence` without an address). Skips are coverage gaps, not
   failures.

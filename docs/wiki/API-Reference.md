@@ -9,8 +9,8 @@ defined in the controllers under `src/MerchantIntelligence.Api/Controllers/`.
 | Method | Path | Purpose |
 |--------|------|---------|
 | GET | `steps` | Step catalogue of the active workflow (id, display name, enabled) |
-| GET | `agents` | Agent catalogue of the active workflow (id, name, mandate, enabled, owned steps) |
-| POST | `run` | Run the active workflow; returns `AssessmentResult`. Body: `AssessmentIntake` JSON, or *multipart* with a `request` JSON part plus optional `bankStatement` (CSV/PDF) and `financialStatement` (text/PDF) files |
+| GET | `agents` | Agent catalogue of the active workflow (id, name, mandate, enabled, owned steps, `kind`: `Evidence` / `Profiling`) |
+| POST | `run` | Run the active workflow; returns `AssessmentResult`. Body: `AssessmentIntake` JSON (`entityType`, `locationCount` optional; result carries `profile`), or *multipart* with a `request` JSON part plus optional `bankStatement` (CSV/PDF) and `financialStatement` (text/PDF) files |
 | POST | `run/stream` | Same input; NDJSON response: `{"type":"steps",…}` once, `{"type":"step",…}` per status change, `{"type":"agent",…}` on agent start/finish, `{"type":"result",…}` last |
 | GET | `` | Recent assessments |
 | GET | `{id}` | Stored result |
@@ -20,8 +20,8 @@ defined in the controllers under `src/MerchantIntelligence.Api/Controllers/`.
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| GET | `catalog` | Step descriptors: id, name, description, `dependsOn`, `consumes`, `required`, param schema |
-| GET | `agents` | Agent descriptors: id, name, mandate, description, default steps |
+| GET | `catalog` | Step descriptors: id, name, description, `dependsOn`, `consumes`, `required`, `profiling`, param schema |
+| GET | `agents` | Agent descriptors: id, name, mandate, description, default steps, `kind` (`Evidence` / `Profiling`) |
 | GET | `default` | Embedded default workflow |
 | GET | `active` · `active/plan` · `active/steps` | Active definition, its plan (step stages, `agents[]` with `stage`, `waitsFor`, `runsWhen`, `stepStages`, warnings, Mermaid) and step list |
 | GET | `history` · `{version}` | Version list; one stored version |

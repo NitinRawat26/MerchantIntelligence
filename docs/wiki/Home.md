@@ -1,7 +1,7 @@
 # MerchantIntelligence Wiki
 
-Merchant acquiring pre-boarding suite: one intake → 14 deterministic checks grouped under four
-rule-based agents → Approve / Refer / Decline with full explainability, a PDF memo and an audit trail.
+Merchant acquiring pre-boarding suite: one intake → a Profile agent that classifies the merchant (legal form, size segment,
+which checks apply) → 14 deterministic evidence checks grouped under four rule-based agents → Approve / Refer / Decline with full explainability, a PDF memo and an audit trail.
 No LLM or generative model is involved anywhere; the only ML components are two small ML.NET
 classifiers (credit decision, MCC text).
 
@@ -9,7 +9,7 @@ classifiers (credit decision, MCC text).
 |------|--------------------|
 | [Architecture](Architecture.md) | Solution layout, projects, dependency direction, runtime topology, persistence |
 | [Assessment workflow](Assessment-Workflow.md) | How a run executes: `WorkflowDefinition` (agents, transitions, ordered/parallel steps, stop-gates) → planner → Agent Framework graph → streamed events |
-| [Agents and steps](Agents-and-Steps.md) | The four agents, the 14 steps, dependencies, what each review adds |
+| [Agents and steps](Agents-and-Steps.md) | The five agents, the 16 steps, dependencies, what each review adds |
 | [Scoring and decisions](Scoring-and-Decisions.md) | Unified 0–1000 score, weights, hard stops, policy rules, reserve & pricing bands |
 | [KYB and compliance](KYB-and-Compliance.md) | Registry verification, local presence, sanctions/PEP, website compliance, prohibited business |
 | [MCC validation](MCC-Validation.md) | Evidence providers, website crawl, EDGAR classifier, aggregation |

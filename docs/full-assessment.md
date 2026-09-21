@@ -146,9 +146,13 @@ Used by: credit model (§6.10 – MCC, volume, tickets, existing relationship ar
 features), plausibility (§6.9), pricing (§6.11), MCC validation (§6.5), default policy rules
 (§6.12 – volume > 5 M and highest ticket > 10 k force Refer).
 
-### 4.4 Size & footprint
-Employees, years in business, prior-year revenue, website product count, physical location.
-Used only by volume plausibility (§6.9). All optional; a blank field simply skips that metric.
+### 4.4 Legal form, size & footprint
+Entity type (`entityType`: sole proprietorship, single/multi-member LLC, partnership, S-Corp, C-Corp,
+public corporation, non-profit, government, trust, other — blank means "infer from the legal name and
+owners"), location count, employees, years in business, prior-year revenue, website product count,
+physical location. Entity type, locations, employees and volume feed the **Profile agent** (§6.0),
+which fixes the size segment, the registry scope for verification and the checks that do not apply;
+employees / revenue / catalogue also feed volume plausibility (§6.9). All optional.
 
 ### 4.5 Financial documents (optional)
 Bank statement (upload CSV/PDF or paste CSV) and P&L / balance sheet (upload CSV/TXT/PDF or paste
@@ -183,9 +187,28 @@ UI: the **progress card** on `/assess` shows each step with Pending / Running / 
 Failed / Skipped status, its summary and duration; the same list appears in the **Run log & raw**
 tab and in the PDF "Check execution log".
 
-## 6. The fourteen steps
+## 6. The sixteen steps
 
 Each subsection states: inputs → processing → outputs → how it feeds the decision → where to see it.
+
+### 6.0 Merchant profile (`entity`, `segment` — Profile agent, always first)
+*Inputs*: entity type, legal name, owners, annual volume, employees, location count, MCC, presence of
+website / bank statement / P&L. No lookups. *Processing*: declared legal form (or suffix / owner /
+MCC inference with `ENTITY_TYPE_INFERRED`) → consistency findings (`ENTITY_OWNER_MISMATCH`,
+`ENTITY_SIZE_MISMATCH`, `ENTITY_VOLUME_MISMATCH`, `ENTITY_MCC_MISMATCH`, `OWNERSHIP_OVER_100`) →
+registry scope (`None` sole prop / government, `TaxExempt` non-profit, `Local` private companies,
+`Global` public / large / unknown) → segment from volume (< $250k Micro, < $1M Small, < $10M Mid,
+else Enterprise), lifted by headcount (≤ 5 / ≤ 20 / ≤ 100) or ≥ 10 locations, then capped / floored
+by legal form (sole prop ≤ Small, S-Corp ≤ Mid, public ≥ Mid) → not-applicable plan (`financials`
+for Micro/Small without a P&L; `website` + `mcc` for a card-present SMB without a site;
+`verification` + `credit` for public bodies) → SMB findings (`SMB_NO_BANK_STATEMENT`, `SMB_NO_OWNER`,
+`LOW_VOLUME_PER_LOCATION`). *Outputs*: `profile` on the result (segment, entity type, inferred flag,
+registry scope, location count, reasons, notApplicable, findings). *Feeds*: the runner skips
+not-applicable steps with the reason in the audit log; verification queries only the registries in
+scope; the scorer uses the SMB weight table for Micro/Small and drops not-applicable components from
+the coverage denominator. The profile never changes a sub-score or a hard stop. *Where*: "Merchant
+profile" outcome and "Profile:" narrative in the explainability report, profile card on the Agents
+tab, PDF. Full detail: [steps/profile.md](steps/profile.md).
 
 ### 6.1 Business identity verification
 *Step id `verification` · service `BusinessVerificationService` (`MerchantIntelligence.Kyb/Registry`)*

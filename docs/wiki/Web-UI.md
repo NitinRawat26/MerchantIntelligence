@@ -25,7 +25,7 @@ browser). Every form control has an ⓘ hint stating which calculation it feeds.
 | Route | Page | API |
 |-------|------|-----|
 | `/`, `/assess`, `/assess/:id` | **Full assessment** (default): intake form (business, owners, website, MCC, volumes, size & footprint, statement uploads, case options); live run grouped into agent lanes with per-check status and each agent's findings as they stream; decision card; tabbed explainability (identity & screening incl. adverse-media evidence list with quoted context and matched risk terms, website/MCC/business type, financials & plausibility, terms, agents, run log); PDF; history | `/api/assessment/*` |
-| `/workflows` | **Workflow designer** (see below): agent-flow canvas with Start/End, drag the four fixed agents in, draw on-success / on-fail / always transitions; step lanes per agent (Ordered with slots, or All parallel) with drag-and-drop between lanes, dependency badges, stop-gate toggle; inspector; full-screen mode; JSON tab; dry-run plan (stages, Mermaid); version history, load, rollback, publish | `/api/workflows/*` |
+| `/workflows` | **Workflow designer** (see below): agent-flow canvas with Start/End, drag the five fixed agents in (Profile is pinned first and locked), draw on-success / on-fail / always transitions; step lanes per agent (Ordered with slots, or All parallel) with drag-and-drop between lanes, dependency badges, stop-gate toggle; inspector; full-screen mode; JSON tab; dry-run plan (stages, Mermaid); version history, load, rollback, publish | `/api/workflows/*` |
 | `/precheck` | Website compliance scan and prohibited & restricted business classification (standalone) | `/api/kyb/website-compliance`, `/api/kyb/prohibited-business` |
 | `/mcc` | MCC validator | `/api/mcc-validation/*` |
 | `/kyb` | Business identity, owners, registry sources, sanctions/PEP/adverse media (per-source status pills, article tone, matched risk terms, category and quoted context), website compliance, prohibited verdict | `/api/kyb/*` |
@@ -57,7 +57,11 @@ Code: `features/platform/workflows.component.ts` (page: toolbar, tabs, publish/h
 
 * **Default first, blank on demand** – *Default flow* loads the embedded definition, *Reload active*
   the published one, *New workflow* an empty canvas with every step in the *checks not in this
-  workflow* palette. The agent palette is fixed at the four agents; there is no agent creation.
+  workflow* palette. The agent palette is fixed at the five agents; there is no agent creation. The **Profile agent**
+  is governed: no incoming port or transition, no drag, cannot be disabled or removed, its `entity` /
+  `segment` steps cannot leave its lane, be gated or be turned off, and evidence steps cannot be
+  dropped into its lane — each refusal shows the reason as a notice. The server-side planner enforces
+  the same rules on publish.
 * **Agent flow canvas** – drop agents anywhere; each has a distinct colour (Pre-check purple, KYB
   blue, Financial green, Decision orange). Drag from an agent's right port to another agent to add a
   transition; click its label to cycle **always → on success → on fail**; select it to remove.
