@@ -72,6 +72,7 @@ public sealed class AssessmentContext
 
     // ---- result slots, one per step ----
     /// <summary>Set by the Profile agent before any evidence step runs; null only while profiling itself is running.</summary>
+    public EntityAssessment? Entity { get; set; }
     public MerchantProfile? Profile { get; set; }
     public BusinessVerificationResult? Verification { get; set; }
     public LocalPresenceResult? LocalPresence { get; set; }

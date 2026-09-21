@@ -3,6 +3,7 @@ using MerchantIntelligence.Platform.Agents.Decision;
 using MerchantIntelligence.Platform.Agents.Financial;
 using MerchantIntelligence.Platform.Agents.Kyb;
 using MerchantIntelligence.Platform.Agents.PreCheck;
+using MerchantIntelligence.Platform.Agents.Profile;
 using MerchantIntelligence.Platform.Assessment;
 using MerchantIntelligence.Platform.Cases;
 using MerchantIntelligence.Platform.Integrations;
@@ -44,6 +45,7 @@ public static class PlatformServiceCollectionExtensions
             sp.GetRequiredService<WebhookDispatcher>(), options, bootstrapPredictor(sp), bootstrapModelPath));
         services.AddSingleton<IDecisionPredictor>(sp => sp.GetRequiredService<ModelRegistry>());
         services.AddSingleton<ModelOpsService>();
+        services.AddProfileAgent();
         services.AddPreCheckAgent();
         services.AddKybAgent();
         services.AddFinancialAgent();
