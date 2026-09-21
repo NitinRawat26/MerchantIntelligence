@@ -58,15 +58,16 @@ const MEMO_SHAP: [string, string, string, string, string][] = [
 ];
 
 interface Pt { x: number; y: number; }
-interface AgentDef { id: string; name: string; mandate: string; steps: string[]; x: number; }
+interface AgentDef { id: string; name: string; mandate: string; steps: string[]; x: number; y: number; w: number; h: number; layout: 'row' | 'column'; }
 interface StepDef { id: string; label: string; agent: string; }
 interface SignalDef { id: string; label: string; step: string; }
 
 const AGENTS: AgentDef[] = [
-  { id: 'precheck', name: 'Pre-check agent', mandate: 'Website · prohibited · MCC', steps: ['website', 'prohibited', 'mcc'], x: 170 },
-  { id: 'kyb', name: 'KYB agent', mandate: 'Identity · screening · MATCH · presence', steps: ['verification', 'screening', 'match', 'presence'], x: 460 },
-  { id: 'financial', name: 'Financial agent', mandate: 'Bank · P&L · plausibility · credit', steps: ['bank', 'financials', 'plausibility', 'credit'], x: 750 },
-  { id: 'decision', name: 'Decision agent', mandate: 'Terms · score · case', steps: ['terms', 'score', 'case'], x: 1040 }
+  // Pre-check, KYB and Financial start together (their first steps have no dependencies); Decision waits for all three.
+  { id: 'precheck', name: 'Pre-check agent', mandate: 'Website · prohibited · MCC', steps: ['website', 'prohibited', 'mcc'], x: 15, y: 150, w: 870, h: 118, layout: 'row' },
+  { id: 'kyb', name: 'KYB agent', mandate: 'Identity · presence · screening · MATCH', steps: ['verification', 'presence', 'screening', 'match'], x: 15, y: 291, w: 870, h: 118, layout: 'row' },
+  { id: 'financial', name: 'Financial agent', mandate: 'Bank · P&L · plausibility · credit', steps: ['bank', 'financials', 'plausibility', 'credit'], x: 15, y: 432, w: 870, h: 118, layout: 'row' },
+  { id: 'decision', name: 'Decision agent', mandate: 'Terms · score · case', steps: ['terms', 'score', 'case'], x: 955, y: 150, w: 230, h: 400, layout: 'column' }
 ];
 
 const STEPS: StepDef[] = [
@@ -106,12 +107,10 @@ const SIGNALS: SignalDef[] = [
 
 /** Dependency edges rendered as the pipeline (same shape the workflow runner enforces). */
 const EDGES: [string, string][] = [
-  ['website', 'prohibited'], ['website', 'mcc'],
-  ['mcc', 'verification'], ['prohibited', 'verification'],
-  ['verification', 'screening'], ['verification', 'match'], ['verification', 'presence'],
-  ['screening', 'bank'], ['match', 'financials'], ['presence', 'bank'],
-  ['bank', 'plausibility'], ['financials', 'plausibility'], ['plausibility', 'credit'],
-  ['credit', 'terms'], ['terms', 'score'], ['score', 'case']
+  ['website', 'prohibited'],
+  ['verification', 'presence'],
+  ['bank', 'plausibility'], ['financials', 'plausibility'], ['plausibility', 'credit'], ['match', 'credit'],
+  ['terms', 'score'], ['score', 'case']
 ];
 
 /** Illustrative outcome for a long-standing, low-risk card-present coffeehouse. */
@@ -188,16 +187,23 @@ const STEP_ORDER = ['website', 'prohibited', 'mcc', 'verification', 'screening',
 
         <!-- Agent frames -->
         @for (a of agents; track a.id) {
-          <g class="agent" [class.show]="showAgents()" [attr.transform]="'translate(' + a.x + ' 0)'">
-            <rect x="-125" y="150" width="250" height="400" rx="20" fill="url(#agentFill)" stroke="#334155" stroke-width="1.5"/>
-            <text x="0" y="185" text-anchor="middle" class="agent-name">{{ a.name }}</text>
-            <text x="0" y="205" text-anchor="middle" class="agent-mandate">{{ a.mandate }}</text>
+          <g class="agent" [class.show]="showAgents()" [attr.transform]="'translate(' + a.x + ' ' + a.y + ')'">
+            <rect x="0" y="0" [attr.width]="a.w" [attr.height]="a.h" rx="20" fill="url(#agentFill)" stroke="#334155" stroke-width="1.5"/>
+            @if (a.layout === 'row') {
+              <text x="18" y="26" class="agent-name">{{ a.name }}</text>
+              <text x="18" y="44" class="agent-mandate">{{ a.mandate }}</text>
+            } @else {
+              <text [attr.x]="a.w / 2" y="36" text-anchor="middle" class="agent-name">{{ a.name }}</text>
+              <text [attr.x]="a.w / 2" y="56" text-anchor="middle" class="agent-mandate">{{ a.mandate }}</text>
+            }
           </g>
         }
-        <!-- Stage connectors -->
+        <text class="lane-note" [class.show]="showAgents()" x="450" y="578" text-anchor="middle">Three agents run in parallel</text>
+        <text class="lane-note" [class.show]="showAgents()" x="1070" y="578" text-anchor="middle">…then Decision</text>
+        <!-- Stage connectors: each parallel lane feeds the Decision agent -->
         @for (i of [0, 1, 2]; track i) {
           <path class="stage-link" [class.show]="scene() === 'pipeline' || scene() === 'score'" [class.flow]="scene() === 'pipeline'"
-                [attr.d]="'M' + (agents[i].x + 125) + ' 350 L ' + (agents[i + 1].x - 125) + ' 350'"/>
+                [attr.d]="laneLink(agents[i], agents[3])"/>
         }
 
         <!-- Pipeline edges -->
@@ -366,6 +372,8 @@ const STEP_ORDER = ['website', 'prohibited', 'mcc', 'verification', 'screening',
     /* agents */
     .agent-name { fill: #fff; font-size: 15px; font-weight: 600; }
     .agent-mandate { fill: #94a3b8; font-size: 11px; }
+    .lane-note { fill: #64748b; font-size: 12px; font-style: italic; opacity: 0; transition: opacity .8s ease; }
+    .lane-note.show { opacity: 1; }
 
     /* steps */
     .step rect { fill: #111c33; stroke: #334155; stroke-width: 1.5; transition: fill .5s, stroke .5s; }
@@ -469,7 +477,7 @@ export class IntroComponent {
     cup: 'A merchant applies. One application, one question: can we board them safely?',
     signals: 'Every field on the application is a signal — identity, web, volume, ownership, documents.',
     steps: 'Signals merge into 14 assessment checks…',
-    agents: '…which group into four specialised agents.',
+    agents: '…which group into four agents: Pre-check, KYB and Financial run in parallel, then Decision.',
     pipeline: 'The workflow wires the checks into a pipeline and evidence flows through it.',
     memo: 'Every finding lands in an audit-ready underwriting memo — the analyst reads evidence, not opinions.',
     score: 'One unified 0–1000 risk score, a policy outcome, and an audit-ready case.'
@@ -492,7 +500,9 @@ export class IntroComponent {
       const offset = row === 2 ? 110 : 0;
       this.stepGrid.set(id, { x: 160 + col * 220 + offset, y: 250 + row * 90 });
     });
-    for (const a of AGENTS) a.steps.forEach((id, i) => this.stepAgent.set(id, { x: a.x, y: 250 + i * 66 }));
+    for (const a of AGENTS) a.steps.forEach((id, i) => this.stepAgent.set(id, a.layout === 'row'
+      ? { x: a.x + 115 + i * 215, y: a.y + 80 }
+      : { x: a.x + a.w / 2, y: a.y + 100 + i * 100 }));
     this.signals.forEach((s, i) => {
       const angle = (i / this.signals.length) * Math.PI * 2 - Math.PI / 2;
       const r = i % 2 === 0 ? 170 : 275;
@@ -571,9 +581,17 @@ export class IntroComponent {
     return this.stepGrid.get(sg.step)!;
   }
 
+  laneLink(from: AgentDef, to: AgentDef): string {
+    const x1 = from.x + from.w, y1 = from.y + from.h / 2;
+    const x2 = to.x, y2 = to.y + to.h / 2;
+    const mx = (x1 + x2) / 2;
+    return `M${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}`;
+  }
+
   edgePath(from: string, to: string): string {
     const a = this.stepAgent.get(from)!, b = this.stepAgent.get(to)!;
-    if (a.x === b.x) return `M${a.x + 100} ${a.y} C ${a.x + 130} ${a.y}, ${a.x + 130} ${b.y}, ${b.x + 100} ${b.y}`;
+    if (a.y === b.y) return `M${a.x + 100} ${a.y} L ${b.x - 100} ${b.y}`;
+    if (a.x === b.x) return `M${a.x} ${a.y + 20} L ${b.x} ${b.y - 20}`;
     const mx = (a.x + 100 + b.x - 100) / 2;
     return `M${a.x + 100} ${a.y} C ${mx} ${a.y}, ${mx} ${b.y}, ${b.x - 100} ${b.y}`;
   }
