@@ -19,9 +19,14 @@ confidence, per-source outcome and flags.
 | US Census geocoder | address normalisation / geocoding | no |
 | OpenCorporates | company type, status, incorporation date | `Kyb:OpenCorporatesApiToken` |
 | Companies House (UK) | company status, SIC, registered office | `Kyb:CompaniesHouseApiKey` |
+| Kentucky SOS (`KentuckySosRegistryProvider`, `Local`, KY applicants only) | legal name, status, **standing**, organisation date, principal office, company type, industry, employee band, county, last annual report, managed-by, registered agent, assumed names | no (`Kyb:StateRegistriesEnabled`) |
 
 Flags: `NEW_ENTITY`, `NAME_MISMATCH`, `REGISTERED_ADDRESS_MISMATCH`, `INACTIVE_ENTITY`,
-`VIRTUAL_OFFICE_ADDRESS`, `ENTITY_NOT_FOUND`. A source that errors is *Unavailable* and excluded; if
+`VIRTUAL_OFFICE_ADDRESS`, `ENTITY_NOT_FOUND`, plus state-register facts: `REGISTRY_BAD_STANDING`,
+`REGISTRY_HEADCOUNT_MISMATCH`, `REGISTRY_INDUSTRY_MISMATCH`, `REGISTRY_ANNUAL_REPORT_STALE`,
+`REGISTRY_ASSUMED_NAME_MATCH` (see [steps/verification.md](../steps/verification.md)). A local
+provider whose jurisdiction does not cover the applicant is omitted, not counted as a miss. The
+registered agent is displayed but never promoted to a beneficial owner. A source that errors is *Unavailable* and excluded; if
 every source is unavailable the whole check is *Unavailable*, never "verified".
 
 **Registry scope.** Each provider declares a `RegistryReach` (`Global`: GLEIF, SEC EDGAR; `Local`:
@@ -53,6 +58,32 @@ Effects: a confirmed presence raises identity to `PartialMatch` (confidence capp
 proves trading at the location, not legal registration) and adds `LOCAL_PRESENCE_CONFIRMED`; near
 miss → `LOCAL_PRESENCE_PARTIAL`; nothing nearby → `LOCAL_PRESENCE_NOT_FOUND` (Low severity: with
 OSM alone, absence is weak evidence). `Kyb:LocalPresenceEnabled=false` disables it.
+
+The result also carries **address type** (`Residential` / `Commercial` / `MixedUse` / `Cmra` /
+`Unknown`, from PO-box / unit text, Nominatim category, OSM `building=` / `landuse=` tags, nearby
+POIs and CMRA operators, checked against the MCC), venue **reputation** from Foursquare / Google
+(rating, count, popularity, listed-since, open-now → `LOCAL_PRESENCE_REPUTATION`,
+`LOCAL_PRESENCE_LOW_RATING`) and a **digital footprint** from the contact e-mail domain via RDAP
+(`EMAIL_FREEMAIL`, `EMAIL_DOMAIN_NEW`, `EMAIL_DOMAIN_TENURE`, `EMAIL_DOMAIN_UNRESOLVED`,
+`EMAIL_DOMAIN_MISMATCH`). See [steps/presence.md](../steps/presence.md).
+
+## Owner identity, bank evidence and licences (Platform)
+
+Three SMB-oriented checks live in the Platform project rather than the Kyb library because they
+read the intake and the profile rather than an external source:
+
+- **`owners`** — `OwnerIdentityAssessor` / `PrincipalRegistry`: completeness (DOB, nationality,
+  address, role, ownership %), owner age vs. years in business, owner vs. business address,
+  cross-application duplicate / velocity ([steps/owners.md](../steps/owners.md)).
+- **`bank`** — for Micro / Small the statement is *required* evidence: holder name vs. legal /
+  trading / owner name, inflows and card deposits vs. declared volume, processor payouts, dry
+  months ([steps/bank.md](../steps/bank.md)).
+- **`licensing`** — `LicensingAssessor` maps regulated MCCs (food service, alcohol, tobacco,
+  pharmacy, healthcare, legal, personal care, child care, MSB, gaming, firearms, transport,
+  contractors, lodging) to required licence types and checks the analyst's attestations for
+  missing / expired / future-issued / incomplete / unevidenced / expiring. Attested means "seen and
+  transcribed", never issuer-verified; a Secretary of State registration never satisfies a licence
+  requirement ([steps/licensing.md](../steps/licensing.md)).
 
 ## Sanctions / PEP / adverse-media screening — `Sanctions/`
 

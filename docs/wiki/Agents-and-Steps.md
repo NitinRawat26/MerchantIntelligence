@@ -13,7 +13,7 @@ The agent set is **fixed** at five. Which steps each owns, and whether it runs, 
 |----|------|---------|---------------|-----------------------------|
 | `profile` | Profile | Classify the applicant — legal form, size segment, locations — and decide which checks apply before any evidence is gathered | `entity`, `segment` | Observations for `ENTITY_*` / `OWNERSHIP_OVER_100` / `SMB_*` profile findings; advisories `NOT_APPLICABLE_<STEP>` (with the reason), `REGISTRY_SCOPE_LOCAL`, `MULTI_LOCATION`. Publishes `MerchantProfile` (segment, entity type, registry scope, not-applicable steps) on the context; never touches risk |
 | `precheck` | Pre-check | Is the application complete and internally consistent? | `website`, `prohibited`, `mcc` | Advisories `NO_WEBSITE`, `WEBSITE_UNREACHABLE`, `NO_BANK_STATEMENT`, `NO_FINANCIALS`, `NO_OWNERS`, `THIN_DESCRIPTION`, `THIN_PROFILE` each with its coverage/confidence effect; observations for MCC inconsistency and non-acceptable business class |
-| `kyb` | KYB & screening | Who is the merchant and are they screenable? | `verification`, `screening`, `match`, `presence`, `owners` | Compares registry legal/trading names with the declared ones and **re-screens new aliases** (`ALIAS_RESCREENED`, merged into screening); reports registry status, sanctions/PEP hits, `MATCH_UNAVAILABLE` as coverage — never as clear |
+| `kyb` | KYB & screening | Who is the merchant and are they screenable? | `verification`, `screening`, `match`, `presence`, `owners`, `licensing` | Compares registry legal/trading names with the declared ones and **re-screens new aliases** (`ALIAS_RESCREENED`, merged into screening); reports registry status, sanctions/PEP hits, `MATCH_UNAVAILABLE` as coverage — never as clear |
 | `financial` | Financial & credit | Do the numbers hold together? | `bank`, `financials`, `plausibility`, `credit` | `STATEMENT_VS_DECLARED`, `NSF_EVENTS`, `MULTIPLE_PROCESSORS`, `VOLUME_EXCEEDS_REVENUE`, `LOSS_MAKING`, `MODEL_VS_PLAUSIBILITY` |
 | `decision` | Decision & case | Turn evidence into terms, a score and a case | `terms`, `score`, `case` | Hard stops, forced Refer, `COVERAGE_GAPS`, `BRIEF` of all upstream findings. Cannot override score, hard stops, rules or case creation |
 
@@ -34,6 +34,7 @@ stream (`{"type":"agent"}`), the `/assess` agents tab and the PDF.
 | `screening` | Sanctions / PEP / adverse-media (GDELT, Google News, Bing News, Wikipedia, CourtListener via `CompositeAdverseMediaProvider`; articles graded negative / mention / neutral against the risk lexicon) | – | | `includeTradingName`, `includeOwners` (bool, default true) | `SanctionsScreeningService` (Kyb) |
 | `match` | MATCH / terminated-merchant inquiry | – | | | `IMatchProvider` (Platform) |
 | `presence` | Local business presence | `verification` | | | `LocalPresenceService` (Kyb) |
+| `licensing` | Licences & permits (regulated MCCs, analyst-attested) | | | | `LicensingAssessor` (Platform) |
 | `owners` | Owner identity depth | | | | `OwnerIdentityAssessor`, `PrincipalRegistry` (Platform) |
 | `bank` | Bank statement cash-flow | – | | | `BankStatementParser` + `CashFlowAnalyzer` (Underwriting) |
 | `financials` | P&L / balance sheet | – | | | `ProfitAndLossAnalyzer` (Underwriting) |

@@ -4,7 +4,7 @@ One page per assessment step, written for three readers at once: the **analyst**
 
 Everything documented here describes the behaviour of the current implementation; proposed extensions are not included.
 
-## The 16 steps
+## The 18 steps
 
 | # | Step | Agent | Page | Answers |
 |---|---|---|---|---|
@@ -17,6 +17,7 @@ Everything documented here describes the behaviour of the current implementation
 | 6 | `match` | KYB | [match.md](match.md) | Has this merchant or principal been terminated by another acquirer (MATCH/TMF)? |
 | 7 | `presence` | KYB | [presence.md](presence.md) | Does a real business operate at the declared address? |
 | 7b | `owners` | KYB | [owners.md](owners.md) | Is the declared owner identity complete and consistent, and has this person applied before? |
+| 7c | `licensing` | KYB | [licensing.md](licensing.md) | Does a regulated MCC's merchant hold the permits its trade requires, as attested by the analyst from its documents? |
 | 8 | `bank` | Financial | [bank.md](bank.md) | What do the bank statements say about cash flow, NSFs, debt and real card volume? |
 | 9 | `financials` | Financial | [financials.md](financials.md) | What do the P&L and balance sheet say about profitability, coverage, liquidity and leverage? |
 | 10 | `plausibility` | Financial | [plausibility.md](plausibility.md) | Is the declared card volume believable given headcount, tenure, revenue, statements and catalogue? |
@@ -40,6 +41,8 @@ flowchart LR
         V[verification] --> PR[presence]
         V --> SC[screening]
         V --> MA[match]
+        OW[owners]
+        LI[licensing]
     end
     subgraph S3["Stage 2 · Financial agent"]
         B[bank] --> PL[plausibility]

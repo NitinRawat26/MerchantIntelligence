@@ -157,6 +157,27 @@ Stored in `ctx.LocalPresence` **and** in `ctx.Verification.LocalPresence`. Timel
 
 ---
 
+## 4a. Digital footprint and venue reputation
+
+`DigitalFootprint` (on `LocalPresenceResult.Footprint`) gives a merchant that has **no website** — and therefore never reaches the website-compliance RDAP check — a tenure signal from the **contact e-mail domain**:
+
+| Code | Severity | Trigger |
+|---|---|---|
+| `EMAIL_FREEMAIL` | Low | Domain is a free-mail provider (gmail, yahoo, outlook, icloud, proton …); no tenure can be derived |
+| `EMAIL_DOMAIN_NEW` | Medium | RDAP registration date < 6 months ago — a very young domain is a common bust-out / impersonation marker |
+| `EMAIL_DOMAIN_TENURE` | Low | Registration date ≥ 6 months ago; message carries age and registrar (positive evidence) |
+| `EMAIL_DOMAIN_UNRESOLVED` | Low | RDAP answered without a registration date, or was unavailable — tenure is *unknown*, not clear |
+| `EMAIL_DOMAIN_MISMATCH` | Low | E-mail domain differs from the website domain |
+
+Lookup: `RdapDomainLookup` (`https://rdap.org/domain/<domain>`, keyless, shared with the website step). Missing e-mail → footprint is `null` and nothing is inferred.
+
+Venue **reputation** comes with the place record when the provider exposes it: Foursquare (rating, rating count, popularity, `date_created` as *listed since*, open-now) and Google Places (rating, user rating count, open-now). It is surfaced, not scored:
+
+| Code | Severity | Trigger |
+|---|---|---|
+| `LOCAL_PRESENCE_REPUTATION` | Low | Any reputation attribute on the best match — "crowd activity supports an operating venue; not a quality or legitimacy judgement" |
+| `LOCAL_PRESENCE_LOW_RATING` | Low | Rating < 50 % of scale across ≥ 10 ratings — poor service history correlates with disputes |
+
 ## 4b. Address type classification
 
 The same geocode and the same Overpass results are reused to answer a second question: **what kind of place is the declared address?** `AddressClassifier.Classify(addressLine, geocodeHit, nearbyPois, mcc)` produces `LocalPresenceResult.AddressType`.
