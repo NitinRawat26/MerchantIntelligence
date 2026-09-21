@@ -76,6 +76,9 @@ public sealed class AssessmentContext
     public MerchantProfile? Profile { get; set; }
     public BusinessVerificationResult? Verification { get; set; }
     public LocalPresenceResult? LocalPresence { get; set; }
+    public Owners.OwnerAssessment? Owners { get; set; }
+    public Financial.BankEvidenceAssessment? BankEvidence { get; set; }
+    public Licensing.LicensingAssessment? Licensing { get; set; }
     public ScreeningReport? Screening { get; set; }
     public WebsiteComplianceResult? Website { get; set; }
     public ProhibitedBusinessResult? Prohibited { get; set; }

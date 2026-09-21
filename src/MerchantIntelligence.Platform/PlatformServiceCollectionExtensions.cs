@@ -40,6 +40,7 @@ public static class PlatformServiceCollectionExtensions
         services.AddSingleton(sp => new WebhookDispatcher(sp.GetRequiredService<PlatformDatabase>(),
             sp.GetRequiredService<IHttpClientFactory>(), sp.GetRequiredService<ILogger<WebhookDispatcher>>()));
         services.AddSingleton<CaseService>();
+        services.AddSingleton<Owners.PrincipalRegistry>();
 
         services.AddSingleton(sp => new ModelRegistry(sp.GetRequiredService<PlatformDatabase>(), sp.GetRequiredService<AuditTrail>(),
             sp.GetRequiredService<WebhookDispatcher>(), options, bootstrapPredictor(sp), bootstrapModelPath));

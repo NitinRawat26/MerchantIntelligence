@@ -20,8 +20,10 @@ public sealed class BusinessIdentityRequest
     public string? PostalCode { get; set; }
     public string? Country { get; set; }
     public string? WebsiteUrl { get; set; }
+    [EmailAddress] public string? ContactEmail { get; set; }
 
-    public BusinessIdentity ToIdentity() => new(LegalName.Trim(), TradingName, RegistrationNumber, TaxId, AddressLine, City, Region, PostalCode, Country, WebsiteUrl);
+    public BusinessIdentity ToIdentity() => new(LegalName.Trim(), TradingName, RegistrationNumber, TaxId, AddressLine, City, Region, PostalCode, Country, WebsiteUrl,
+        string.IsNullOrWhiteSpace(ContactEmail) ? null : ContactEmail.Trim());
 }
 
 public sealed class BeneficialOwnerRequest
@@ -31,8 +33,10 @@ public sealed class BeneficialOwnerRequest
     public string? Nationality { get; set; }
     public string? Role { get; set; }
     [Range(0, 100)] public double? OwnershipPercent { get; set; }
+    /// <summary>Owner's residential address, one line.</summary>
+    public string? Address { get; set; }
 
-    public BeneficialOwner ToOwner() => new(FullName.Trim(), DateOfBirth, Nationality, Role, OwnershipPercent);
+    public BeneficialOwner ToOwner() => new(FullName.Trim(), DateOfBirth, Nationality, Role, OwnershipPercent, string.IsNullOrWhiteSpace(Address) ? null : Address.Trim());
 }
 
 public sealed class ScreeningRequest

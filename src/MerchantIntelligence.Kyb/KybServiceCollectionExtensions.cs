@@ -29,6 +29,7 @@ public static class KybServiceCollectionExtensions
         services.AddSingleton<IBusinessRegistryProvider, EdgarRegistryProvider>();
         services.AddSingleton<IBusinessRegistryProvider, OpenCorporatesRegistryProvider>();
         services.AddSingleton<IBusinessRegistryProvider, CompaniesHouseRegistryProvider>();
+        services.AddSingleton<IBusinessRegistryProvider, KentuckySosRegistryProvider>();
         services.AddSingleton<IAddressGeocoder, CensusAddressGeocoder>();
         services.AddSingleton<NominatimGeocoder>();
         services.AddSingleton<ILocalPresenceProvider, OsmLocalPresenceProvider>();
@@ -60,6 +61,7 @@ public static class KybServiceCollectionExtensions
         services.AddSingleton<SanctionsScreeningService>();
 
         services.AddSingleton(ProhibitedBusinessDetector.Default);
+        services.AddSingleton<RdapDomainLookup>();
         services.AddSingleton<WebsiteComplianceScanner>();
         services.AddSingleton<KybReportService>();
         return services;

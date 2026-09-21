@@ -14,6 +14,7 @@ using MerchantIntelligence.Platform.ModelOps;
 using MerchantIntelligence.Platform.Rules;
 using MerchantIntelligence.Platform.Scoring;
 using MerchantIntelligence.Platform.Storage;
+using MerchantIntelligence.Platform.Owners;
 using MerchantIntelligence.Platform.Profiling;
 using MerchantIntelligence.Underwriting.Explainability;
 using MerchantIntelligence.Underwriting.Financials;
@@ -49,31 +50,46 @@ internal static class AssessmentComposer
     /// <summary>Screening against zero loaded lists is not a clear result; treat it as not run.</summary>
     internal static bool ListsLoaded(ScreeningReport s) => s.Lists.Any(l => l.Error is null && l.EntityCount > 0);
 
+    private static string ReputationText(PlaceMatch pm)
+    {
+        if (pm.Record.Reputation is not { } rep) return string.Empty;
+        var parts = new List<string>();
+        if (rep.Rating is { } r) parts.Add($"rated {r:0.#}/{rep.RatingScale:0}{(rep.RatingCount is { } c ? $" ({c} ratings)" : "")}");
+        if (rep.Popularity is { } p) parts.Add($"popularity {p:P0}");
+        if (rep.ListedSince is { } s) parts.Add($"listed since {s:yyyy-MM-dd}");
+        return parts.Count == 0 ? string.Empty : $" {pm.Record.Source}: {string.Join(", ", parts)}.";
+    }
+
     /// <summary>Adverse media counts as checked only if every subject's lookup succeeded (or none was attempted).</summary>
     internal static bool MediaChecked(ScreeningReport s) => s.Subjects.All(x => x.AdverseMedia is null || x.AdverseMedia.Succeeded);
 
-    internal static RiskTier? KybRisk(BusinessVerificationResult? v, ScreeningReport? s, WebsiteComplianceResult? w)
+    internal static RiskTier? KybRisk(BusinessVerificationResult? v, ScreeningReport? s, WebsiteComplianceResult? w, OwnerAssessment? owners = null)
     {
         if (v is not null && !RegistriesReachable(v)) v = null;
         if (s is not null && !ListsLoaded(s)) s = null;
-        if (v is null && s is null && w is null) return null;
+        if (owners is { Covered: false }) owners = null;
+        if (v is null && s is null && w is null && owners is null) return null;
         var tiers = new List<RiskTier>();
         if (v is not null) tiers.AddRange(v.Flags.Select(f => f.Severity));
+        if (owners is not null) tiers.AddRange(owners.Flags.Select(f => f.Severity));
         if (s is not null) tiers.Add(s.OverallRisk);
         if (w is not null) tiers.AddRange(w.Checks.Where(c => c.Status == CheckStatus.Fail).Select(c => c.Severity));
         return tiers.Count == 0 ? RiskTier.Low : tiers.Max();
     }
 
     internal static List<RiskSignal> CollectSignals(BusinessVerificationResult? v, ScreeningReport? s, WebsiteComplianceResult? w, ProhibitedBusinessResult? p,
-        MccValidationResult? m, CashFlowAnalysis? b, FinancialStatementAnalysis? f, VolumePlausibilityResult? pl)
+        MccValidationResult? m, CashFlowAnalysis? b, FinancialStatementAnalysis? f, VolumePlausibilityResult? pl, OwnerAssessment? owners = null, Financial.BankEvidenceAssessment? bankEvidence = null, Licensing.LicensingAssessment? licensing = null)
     {
         var list = new List<RiskSignal>();
         if (v is not null) list.AddRange(v.Flags.Select(x => new RiskSignal("verification", x.Code, x.Message, x.Severity)));
+        if (owners is not null) list.AddRange(owners.Flags.Select(x => new RiskSignal("owners", x.Code, x.Message, x.Severity)));
+        if (licensing is not null) list.AddRange(licensing.Flags.Select(x => new RiskSignal("licensing", x.Code, x.Message, x.Severity)));
         if (s is not null) list.AddRange(s.Flags.Select(x => new RiskSignal("screening", x.Code, x.Message, x.Severity)));
         if (w is not null) list.AddRange(w.Checks.Where(c => c.Status == CheckStatus.Fail).Select(c => new RiskSignal("website", $"WEB_{c.Code}", c.Detail, c.Severity)));
         if (p is not null) list.AddRange(p.Flags.Select(x => new RiskSignal("prohibited", x.Code, x.Message, x.Severity)));
         if (m is not null) list.AddRange(m.RiskFlags.Select(x => new RiskSignal("mcc", x.Code, x.Message, x.Severity)));
         if (b is not null) list.AddRange(b.Flags.Select(x => new RiskSignal("bank", x.Code, x.Message, x.Severity)));
+        if (bankEvidence is not null) list.AddRange(bankEvidence.Flags.Select(x => new RiskSignal("bank", x.Code, x.Message, x.Severity)));
         if (f is not null) list.AddRange(f.Flags.Select(x => new RiskSignal("financials", x.Code, x.Message, x.Severity)));
         if (pl is not null) list.AddRange(pl.Flags.Select(x => new RiskSignal("plausibility", x.Code, x.Message, x.Severity)));
         return list.GroupBy(x => (x.Source, x.Code)).Select(g => g.First()).ToList();
@@ -110,7 +126,7 @@ internal static class AssessmentComposer
     internal static AssessmentExplainability BuildExplainability(AssessmentIntake intake, AssessmentDecision decision, BusinessVerificationResult? v, ScreeningReport? s,
         WebsiteComplianceResult? w, ProhibitedBusinessResult? p, MccValidationResult? m, MatchResult? match, CashFlowAnalysis? b, FinancialStatementAnalysis? f,
         VolumePlausibilityResult? pl, DecisionResult? credit, DecisionExplanation? explanation, TermsRecommendation? terms, UnifiedRiskScore? score,
-        RulesEvaluation? rules, IReadOnlyList<RiskSignal> signals, LocalPresenceResult? lp = null, MerchantProfile? profile = null)
+        RulesEvaluation? rules, IReadOnlyList<RiskSignal> signals, LocalPresenceResult? lp = null, MerchantProfile? profile = null, OwnerAssessment? owners = null, Financial.BankEvidenceAssessment? bankEvidence = null, Licensing.LicensingAssessment? licensing = null)
     {
         var outcomes = new List<CheckOutcome>();
         var narrative = new List<string>();
@@ -183,11 +199,57 @@ internal static class AssessmentComposer
         {
             var searched = string.Join(", ", lp.Sources.Where(x => x.Succeeded).Select(x => x.Source));
             var detail = lp.BestMatch is { } pm
-                ? $"'{pm.Record.Name}' via {pm.Record.Source}{(pm.DistanceMeters is { } dm ? $", {dm:F0} m from the declared address" : "")}{(pm.Record.Category is null ? "" : $" ({pm.Record.Category})")}; name {pm.NameScore:P0}, overall {pm.OverallScore:P0}. Searched {searched}."
+                ? $"'{pm.Record.Name}' via {pm.Record.Source}{(pm.DistanceMeters is { } dm ? $", {dm:F0} m from the declared address" : "")}{(pm.Record.Category is null ? "" : $" ({pm.Record.Category})")}; name {pm.NameScore:P0}, overall {pm.OverallScore:P0}.{ReputationText(pm)} Searched {searched}."
                 : $"No business matching the declared name near the address in {searched}.{(lp.Note is null ? "" : " " + lp.Note)}";
             outcomes.Add(new("Local presence", $"{lp.Status} ({lp.ConfidencePercent:F0}%)", detail, lp.Status == LocalPresenceStatus.NotFound ? RiskTier.Medium : RiskTier.Low, true));
             narrative.Add($"Local presence: {(lp.Status == LocalPresenceStatus.Confirmed ? "a business with this name trades at the declared address" : lp.Status == LocalPresenceStatus.PartialMatch ? "a similarly named business trades near the declared address" : "no business with this name was found near the declared address")} – trading evidence, not legal registration. {detail}");
             if (lp.Status == LocalPresenceStatus.NotFound && lp.Sources.Count(x => x.Succeeded) == 1) next.Add("Local presence was searched in OpenStreetMap only; configure a Foursquare or Google Places key, or request a utility bill / lease for the trading address.");
+        }
+
+        // Address type (residential / commercial / mixed / mail-drop) against the declared MCC
+        if (lp?.AddressType is { } at)
+        {
+            var worst = at.Flags.Count == 0 ? RiskTier.Low : at.Flags.Max(f => f.Severity);
+            var label = at.Type == AddressType.Unknown ? "Unknown" : $"{at.Type} ({at.Confidence:P0})";
+            var detail = string.Join(" ", at.Evidence) + (at.Flags.Count == 0 ? "" : " " + string.Join(" ", at.Flags.Select(f => f.Message)));
+            outcomes.Add(new("Address type", label, detail, worst, at.Covered && at.Type != AddressType.Unknown));
+            narrative.Add($"Address type: {label}. {detail}");
+            if (at.Type == AddressType.Cmra) next.Add("Declared address is a mail-drop / virtual office; obtain the physical trading address and a lease or utility bill for it.");
+            else if (at.Flags.Any(f => f.Code == "ADDRESS_RESIDENTIAL_STOREFRONT_MCC")) next.Add("Storefront MCC at a residential address: confirm where customers are served (site visit, photos, lease) or re-code the MCC.");
+        }
+
+        // Digital footprint (contact e-mail domain via RDAP) – independent of the website scan
+        if (lp?.Footprint is { } fp)
+        {
+            var worst = fp.Flags.Count == 0 ? RiskTier.Low : fp.Flags.Max(f => f.Severity);
+            var result = fp.EmailIsFreeMail ? "Free-mail"
+                : fp.EmailDomainAgeMonths is { } months ? $"Domain {months / 12} yr {months % 12} mo"
+                : "Tenure unknown";
+            var covered = fp.EmailIsFreeMail || fp.EmailDomainAgeMonths is not null;
+            var detail = string.Join(" ", fp.Flags.Select(f => f.Message));
+            outcomes.Add(new("Digital footprint", result, detail, worst, covered));
+            narrative.Add($"Digital footprint: contact e-mail domain {fp.EmailDomain} – {detail}");
+            if (fp.Flags.Any(f => f.Code == "EMAIL_DOMAIN_NEW")) next.Add("Contact e-mail domain is under six months old; corroborate tenure with a lease, utility bill or bank-account opening date.");
+        }
+
+        // Owner identity depth
+        if (owners is null) outcomes.Add(new("Owner identity", "Not run", "Owner identity checks were not run.", RiskTier.Low, false));
+        else if (!owners.Covered)
+        {
+            var sev = profile?.IsSmb == true ? RiskTier.Medium : RiskTier.Low;
+            outcomes.Add(new("Owner identity", "No principal declared", "Owner identity, age and cross-application checks could not be performed.", sev, false));
+            next.Add("Declare at least one beneficial owner or controlling person with date of birth, nationality and address.");
+        }
+        else
+        {
+            var worst = owners.Flags.Count == 0 ? RiskTier.Low : owners.Flags.Max(f => f.Severity);
+            var people = string.Join("; ", owners.Owners.Select(o => $"{o.FullName}{(o.Role is null ? "" : $" ({o.Role})")}{(o.Age is { } a ? $", {a}" : "")}{(o.PriorApplications.Count > 0 ? $", {o.PriorApplications.Count} prior application(s)" : "")}"));
+            var detail = $"{people}. Identity attributes {owners.CompletenessPercent:P0} complete{(owners.HomeBased ? "; trades from a principal's home address" : "")}." +
+                         (owners.Flags.Count > 0 ? " " + string.Join(" ", owners.Flags.Select(f => f.Message)) : "");
+            outcomes.Add(new("Owner identity", owners.Flags.Count == 0 ? "Complete" : $"{owners.Flags.Count} finding(s)", detail, worst, true));
+            narrative.Add($"Owner identity: {owners.Owners.Count} principal(s), {owners.CompletenessPercent:P0} of identity attributes supplied.{(owners.Flags.Count > 0 ? " " + string.Join(" ", owners.Flags.Select(f => $"{f.Code}: {f.Message}")) : "")}");
+            if (owners.Flags.Any(f => f.Code is "OWNER_DUPLICATE_APPLICATION" or "OWNER_APPLICATION_VELOCITY")) next.Add("Review the earlier applications this principal appeared on before deciding; confirm they are the same person and whether those merchants were approved.");
+            if (owners.Flags.Any(f => f.Code == "OWNER_IDENTITY_INCOMPLETE")) next.Add("Collect the missing owner identity attributes (government ID with date of birth, proof of address).");
         }
 
         // Screening
@@ -292,6 +354,49 @@ internal static class AssessmentComposer
                 (b.Flags.Count > 0 ? $" Flags: {string.Join("; ", b.Flags.Select(x => x.Message))}" : "");
             outcomes.Add(new("Bank statement", $"{b.MonthsCovered}m · {b.Flags.Count} flag(s)", detail, b.Flags.Count == 0 ? RiskTier.Low : b.Flags.Max(x => x.Severity), true));
             narrative.Add($"Cash flow: {detail}");
+        }
+
+        if (licensing is { } lic && (lic.Requirements.Count > 0 || lic.Unrequested.Count > 0))
+        {
+            var worst = lic.Flags.Count == 0 ? RiskTier.Low : lic.Flags.Max(x => x.Severity);
+            var detail = string.Join(" ", lic.Requirements.Select(q => $"{Licensing.LicensingAssessor.Describe(q.Type)}: {q.Status}{(q.Attested is { } a ? $" ({(a.Number ?? "no number")}, {a.IssuingAuthority ?? "issuer not recorded"}{(a.ExpiryDate is { } e ? $", expires {e:yyyy-MM-dd}" : "")})" : "")}."))
+                         + (lic.Unrequested.Count > 0 ? $" Also attested: {string.Join(", ", lic.Unrequested.Select(u => Licensing.LicensingAssessor.Describe(u.Type)))}." : "")
+                         + (lic.Flags.Count > 0 ? $" {string.Join(" ", lic.Flags.Select(x => x.Message))}" : "");
+            outcomes.Add(new("Licences & permits", $"{lic.Requirements.Count(q => q.Attested is not null)}/{lic.Requirements.Count} attested", detail, worst, lic.Covered));
+            narrative.Add($"Licences: {detail}");
+            foreach (var missing in lic.Requirements.Where(q => q.Attested is null))
+                next.Add($"Obtain the merchant's {Licensing.LicensingAssessor.Describe(missing.Type)} (MCC {intake.MerchantCategoryCode}); company registration does not substitute for it.");
+            if (lic.Flags.Any(x => x.Code.StartsWith("LICENSE_EXPIRED"))) next.Add("A required licence has expired: hold boarding until renewal evidence is supplied.");
+        }
+
+        // Bank statement as small-merchant evidence (requiredness, account holder, deposits vs declared, payouts)
+        if (bankEvidence is { } be)
+        {
+            var worst = be.Flags.Count == 0 ? RiskTier.Low : be.Flags.Max(x => x.Severity);
+            var detail = string.Join(" ", be.Flags.Select(x => x.Message));
+            if (!be.Supplied)
+            {
+                if (be.Required)
+                {
+                    outcomes.Add(new("Bank evidence", "Required · missing", detail, worst, false));
+                    narrative.Add($"Bank evidence: {detail}");
+                    next.Add("Obtain the merchant's last three months of business bank statements; for a Micro / Small merchant they are the primary identity, volume and liquidity evidence.");
+                }
+            }
+            else
+            {
+                var label = string.Join(" · ", new[]
+                {
+                    be.HolderNameScore is { } h ? $"holder {h:P0}" : "holder n/a",
+                    be.InflowsToDeclaredRatio is { } r ? $"deposits {r:P0} of declared" : null,
+                    be.Processors.Count > 0 ? $"{be.Processors.Count} processor(s)" : null
+                }.Where(x => x is not null));
+                outcomes.Add(new("Bank evidence", label, detail, worst, true));
+                narrative.Add($"Bank evidence: {detail}");
+                if (be.Flags.Any(x => x.Code == "BANK_HOLDER_MISMATCH")) next.Add("Bank account holder is neither the business nor an owner: obtain a voided cheque or bank letter for an account in the legal entity's name before boarding.");
+                if (be.Flags.Any(x => x.Code == "BANK_HOLDER_UNDECLARED")) next.Add("Record the account-holder name from the statement header so the settlement account can be tied to the applicant.");
+                if (be.Flags.Any(x => x.Code == "BANK_DEPOSITS_BELOW_DECLARED")) next.Add("Declared volume is not supported by deposits: ask the merchant to reconcile, or underwrite on the evidenced figure.");
+            }
         }
 
         // Financials
@@ -407,5 +512,5 @@ internal static class AssessmentComposer
         i.WebsiteProductCount, i.HasPhysicalLocation,
         bank?.FileName ?? (i.BankStatementCsv is null ? null : "inline CSV"),
         fin?.FileName ?? (i.FinancialStatementText is null ? null : "inline text"),
-        i.ExternalRef, i.Actor, i.LocationCount, i.EntityType);
+        i.ExternalRef, i.Actor, i.LocationCount, i.EntityType, i.BankAccountHolderName, i.Licenses);
 }

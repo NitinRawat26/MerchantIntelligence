@@ -66,6 +66,6 @@ public static class StopGates
     }
 
     private static IEnumerable<RiskSignal> SignalsOf(string stepId, AssessmentContext ctx) =>
-        AssessmentComposer.CollectSignals(ctx.Verification, ctx.Screening, ctx.Website, ctx.Prohibited, ctx.Mcc, ctx.Bank, ctx.Financials, ctx.Plausibility)
+        AssessmentComposer.CollectSignals(ctx.Verification, ctx.Screening, ctx.Website, ctx.Prohibited, ctx.Mcc, ctx.Bank, ctx.Financials, ctx.Plausibility, ctx.Owners, ctx.BankEvidence, ctx.Licensing)
             .Where(s => s.Source == stepId);
 }

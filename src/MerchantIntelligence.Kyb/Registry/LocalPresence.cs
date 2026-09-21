@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using MerchantIntelligence.Kyb.Matching;
+using MerchantIntelligence.MccValidation.Taxonomy;
 using Microsoft.Extensions.Logging;
 
 namespace MerchantIntelligence.Kyb.Registry;
@@ -17,7 +18,17 @@ public sealed record PlaceRecord(
     string? Website,
     string? Phone,
     string? Status,
-    Uri? SourceUrl);
+    Uri? SourceUrl,
+    PlaceReputation? Reputation = null);
+
+/// <summary>Crowd signals a places source publishes about a venue: how it is rated, how busy it is and how long it has been listed. Tenure and activity evidence for a small merchant, never proof of legitimacy.</summary>
+public sealed record PlaceReputation(
+    double? Rating,
+    double? RatingScale,
+    int? RatingCount,
+    double? Popularity,
+    DateOnly? ListedSince,
+    bool? OpenNow);
 
 public sealed record PlaceMatch(
     PlaceRecord Record,
@@ -50,7 +61,22 @@ public sealed record LocalPresenceResult(
     double ConfidencePercent,
     PlaceMatch? BestMatch,
     IReadOnlyList<PlaceSourceResult> Sources,
-    string? Note = null);
+    string? Note = null,
+    DigitalFootprint? Footprint = null,
+    AddressClassification? AddressType = null);
+
+/// <summary>
+/// Registration facts about the merchant's own domains (website and contact e-mail), from RDAP. Gives a tenure signal
+/// for merchants that have no website and therefore never reach the website-compliance scan.
+/// </summary>
+public sealed record DigitalFootprint(
+    string? EmailDomain,
+    bool EmailIsFreeMail,
+    Compliance.DomainInfo? EmailDomainInfo,
+    int? EmailDomainAgeMonths,
+    string? WebsiteDomain,
+    bool? EmailMatchesWebsite,
+    IReadOnlyList<KybFlag> Flags);
 
 /// <summary>Location the search is centred on; comes from the geocoded declared address.</summary>
 public sealed record GeoPoint(double Latitude, double Longitude);
@@ -80,15 +106,58 @@ public sealed class LocalPresenceService
 {
     private readonly IReadOnlyList<ILocalPresenceProvider> _providers;
     private readonly NominatimGeocoder _geocoder;
+    private readonly Compliance.RdapDomainLookup _rdap;
     private readonly KybOptions _options;
     private readonly ILogger<LocalPresenceService> _logger;
 
-    public LocalPresenceService(IEnumerable<ILocalPresenceProvider> providers, NominatimGeocoder geocoder, KybOptions options, ILogger<LocalPresenceService> logger)
+    public LocalPresenceService(IEnumerable<ILocalPresenceProvider> providers, NominatimGeocoder geocoder, Compliance.RdapDomainLookup rdap, KybOptions options, ILogger<LocalPresenceService> logger)
     {
         _providers = providers.ToList();
         _geocoder = geocoder;
+        _rdap = rdap;
         _options = options;
         _logger = logger;
+    }
+
+    /// <summary>
+    /// RDAP facts for the contact e-mail domain, independent of the website scan. Free-mail addresses are recorded, not
+    /// penalised heavily: most micro merchants use them. A lookup failure is reported as unknown, never as "new".
+    /// </summary>
+    public async Task<DigitalFootprint?> FootprintAsync(BusinessIdentity identity, CancellationToken ct)
+    {
+        var emailDomain = Compliance.RdapDomainLookup.DomainOf(identity.ContactEmail);
+        var websiteDomain = Compliance.RdapDomainLookup.DomainOf(identity.WebsiteUrl);
+        if (emailDomain is null) return null;
+
+        var flags = new List<KybFlag>();
+        var free = Compliance.RdapDomainLookup.IsFreeMail(emailDomain);
+        Compliance.DomainInfo? info = null;
+        int? ageMonths = null;
+        bool? matches = websiteDomain is null ? null : websiteDomain.Equals(emailDomain, StringComparison.OrdinalIgnoreCase);
+
+        if (free)
+            flags.Add(new KybFlag("EMAIL_FREEMAIL", $"Contact e-mail uses a free-mail domain ({emailDomain}); no business domain tenure can be established from it.", RiskTier.Low));
+        else
+        {
+            try { info = await _rdap.LookupAsync(emailDomain, ct); }
+            catch (Exception ex) when (!ct.IsCancellationRequested) { info = new Compliance.DomainInfo(emailDomain, null, null, null, Array.Empty<string>(), ex.Message); }
+
+            if (info.Registered is { } reg)
+            {
+                var now = DateTimeOffset.UtcNow;
+                ageMonths = Math.Max(0, (now.Year - reg.Year) * 12 + now.Month - reg.Month);
+                if (ageMonths < 6)
+                    flags.Add(new KybFlag("EMAIL_DOMAIN_NEW", $"Contact e-mail domain {emailDomain} was registered {ageMonths} month(s) ago ({reg:yyyy-MM-dd}); a very young domain is a common bust-out / impersonation marker.", RiskTier.Medium));
+                else
+                    flags.Add(new KybFlag("EMAIL_DOMAIN_TENURE", $"Contact e-mail domain {emailDomain} registered {reg:yyyy-MM-dd} ({ageMonths / 12} yr {ageMonths % 12} mo){(info.Registrar is null ? "" : $" via {info.Registrar}")}.", RiskTier.Low));
+            }
+            else
+                flags.Add(new KybFlag("EMAIL_DOMAIN_UNRESOLVED", $"RDAP returned no registration date for {emailDomain}{(info.Error is null ? "" : $": {info.Error}")}. Domain tenure is unknown, not clear.", RiskTier.Low));
+
+            if (matches == false)
+                flags.Add(new KybFlag("EMAIL_DOMAIN_MISMATCH", $"Contact e-mail domain ({emailDomain}) differs from the website domain ({websiteDomain}).", RiskTier.Low));
+        }
+        return new DigitalFootprint(emailDomain, free, info, ageMonths, websiteDomain, matches, flags);
     }
 
     public bool IsEnabled => _options.LocalPresenceEnabled;
@@ -97,30 +166,42 @@ public sealed class LocalPresenceService
     /// Runs the check for an already-verified identity, reusing the verified address coordinates as the search centre.
     /// Never throws: source outages surface as an <see cref="LocalPresenceStatus.Inconclusive"/> result.
     /// </summary>
-    public async Task<LocalPresenceResult> CheckAsync(BusinessVerificationResult verification, CancellationToken ct = default)
+    public async Task<LocalPresenceResult> CheckAsync(BusinessVerificationResult verification, CancellationToken ct = default, int? mcc = null)
     {
         var a = verification.Address;
         var known = a is { Verified: true, Latitude: { } la, Longitude: { } lo } ? new GeoPoint(la, lo) : null;
+        var footprintTask = FootprintAsync(verification.Input, ct);
+        LocalPresenceResult result;
         try
         {
-            return await CheckAsync(verification.Input, known, ct);
+            result = await CheckAsync(verification.Input, known, ct, mcc);
         }
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
             _logger.LogWarning(ex, "Local presence check failed");
-            return new LocalPresenceResult(LocalPresenceStatus.Inconclusive, 0, null, Array.Empty<PlaceSourceResult>(), ex.Message);
+            result = new LocalPresenceResult(LocalPresenceStatus.Inconclusive, 0, null, Array.Empty<PlaceSourceResult>(), ex.Message);
         }
+        return result with { Footprint = await footprintTask };
     }
 
-    public async Task<LocalPresenceResult> CheckAsync(BusinessIdentity identity, GeoPoint? knownLocation, CancellationToken ct = default)
+    public async Task<LocalPresenceResult> CheckAsync(BusinessIdentity identity, GeoPoint? knownLocation, CancellationToken ct = default, int? mcc = null)
     {
         var hasStreet = !string.IsNullOrWhiteSpace(identity.AddressLine);
         var hasLocality = !string.IsNullOrWhiteSpace(identity.City) || !string.IsNullOrWhiteSpace(identity.PostalCode);
         if (!hasStreet && !hasLocality)
             return new LocalPresenceResult(LocalPresenceStatus.NotChecked, 0, null, Array.Empty<PlaceSourceResult>(), "No address or locality supplied; places sources need a location to search around.");
 
-        var centre = knownLocation;
-        if (centre is null)
+        GeocodeHit? hit = null;
+        try { hit = hasStreet ? await _geocoder.GeocodeDetailedAsync(identity, ct) : null; }
+        catch (Exception ex) when (!ct.IsCancellationRequested)
+        {
+            _logger.LogWarning(ex, "Nominatim geocoding failed");
+            if (knownLocation is null)
+                return new LocalPresenceResult(LocalPresenceStatus.Inconclusive, 0, null, Array.Empty<PlaceSourceResult>(), $"Address could not be geocoded: {ex.Message}",
+                    AddressType: AddressClassifier.Classify(identity.AddressLine, null, [], mcc));
+        }
+        var centre = knownLocation ?? hit?.Point;
+        if (centre is null && !hasStreet)
         {
             try { centre = await _geocoder.GeocodeAsync(identity, ct); }
             catch (Exception ex) when (!ct.IsCancellationRequested)
@@ -130,14 +211,19 @@ public sealed class LocalPresenceService
             }
         }
         if (centre is null)
-            return new LocalPresenceResult(LocalPresenceStatus.Inconclusive, 0, null, Array.Empty<PlaceSourceResult>(), "Declared address could not be geocoded (OpenStreetMap Nominatim found no match).");
+            return new LocalPresenceResult(LocalPresenceStatus.Inconclusive, 0, null, Array.Empty<PlaceSourceResult>(), "Declared address could not be geocoded (OpenStreetMap Nominatim found no match).",
+                AddressType: AddressClassifier.Classify(identity.AddressLine, null, [], mcc));
 
         var radius = hasStreet ? _options.LocalPresenceRadiusMeters : _options.LocalPresenceLocalityRadiusMeters;
+        var nearby = new System.Collections.Concurrent.ConcurrentBag<PlaceRecord>();
         var tasks = _providers.Where(p => p.IsEnabled).Select(async p =>
         {
             try
             {
                 var records = await p.SearchAsync(identity, centre, radius, ct);
+                if (hasStreet)
+                    foreach (var r in records.Where(r => r is { Latitude: { } rl, Longitude: { } ro } && Geo.DistanceMeters(centre.Latitude, centre.Longitude, rl, ro) <= AddressPoiRadiusMeters))
+                        nearby.Add(r);
                 var matches = records.Select(r => Score(identity, r, centre, radius))
                     .Where(m => m.NameScore >= 0.5)
                     .OrderByDescending(m => m.OverallScore)
@@ -166,8 +252,12 @@ public sealed class LocalPresenceService
         var note = status == LocalPresenceStatus.NotFound && sources.Count(s => s.Succeeded) == 1 && sources.Any(s => s.Source.StartsWith("OpenStreetMap", StringComparison.Ordinal) && s.Succeeded)
             ? "Only OpenStreetMap was searched; its coverage of small businesses is partial, so absence is weak evidence. Configure a Foursquare or Google Places key for stronger coverage."
             : null;
-        return new LocalPresenceResult(status, confidence, best, sources, note);
+        var addressType = hasStreet ? AddressClassifier.Classify(identity.AddressLine, hit, nearby.DistinctBy(r => r.SourceId).ToList(), mcc) : null;
+        return new LocalPresenceResult(status, confidence, best, sources, note, AddressType: addressType);
     }
+
+    /// <summary>Points of interest this close to the geocoded point are taken to be at the same address.</summary>
+    internal const int AddressPoiRadiusMeters = 40;
 
     internal static PlaceMatch Score(BusinessIdentity identity, PlaceRecord record, GeoPoint centre, int radiusMeters)
     {
@@ -199,19 +289,31 @@ public sealed class NominatimGeocoder
 
     public NominatimGeocoder(IHttpClientFactory factory) => _factory = factory;
 
-    public async Task<GeoPoint?> GeocodeAsync(BusinessIdentity identity, CancellationToken ct)
+    public async Task<GeoPoint?> GeocodeAsync(BusinessIdentity identity, CancellationToken ct) => (await GeocodeDetailedAsync(identity, ct))?.Point;
+
+    /// <summary>Coordinates plus the OSM category / type / extratags of the matched feature, used to classify the address.</summary>
+    public async Task<GeocodeHit?> GeocodeDetailedAsync(BusinessIdentity identity, CancellationToken ct)
     {
         var client = _factory.CreateClient(KybOptions.HttpClientName);
         var query = string.Join(", ", new[] { AddressMatcher.NumberWordsToDigits(identity.AddressLine), identity.City, identity.Region, identity.PostalCode, identity.Country }
             .Where(s => !string.IsNullOrWhiteSpace(s)));
-        var url = $"https://nominatim.openstreetmap.org/search?q={Uri.EscapeDataString(query)}&format=jsonv2&limit=1";
+        var url = $"https://nominatim.openstreetmap.org/search?q={Uri.EscapeDataString(query)}&format=jsonv2&limit=1&extratags=1";
         using var doc = await client.GetFromJsonAsync<JsonDocument>(url, ct);
         if (doc is null || doc.RootElement.ValueKind != JsonValueKind.Array || doc.RootElement.GetArrayLength() == 0) return null;
-        var hit = doc.RootElement[0];
-        if (double.TryParse(hit.GetProperty("lat").GetString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var lat)
-            && double.TryParse(hit.GetProperty("lon").GetString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var lon))
-            return new GeoPoint(lat, lon);
-        return null;
+        return ParseHit(doc.RootElement[0]);
+    }
+
+    internal static GeocodeHit? ParseHit(JsonElement hit)
+    {
+        if (!double.TryParse(hit.GetProperty("lat").GetString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var lat)
+            || !double.TryParse(hit.GetProperty("lon").GetString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var lon))
+            return null;
+        string? Str(string k) => hit.TryGetProperty(k, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
+        var extra = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (hit.TryGetProperty("extratags", out var et) && et.ValueKind == JsonValueKind.Object)
+            foreach (var pr in et.EnumerateObject())
+                if (pr.Value.ValueKind == JsonValueKind.String) extra[pr.Name] = pr.Value.GetString()!;
+        return new GeocodeHit(new GeoPoint(lat, lon), Str("category"), Str("type"), Str("addresstype"), extra, Str("display_name"));
     }
 }
 
@@ -305,7 +407,8 @@ public sealed class FoursquareLocalPresenceProvider : ILocalPresenceProvider
         var ll = $"{centre.Latitude.ToString(System.Globalization.CultureInfo.InvariantCulture)},{centre.Longitude.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
         var name = identity.TradingName ?? identity.LegalName;
         using var request = new HttpRequestMessage(HttpMethod.Get,
-            $"https://places-api.foursquare.com/places/search?query={Uri.EscapeDataString(name)}&ll={ll}&radius={Math.Max(radiusMeters, 500)}&limit=10");
+            $"https://places-api.foursquare.com/places/search?query={Uri.EscapeDataString(name)}&ll={ll}&radius={Math.Max(radiusMeters, 500)}&limit=10" +
+            "&fields=fsq_place_id,name,latitude,longitude,location,categories,website,tel,closed_bucket,rating,popularity,stats,hours,date_created");
         request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _options.FoursquareApiKey);
         request.Headers.TryAddWithoutValidation("X-Places-Api-Version", "2025-06-17");
         using var response = await client.SendAsync(request, ct);
@@ -327,13 +430,29 @@ public sealed class FoursquareLocalPresenceProvider : ILocalPresenceProvider
                 category = string.Join(" / ", cats.EnumerateArray().Select(c => Str(c, "name")).Where(v => v is not null));
             list.Add(new PlaceRecord(Name, id, Str(r, "name") ?? string.Empty, string.IsNullOrWhiteSpace(address) ? null : address, la, lo,
                 string.IsNullOrWhiteSpace(category) ? null : category, Str(r, "website"), Str(r, "tel"), Str(r, "closed_bucket"),
-                id.Length == 0 ? null : new Uri($"https://foursquare.com/v/{id}")));
+                id.Length == 0 ? null : new Uri($"https://foursquare.com/v/{id}"), Reputation(r)));
         }
         return list;
     }
 
+    /// <summary>Foursquare rates 0–10; popularity is a 0–1 foot-traffic percentile; stats carry rating/tip counts; date_created is when the venue was first listed.</summary>
+    internal static PlaceReputation? Reputation(JsonElement r)
+    {
+        double? rating = Num(r, "rating"), popularity = Num(r, "popularity");
+        int? count = null;
+        if (r.TryGetProperty("stats", out var stats) && stats.ValueKind == JsonValueKind.Object)
+            count = Num(stats, "total_ratings") is { } tr ? (int)tr : Num(stats, "total_tips") is { } tt ? (int)tt : null;
+        DateOnly? since = Str(r, "date_created") is { } dc && DateOnly.TryParse(dc[..Math.Min(10, dc.Length)], System.Globalization.CultureInfo.InvariantCulture, out var d) ? d : null;
+        bool? openNow = r.TryGetProperty("hours", out var hours) && hours.TryGetProperty("open_now", out var on) && on.ValueKind is JsonValueKind.True or JsonValueKind.False ? on.GetBoolean() : null;
+        return rating is null && popularity is null && count is null && since is null && openNow is null ? null
+            : new PlaceReputation(rating, 10, count, popularity, since, openNow);
+    }
+
     private static string? Str(JsonElement e, string key) =>
         e.TryGetProperty(key, out var v) && v.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(v.GetString()) ? v.GetString() : null;
+
+    private static double? Num(JsonElement e, string key) =>
+        e.TryGetProperty(key, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetDouble() : null;
 }
 
 /// <summary>Google Places API (New) text search. Optional; needs an API key (monthly free usage allowance).</summary>
@@ -366,7 +485,7 @@ public sealed class GooglePlacesLocalPresenceProvider : ILocalPresenceProvider
         };
         request.Headers.TryAddWithoutValidation("X-Goog-Api-Key", _options.GooglePlacesApiKey);
         request.Headers.TryAddWithoutValidation("X-Goog-FieldMask",
-            "places.id,places.displayName,places.formattedAddress,places.location,places.primaryTypeDisplayName,places.websiteUri,places.nationalPhoneNumber,places.businessStatus,places.googleMapsUri");
+            "places.id,places.displayName,places.formattedAddress,places.location,places.primaryTypeDisplayName,places.websiteUri,places.nationalPhoneNumber,places.businessStatus,places.googleMapsUri,places.rating,places.userRatingCount,places.currentOpeningHours.openNow");
         using var response = await client.SendAsync(request, ct);
         response.EnsureSuccessStatusCode();
         using var doc = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
@@ -381,11 +500,16 @@ public sealed class GooglePlacesLocalPresenceProvider : ILocalPresenceProvider
             list.Add(new PlaceRecord(Name, Str(p, "id") ?? string.Empty, display ?? string.Empty, Str(p, "formattedAddress"), la, lo, type,
                 Str(p, "websiteUri"), Str(p, "nationalPhoneNumber"),
                 Str(p, "businessStatus") is { } bs ? bs.Replace("_", " ").ToLowerInvariant() : null,
-                Str(p, "googleMapsUri") is { } u && Uri.TryCreate(u, UriKind.Absolute, out var uri) ? uri : null));
+                Str(p, "googleMapsUri") is { } u && Uri.TryCreate(u, UriKind.Absolute, out var uri) ? uri : null,
+                new PlaceReputation(Num(p, "rating"), 5, Num(p, "userRatingCount") is { } rc ? (int)rc : null, null, null,
+                    p.TryGetProperty("currentOpeningHours", out var oh) && oh.TryGetProperty("openNow", out var on) && on.ValueKind is JsonValueKind.True or JsonValueKind.False ? on.GetBoolean() : null)));
         }
         return list;
     }
 
     private static string? Str(JsonElement e, string key) =>
         e.TryGetProperty(key, out var v) && v.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(v.GetString()) ? v.GetString() : null;
+
+    private static double? Num(JsonElement e, string key) =>
+        e.TryGetProperty(key, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetDouble() : null;
 }

@@ -179,4 +179,23 @@ const restricted: PresetFinancials = {
   ])
 };
 
-export const PRESET_FINANCIALS = { approved, clean, restricted } as const;
+/**
+ * SMB preset (Aljazzar Meat & Grill LLC, Louisville KY): illustrative six-month statement for a single-location
+ * restaurant declaring $420k — one processor, modest rent, steady deposits, no NSF. No P&L: a Micro / Small
+ * merchant is not expected to have one, so the financial-statement step is skipped as not applicable.
+ */
+const smb: PresetFinancials = {
+  bankStatementCsv: buildStatement({
+    monthlyCardDeposits: 33_500,
+    processors: ['Toast Inc'],
+    otherIncome: 1_800,
+    rent: 3_600,
+    payroll: 12_500,
+    suppliers: 11_000,
+    ownerDraw: 3_000,
+    openingBalance: 14_000
+  }),
+  financialStatementText: ''
+};
+
+export const PRESET_FINANCIALS = { approved, clean, restricted, smb } as const;

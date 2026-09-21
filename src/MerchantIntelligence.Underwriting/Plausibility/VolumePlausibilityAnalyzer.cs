@@ -136,6 +136,39 @@ public sealed class VolumePlausibilityAnalyzer
             }
         }
 
+        // Volume per trading location against the MCC band (count-only: the intake declares how many
+        // locations exist, not where they are). Absent a count, a physical merchant is treated as one location.
+        var locationsForVolume = d.LocationCount is int lc && lc > 0 ? lc : d.HasPhysicalLocation == true ? 1 : (int?)null;
+        if (locationsForVolume is int nLoc)
+        {
+            var perLocation = volume / nLoc;
+            var assess = perLocation > bm.VolumePerLocationP90 * 3 ? "More than 3x industry p90 per location"
+                : perLocation > bm.VolumePerLocationP90 ? "Above industry p90 per location"
+                : perLocation < bm.VolumePerLocationP10 / 4 ? "Less than 1/4 of industry p10 per location"
+                : perLocation < bm.VolumePerLocationP10 ? "Below industry p10 per location" : "Within p10-p90";
+            metrics.Add(new PlausibilityMetric("Card volume / location", perLocation.ToString("N0"), $"{bm.VolumePerLocationP10:N0} - {bm.VolumePerLocationP90:N0}", assess));
+            if (perLocation > bm.VolumePerLocationP90 * 3)
+            {
+                flags.Add(new PlausibilityFlag("VOLUME_PER_LOCATION_FAR_ABOVE_MCC", $"{perLocation:N0} per location across {nLoc:N0} location(s) is more than 3x the p90 for this MCC ({bm.VolumePerLocationP90:N0}); the declared volume needs {Math.Ceiling(volume / bm.VolumePerLocationP90):N0}+ typical sites.", RiskTier.High));
+                penalty += 25;
+            }
+            else if (perLocation > bm.VolumePerLocationP90)
+            {
+                flags.Add(new PlausibilityFlag("VOLUME_PER_LOCATION_ABOVE_MCC", $"{perLocation:N0} per location is above the p90 for this MCC ({bm.VolumePerLocationP90:N0}).", RiskTier.Medium));
+                penalty += 10;
+            }
+            else if (perLocation < bm.VolumePerLocationP10 / 4)
+            {
+                flags.Add(new PlausibilityFlag("VOLUME_PER_LOCATION_FAR_BELOW_MCC", $"{perLocation:N0} per location across {nLoc:N0} location(s) is less than a quarter of the p10 for this MCC ({bm.VolumePerLocationP10:N0}); confirm every location trades or that volume is not being split.", RiskTier.Medium));
+                penalty += 10;
+            }
+            else if (perLocation < bm.VolumePerLocationP10)
+            {
+                flags.Add(new PlausibilityFlag("VOLUME_PER_LOCATION_BELOW_MCC", $"{perLocation:N0} per location is below the p10 for this MCC ({bm.VolumePerLocationP10:N0}).", RiskTier.Low));
+                penalty += 4;
+            }
+        }
+
         // Tenure.
         if (d.YearsInBusiness is decimal years)
         {

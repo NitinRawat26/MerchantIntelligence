@@ -54,3 +54,5 @@ mat-expansion-panel { margin-bottom: 8px; }
 }
 @media (max-width: 700px) { .history li { grid-template-columns: auto 1fr auto; .when { display: none; } } }
 
+.license { grid-template-columns: 1.2fr 1fr 1.3fr 1fr 1fr 1.4fr 40px; }
+@media (max-width: 1000px) { .license { grid-template-columns: 1fr 1fr; } }

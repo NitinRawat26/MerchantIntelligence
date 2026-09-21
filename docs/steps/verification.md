@@ -51,8 +51,17 @@ Shell companies, dissolved entities revived on paper, registered-agent / PO-box 
 | **SEC EDGAR** | always | US public filers and their subsidiaries (name, state of incorporation, fiscal year, SIC) | `efts.sec.gov/LATEST/search-index` + `data.sec.gov/submissions/CIK….json` |
 | **OpenCorporates** | `Kyb:OpenCorporatesApiToken` set | ~200 M companies across 140 jurisdictions incl. all US states | `api.opencorporates.com/v0.4/companies/search` |
 | **UK Companies House** | `Kyb:CompaniesHouseApiKey` set | All UK companies | `api.company-information.service.gov.uk/search/companies` |
+| **Kentucky SOS** | `Kyb:StateRegistriesEnabled` (default on) and `Country=US`, `Region` = `KY` / `Kentucky` | Every Kentucky entity and assumed name (keyless, `RegistryReach.Local`) | `sosbes.sos.ky.gov/BusSearchNProfile/search.aspx` (ASP.NET form) + profile page |
 
 Address verification (`IAddressGeocoder`): **US Census Geocoder** (`geocoding.geo.census.gov`, keyless, US only); other geocoders may be registered. A geocoder that reports "only covers …" is skipped rather than counted as a failure.
+
+#### State registers — Kentucky SOS as the first `Local` provider
+
+Every provider declares a **reach** (`Global` — LEI / SEC; `Local` — a company register) and a **jurisdiction coverage** test. A local register that does not cover the applicant's state is *omitted* from `Sources` (not "not found"), so a Texas LLC is never penalised for being absent from Kentucky. The Profile step's `RegistryScope` decides which reaches run: `Local` for private companies (SMB path), `Global` for public / large corporates, `TaxExempt` for non-profits, `None` for sole proprietorships.
+
+The Kentucky provider posts the Web-Forms search (`__VIEWSTATE`, `ddlSearchBy`, `txtSearch`) once per query and fetches at most one profile page per hit. Because the register's name matching is token- and punctuation-sensitive (`Aljazzar` finds the entity, `Al Jazzar Grill` does not), it retries in order: registration number → legal name → trading name → significant tokens → tokens joined → first significant token, stopping at the first non-empty result. The profile yields, besides the standard record fields (legal name, status, organisation date, principal office, company type, org. number, source URL), an `Extra` map: `standing`, `industry`, `employeeBand`, `county`, `lastAnnualReport`, `managedBy`, `registeredAgent`, `profitStatus`, `assumedName`. The **registered agent is a service address, never a principal** — it is displayed but not screened as an owner.
+
+Live example (2026-09): *ALJAZZAR MEAT & GRILL LLC*, org. no. 1367874, Kentucky LLC, Active / Good standing, industry "Eating and Drinking Places", employees Small (0–19), Jefferson County, organised 2024-05-28, last annual report 2026-08-12, principal office 4213 Bardstown Road, Louisville KY 40218, assumed name *ALJAZZAR MEATS & GRILL*.
 
 Disabled providers are reported in `Sources` with `Succeeded=false` and error *"Not configured (API key missing)."* so the analyst can see why coverage is thin.
 
@@ -137,6 +146,13 @@ if declared country ≠ record jurisdiction country:        overall ×= 0.85
 | `VIRTUAL_OFFICE_ADDRESS` | Medium | Declared address matches `PO Box`, `PMB`, `Suite ####`, `registered agent`, `virtual office`, `mailbox`, `c/o` | No physical premises; combine with `presence` |
 | `ADDRESS_UNVERIFIED` | Low | Geocoder returned an error (not a coverage message) | Address may be malformed or non-existent |
 | `LOCAL_PRESENCE_*` | Low | Added later by `presence` (see that page) | Trading evidence |
+| `REGISTRY_NOT_APPLICABLE` | Low | Profile `RegistryScope = None` (sole proprietorship / DBA) | No register holds this legal form; identity comes from owner, presence and bank evidence — the step is *not applicable*, not failed |
+| `LOCAL_REGISTRY_UNAVAILABLE` | Low | Only global registers answered for a private company | GLEIF / EDGAR silence is not evidence against an LLC; the local register was not configured or did not answer |
+| `REGISTRY_BAD_STANDING` | Medium | `Extra.standing` not containing "good" | Active but delinquent on annual report / fees — a state can administratively dissolve it |
+| `REGISTRY_HEADCOUNT_MISMATCH` | Medium | Declared employees outside the register's band (e.g. 45 declared vs "Small (0–19)") | Volume / headcount story does not match the state filing |
+| `REGISTRY_INDUSTRY_MISMATCH` | Medium | Register industry does not map to the declared MCC range | Entity registered for one trade, boarding for another — MCC miscoding or a repurposed shell |
+| `REGISTRY_ANNUAL_REPORT_STALE` | Low | `lastAnnualReport` older than 18 months | Entity may be lapsing |
+| `REGISTRY_ASSUMED_NAME_MATCH` | Low | Trading name ≥ 0.85 similar to a filed assumed name | Positive: the DBA is on record with the state |
 
 ---
 

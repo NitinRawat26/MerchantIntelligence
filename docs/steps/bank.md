@@ -171,7 +171,7 @@ Note the two different ratio bands: the Financial agent flags at 0.7×–1.5×, 
 
 | Situation | Behaviour | Downstream |
 |---|---|---|
-| No statement and no inline CSV | **Skipped** | Brief "Bank statement: Not run — No statement supplied." (uncovered); plausibility loses its strongest signal; Financial agent summary "no financial evidence" |
+| No statement and no inline CSV | **Skipped** (Micro / Small: `BANK_STATEMENT_REQUIRED`, see §6b) | Brief "Bank statement: Not run — No statement supplied." (uncovered); plausibility loses its strongest signal; Financial agent summary "no financial evidence" |
 | Scanned PDF / unsupported layout / empty CSV | `InvalidDataException` → **Failed** (`onFail: Skip`), `ctx.Bank = null` | Brief "Not run — Could not parse statement." (uncovered) |
 | CSV with no header | Columns inferred, warning | Analysis proceeds; check warnings |
 | No balance column | Balance metrics null, `NegativeBalanceDays=0`, no `THIN_LIQUIDITY`/`NEGATIVE_BALANCE_DAYS` possible | Warning shown; liquidity stress may be under-detected |
@@ -180,6 +180,47 @@ Note the two different ratio bands: the Financial agent flags at 0.7×–1.5×, 
 | Unknown processor naming | Missed card deposits → understated `ImpliedAnnualCardVolume` | Spurious `DECLARED_ABOVE_STATEMENTS` — see false positives |
 
 Skipped or failed bank analysis is a **coverage gap**, not a clean bill of health: the brief marks it uncovered and the score's `Coverage` falls.
+
+---
+
+## 6b. Small-merchant evidence layer (`BankEvidenceAssessor`)
+
+For a **Micro / Small** profile the bank statement is the primary identity, volume and liquidity evidence, so the step runs a second, profile-aware pass over the parsed analysis (`Platform/Financial/BankEvidence.cs`). The result is `BankEvidenceAssessment { Required, Supplied, HolderNameScore, InflowsToDeclaredRatio, CardDepositsToDeclaredRatio, MonthsWithoutInflows, Processors, Flags, Covered }`, exposed as `bankEvidence` on the result, merged into `CollectSignals` (source `bank`) and shown as the **Bank evidence** outcome in the brief and workbench.
+
+```mermaid
+flowchart TD
+    P[Profile.IsSmb] -->|required| R{Statement supplied?}
+    R -- no --> REQ[BANK_STATEMENT_REQUIRED High · Covered=false]
+    R -- yes --> H{Account-holder name}
+    H -- blank --> HU[BANK_HOLDER_UNDECLARED]
+    H -- ≈ legal / trading name ≥ 0.85 --> HM[BANK_HOLDER_MATCH]
+    H -- ≈ owner only --> HO["BANK_HOLDER_IS_OWNER<br/>Low for sole prop · Medium otherwise"]
+    H -- neither --> HX[BANK_HOLDER_MISMATCH High]
+    R -- yes --> D["annualised inflows ÷ declared volume"]
+    D -- "< 0.5" --> DL[BANK_DEPOSITS_BELOW_DECLARED Medium]
+    D -- "> 3.0" --> DH[BANK_DEPOSITS_FAR_ABOVE_DECLARED Medium]
+    D -- else --> DS[BANK_DEPOSITS_SUPPORT_DECLARED Low]
+    R -- yes --> C{Processor deposits?}
+    C -- yes --> CP["BANK_EXISTING_CARD_PAYOUTS (ratio to declared)"]
+    C -- no --> CN[BANK_NO_CARD_PAYOUTS Low]
+    R -- yes --> M[months with zero inflows → BANK_MONTHS_WITHOUT_DEPOSITS]
+    R -- yes --> N[NSF > 0 → BANK_NSF_SMB High]
+    R -- yes --> S[< 3 months → BANK_HISTORY_SHORT_SMB]
+```
+
+| Input | Where it comes from |
+|---|---|
+| `BankAccountHolderName` | New optional intake field (workbench: *Account holder name (as printed on the statement)*); analyst-entered, never inferred from the CSV |
+| Legal / trading name, owners | Intake `Business`, `Owners` — compared with `NameMatcher` token similarity |
+| Declared annual volume | Intake `AnnualVolume` |
+| Analysis | `CashFlowAnalysis` from the parse above |
+
+Semantics that matter for auditors:
+
+* **Missing ≠ clean.** For an SMB the skipped step is written to the timeline as *required primary evidence … recorded as a coverage gap*, the brief lists **Bank evidence: Required · missing** as uncovered, and a next step asks for three months of statements. The flag is **High** on purpose: the bank statement is not a score component, so its absence does not lower `coveragePercent`; the High reason code is what routes the application to `HIGH_SEVERITY_REFER` instead of `AUTO_APPROVE` — a Small merchant with no statement can still score well on registry, screening and plausibility, but it is referred, never auto-approved. For Mid / Enterprise the assessment is silent (no flags), preserving today's behaviour.
+* **Holder mismatch is High** because a settlement account outside the applicant's name is the classic bust-out / third-party processing pattern; an owner-named account is expected for a sole proprietorship (Low) and questionable for an LLC / corporation (Medium).
+* **Deposits vs declared** uses total inflows, not card deposits — an SMB applying for its first terminal legitimately has cash/cheque deposits and no card payouts. `BANK_NO_CARD_PAYOUTS` is therefore informational (Low) and only confirms the merchant is new to card acceptance.
+* Flags are dual-sourced with the cash-flow flags in §3 by design: `BANK_NSF_SMB` restates NSF stress at High for small merchants where `FREQUENT_NSF` would only trigger at a higher count.
 
 ---
 

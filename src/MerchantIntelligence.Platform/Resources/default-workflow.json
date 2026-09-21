@@ -6,7 +6,7 @@
   "agents": [
     { "id": "profile", "enabled": true, "stepOrder": "Parallel", "steps": ["entity", "segment"] },
     { "id": "precheck", "enabled": true, "stepOrder": "Parallel", "steps": ["website", "prohibited", "mcc"] },
-    { "id": "kyb", "enabled": true, "stepOrder": "Parallel", "steps": ["verification", "screening", "match", "presence"] },
+    { "id": "kyb", "enabled": true, "stepOrder": "Parallel", "steps": ["verification", "screening", "match", "presence", "owners", "licensing"] },
     { "id": "financial", "enabled": true, "stepOrder": "Parallel", "steps": ["bank", "financials", "plausibility", "credit"] },
     { "id": "decision", "enabled": true, "stepOrder": "Parallel", "steps": ["terms", "score", "case"] }
   ],
@@ -26,6 +26,8 @@
     { "id": "mcc", "enabled": true, "onFail": "Skip" },
     { "id": "match", "enabled": true, "onFail": "Skip" },
     { "id": "presence", "enabled": true, "onFail": "Skip" },
+    { "id": "owners", "enabled": true, "onFail": "Skip" },
+    { "id": "licensing", "enabled": true, "onFail": "Skip" },
     { "id": "bank", "enabled": true, "onFail": "Skip" },
     { "id": "financials", "enabled": true, "onFail": "Skip" },
     { "id": "plausibility", "enabled": true, "onFail": "Skip" },

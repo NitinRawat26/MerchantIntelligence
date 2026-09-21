@@ -57,12 +57,14 @@ public sealed class WebsiteComplianceScanner
 
     private readonly IHttpClientFactory _factory;
     private readonly ProhibitedBusinessDetector _prohibited;
+    private readonly RdapDomainLookup _rdap;
     private readonly ILogger<WebsiteComplianceScanner> _logger;
 
-    public WebsiteComplianceScanner(IHttpClientFactory factory, ProhibitedBusinessDetector prohibited, ILogger<WebsiteComplianceScanner> logger)
+    public WebsiteComplianceScanner(IHttpClientFactory factory, ProhibitedBusinessDetector prohibited, RdapDomainLookup rdap, ILogger<WebsiteComplianceScanner> logger)
     {
         _factory = factory;
         _prohibited = prohibited;
+        _rdap = rdap;
         _logger = logger;
     }
 
@@ -74,7 +76,7 @@ public sealed class WebsiteComplianceScanner
 
         var httpsUrl = new UriBuilder(url) { Scheme = Uri.UriSchemeHttps, Port = -1 }.Uri;
         var (home, homeUrl, tlsError) = await FetchWithTlsCheckAsync(client, httpsUrl, url, ct);
-        var domainTask = LookupDomainAsync(url.Host, ct);
+        var domainTask = _rdap.LookupAsync(url.Host, ct);
 
         if (home is null)
         {
@@ -292,54 +294,6 @@ public sealed class WebsiteComplianceScanner
         {
             _logger.LogInformation(ex, "Compliance fetch {Url} failed", url);
             return null;
-        }
-    }
-
-    private async Task<DomainInfo?> LookupDomainAsync(string host, CancellationToken ct)
-    {
-        var domain = host.StartsWith("www.", StringComparison.OrdinalIgnoreCase) ? host[4..] : host;
-        if (Uri.CheckHostName(domain) != UriHostNameType.Dns) return new DomainInfo(domain, null, null, null, Array.Empty<string>(), "Not a DNS host name.");
-        try
-        {
-            var client = _factory.CreateClient(Registry.KybOptions.HttpClientName);
-            using var doc = await client.GetFromJsonAsync<JsonDocument>($"https://rdap.org/domain/{domain}", ct);
-            if (doc is null) return new DomainInfo(domain, null, null, null, Array.Empty<string>(), "Empty RDAP response.");
-            DateTimeOffset? registered = null, expires = null;
-            if (doc.RootElement.TryGetProperty("events", out var events))
-            {
-                foreach (var e in events.EnumerateArray())
-                {
-                    var action = e.GetProperty("eventAction").GetString();
-                    if (!DateTimeOffset.TryParse(e.GetProperty("eventDate").GetString(), out var date)) continue;
-                    if (action == "registration") registered = date;
-                    else if (action == "expiration") expires = date;
-                }
-            }
-            string? registrar = null;
-            if (doc.RootElement.TryGetProperty("entities", out var entities))
-            {
-                foreach (var ent in entities.EnumerateArray())
-                {
-                    if (!ent.TryGetProperty("roles", out var roles) || !roles.EnumerateArray().Any(r => r.GetString() == "registrar")) continue;
-                    if (ent.TryGetProperty("vcardArray", out var vcard) && vcard.ValueKind == JsonValueKind.Array && vcard.GetArrayLength() > 1)
-                    {
-                        foreach (var prop in vcard[1].EnumerateArray())
-                        {
-                            if (prop.GetArrayLength() > 3 && prop[0].GetString() == "fn") { registrar = prop[3].GetString(); break; }
-                        }
-                    }
-                    break;
-                }
-            }
-            var statuses = doc.RootElement.TryGetProperty("status", out var st)
-                ? st.EnumerateArray().Select(s => s.GetString() ?? string.Empty).ToList()
-                : new List<string>();
-            return new DomainInfo(domain, registered, expires, registrar, statuses, null);
-        }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
-        {
-            _logger.LogInformation(ex, "RDAP lookup for {Domain} failed", domain);
-            return new DomainInfo(domain, null, null, null, Array.Empty<string>(), $"RDAP lookup failed: {ex.Message}");
         }
     }
 }

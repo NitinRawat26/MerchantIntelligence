@@ -15,6 +15,7 @@ HTML that is processed deterministically.
 | **Google Places API** | Local presence | `Kyb:GooglePlacesApiKey` | Billed per request beyond the free credit |
 | **OpenCorporates** | Registry verification | `Kyb:OpenCorporatesApiToken` | Free tier for non-commercial use |
 | **UK Companies House** | Registry verification (UK) | `Kyb:CompaniesHouseApiKey` | Free key |
+| **Kentucky Secretary of State** business search (`sosbes.sos.ky.gov`) | Registry verification (US-KY applicants; standing, industry, employee band, annual report, registered agent, assumed names) | no (`Kyb:StateRegistriesEnabled`) | Public ASP.NET search form, no API; one search + one profile fetch per query, polite fallbacks by name token |
 | **OpenSanctions** `targets.simple.csv` (+ PEP dataset) | Sanctions/PEP screening | no | **CC BY-NC 4.0** — commercial use needs an OpenSanctions licence |
 | **OFAC SDN** CSV | Sanctions screening | no | Public domain |
 | **UN Security Council consolidated list** XML | Sanctions screening | no | Public domain |
@@ -25,7 +26,7 @@ HTML that is processed deterministically.
 | **CourtListener** search API | Adverse-media (US court opinions and dockets naming the subject) | no | `courtlistener`; Free Law Project, public domain records |
 
 Adverse-media sources run in parallel per subject; results are merged, de-duplicated and graded against the risk lexicon (see [KYB and Compliance](KYB-and-Compliance#adverse-media--compositeadversemediaprovider)). Any source succeeding counts as coverage with the failed ones named; all failing is *media unavailable*, never clear.
-| **RDAP** registries | Website compliance (domain age / expiry) | no | Availability varies per TLD |
+| **RDAP** registries | Website compliance (domain age / expiry); local presence digital footprint (contact e-mail domain age) | no | Availability varies per TLD |
 | **Merchant websites** | Website compliance, MCC validation, prohibited-business text | no | Plain HTTP GET, 15 s, 4 MB, UA `MerchantIntelligenceBot/1.0`; robots.txt not consulted; JavaScript not executed |
 | **Mastercard MATCH** | MATCH inquiry | acquirer credentials (`Match:Endpoint`, `Match:ApiKey`) or `Match:LocalListPath` | Without either, result is `NotConfigured` / `found: null` — unknown, never clear |
 

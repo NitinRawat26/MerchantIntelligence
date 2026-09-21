@@ -108,6 +108,10 @@ flowchart TD
 | | `HEADCOUNT_HIGH_FOR_VOLUME` | < p10 ÷ 4 | Medium | 12 |
 | Headcount ceiling | `HEADCOUNT_ABOVE_INDUSTRY_CEILING` | employees > max(maxEmployees, locations × maxPerLocation) | **High** | 25 |
 | | `HEADCOUNT_HIGH_FOR_LOCATIONS` | employees ÷ locations > maxPerLocation (and not already above ceiling) | Medium | 12 |
+| Volume per location | `VOLUME_PER_LOCATION_FAR_ABOVE_MCC` | volume ÷ locations > 3 × MCC p90 per site | **High** | 25 |
+| | `VOLUME_PER_LOCATION_ABOVE_MCC` | > MCC p90 per site | Medium | 10 |
+| | `VOLUME_PER_LOCATION_FAR_BELOW_MCC` | < MCC p10 ÷ 4 per site | Medium | 10 |
+| | `VOLUME_PER_LOCATION_BELOW_MCC` | < MCC p10 per site | Low | 4 |
 | Tenure | `STARTUP_WITH_LARGE_VOLUME` | < 1 year and volume > $1M | **High** | 25 |
 | | `YOUNG_BUSINESS_LARGE_VOLUME` | < 2 years and volume > $5M | Medium | 12 |
 | Prior revenue | `VOLUME_EXCEEDS_REVENUE` | volume ÷ revenue > 3 | **High** | 30 |
@@ -117,6 +121,8 @@ flowchart TD
 | | `DECLARED_BELOW_STATEMENTS` | < 0.5 | Medium | 10 |
 | Catalogue | `THIN_CATALOGUE_LARGE_VOLUME` | online-only, < 5 products, volume > $500k | **High** | 20 |
 | Round number | `ROUND_NUMBER_DECLARATION` | volume ≥ 100k and exact multiple of 1,000,000 | Low | 3 |
+
+**Per-location band.** `industry-benchmarks.json` carries `volumePerLocation: [p10, p90]` per category with MCC overrides (e.g. 5812 restaurants $150k–$4M, 5814 fast food $200k–$3.5M, 5411 grocery $500k–$30M, 7372 software $50k–$50M — platform heuristics, not card-brand figures). The divisor is the intake **location count** only — the platform does not collect per-location addresses; a merchant with `HasPhysicalLocation = true` and no count is treated as one site, and an online-only merchant gets no per-location row. This is the SMB-shaped check: a single Louisville grill declaring $15M fails it (needs 4+ typical sites) while two grills sharing $600k pass; ten sites sharing $200k is the volume-splitting / dormant-location pattern.
 
 Penalties are additive; the score is `clamp(100 − Σ penalty, 0, 100)`. Each check also emits a **metric** row (value, benchmark, assessment) even when no flag fires, so the analyst sees the full comparison.
 

@@ -59,7 +59,8 @@ public sealed class BusinessVerificationService
             return new BusinessVerificationResult(identity, VerificationStatus.NotApplicable, 0, null, null, addressOnly, [], noteFlags, Scope: scope);
         }
 
-        var sourceTasks = _providers.Where(p => p.IsEnabled).Select(async p =>
+        var applicable = _providers.Where(p => p.Covers(identity)).ToList();
+        var sourceTasks = applicable.Where(p => p.IsEnabled).Select(async p =>
         {
             try
             {
@@ -76,7 +77,7 @@ public sealed class BusinessVerificationService
             }
         }).ToList();
 
-        var disabled = _providers.Where(p => !p.IsEnabled)
+        var disabled = applicable.Where(p => !p.IsEnabled)
             .Select(p => new RegistrySourceResult(p.Name, false, Array.Empty<RegistryMatch>(), "Not configured (API key missing)."));
 
         var address = await VerifyAddressAsync(identity, ct);
@@ -107,6 +108,7 @@ public sealed class BusinessVerificationService
                 flags.Add(new KybFlag("REGISTERED_ADDRESS_MISMATCH", $"Declared address does not match registry address '{best.Record.Address}'.", RiskTier.Medium));
             if (best.Record.Status is not null && InactiveStatuses.Any(s => best.Record.Status.Contains(s, StringComparison.OrdinalIgnoreCase)))
                 flags.Add(new KybFlag("INACTIVE_ENTITY", $"Registry status is '{best.Record.Status}'.", RiskTier.High));
+            if (StandingFlag(best.Record) is { } standingFlag) flags.Add(standingFlag);
             if (!string.IsNullOrWhiteSpace(identity.RegistrationNumber) && !string.IsNullOrWhiteSpace(best.Record.RegistrationNumber)
                 && NameMatcher.Normalize(identity.RegistrationNumber).Replace(" ", "") != NameMatcher.Normalize(best.Record.RegistrationNumber).Replace(" ", ""))
                 flags.Add(new KybFlag("REGISTRATION_NUMBER_MISMATCH", $"Declared registration number '{identity.RegistrationNumber}' ≠ registry '{best.Record.RegistrationNumber}'.", RiskTier.High));
@@ -140,6 +142,12 @@ public sealed class BusinessVerificationService
             flags.Add(new KybFlag("ADDRESS_UNVERIFIED", $"Address could not be geocoded: {address.Error}", RiskTier.Low));
     }
 
+    /// <summary>State registers report standing separately from status: an active entity can still be delinquent on its annual report.</summary>
+    internal static KybFlag? StandingFlag(RegistryRecord record) =>
+        record.Extra is { } extra && extra.TryGetValue("standing", out var standing) && !standing.Contains("good", StringComparison.OrdinalIgnoreCase)
+            ? new KybFlag("REGISTRY_BAD_STANDING", $"Register reports standing '{standing}' – annual report or fees are outstanding with the state.", RiskTier.Medium)
+            : null;
+
     /// <summary>
     /// Folds a local-presence (places) result into a registry verification: adds the LOCAL_PRESENCE_* flags and, when no
     /// registry knows the entity but a business with that name trades at the address, lifts the identity to PartialMatch
@@ -148,7 +156,7 @@ public sealed class BusinessVerificationService
     public static BusinessVerificationResult WithLocalPresence(BusinessVerificationResult result, LocalPresenceResult presence)
     {
         var identity = result.Input;
-        var flags = result.Flags.Where(f => !f.Code.StartsWith("LOCAL_PRESENCE_", StringComparison.Ordinal)).ToList();
+        var flags = result.Flags.Where(f => !f.Code.StartsWith("LOCAL_PRESENCE_", StringComparison.Ordinal) && !f.Code.StartsWith("EMAIL_", StringComparison.Ordinal) && !f.Code.StartsWith("ADDRESS_", StringComparison.Ordinal)).ToList();
         var status = result.Status;
         var confidence = result.ConfidencePercent;
         var pm = presence.BestMatch;
@@ -170,6 +178,20 @@ public sealed class BusinessVerificationService
                 flags.Add(new KybFlag("LOCAL_PRESENCE_NOT_FOUND", $"No business matching '{identity.TradingName ?? identity.LegalName}' was found near the declared address in {string.Join(", ", presence.Sources.Where(s => s.Succeeded).Select(s => s.Source))}.{(presence.Note is null ? "" : " " + presence.Note)}", RiskTier.Low));
                 break;
         }
+        if (pm?.Record.Reputation is { } rep && presence.Status is LocalPresenceStatus.Confirmed or LocalPresenceStatus.PartialMatch)
+        {
+            var parts = new List<string>();
+            if (rep.Rating is { } rating) parts.Add($"rated {rating:0.#}/{rep.RatingScale:0}{(rep.RatingCount is { } rc ? $" from {rc} ratings" : "")}");
+            if (rep.Popularity is { } pop) parts.Add($"popularity {pop:P0}");
+            if (rep.ListedSince is { } since) parts.Add($"listed since {since:yyyy-MM-dd}");
+            if (rep.OpenNow is { } open) parts.Add(open ? "open at time of check" : "closed at time of check");
+            if (parts.Count > 0)
+                flags.Add(new KybFlag("LOCAL_PRESENCE_REPUTATION", $"{pm.Record.Source}: {string.Join(", ", parts)}. Crowd activity supports an operating venue; it is not a quality or legitimacy judgement.", RiskTier.Low));
+            if (rep.Rating is { } low && rep.RatingScale is { } scale && low / scale < 0.5 && rep.RatingCount is >= 10)
+                flags.Add(new KybFlag("LOCAL_PRESENCE_LOW_RATING", $"{pm.Record.Source} rating {low:0.#}/{scale:0} across {rep.RatingCount} ratings; poor service history correlates with dispute and chargeback volume.", RiskTier.Low));
+        }
+        if (presence.Footprint is { } fp) flags.AddRange(fp.Flags);
+        if (presence.AddressType is { } at) flags.AddRange(at.Flags);
         return result with { Status = status, ConfidencePercent = confidence, Flags = flags, LocalPresence = presence };
     }
 

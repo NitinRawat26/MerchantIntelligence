@@ -2,12 +2,29 @@ using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using MerchantIntelligence.Platform.Assessment;
+using MerchantIntelligence.Platform.Licensing;
 using MerchantIntelligence.Platform.Profiling;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MerchantIntelligence.Api.Controllers;
 
 /// <summary>Single intake covering every check in the suite.</summary>
+public sealed class LicenseAttestationRequest
+{
+    [Required] public LicenseType Type { get; set; }
+    public string? Number { get; set; }
+    public string? IssuingAuthority { get; set; }
+    public DateOnly? IssueDate { get; set; }
+    public DateOnly? ExpiryDate { get; set; }
+    public string? EvidenceReference { get; set; }
+
+    public LicenseAttestation ToAttestation() => new(Type,
+        string.IsNullOrWhiteSpace(Number) ? null : Number.Trim(),
+        string.IsNullOrWhiteSpace(IssuingAuthority) ? null : IssuingAuthority.Trim(),
+        IssueDate, ExpiryDate,
+        string.IsNullOrWhiteSpace(EvidenceReference) ? null : EvidenceReference.Trim());
+}
+
 public sealed class AssessmentRequest
 {
     [Required] public BusinessIdentityRequest Business { get; set; } = new();
@@ -32,6 +49,10 @@ public sealed class AssessmentRequest
     public bool? HasPhysicalLocation { get; set; }
     /// <summary>Inline bank-statement CSV; alternatively upload a file in the multipart field "bankStatement".</summary>
     public string? BankStatementCsv { get; set; }
+    /// <summary>Account-holder name printed on the bank statement.</summary>
+    public string? BankAccountHolderName { get; set; }
+    /// <summary>Licences / permits the analyst sighted on the merchant's documents.</summary>
+    public List<LicenseAttestationRequest> Licenses { get; set; } = new();
     /// <summary>Inline P&amp;L / balance-sheet text; alternatively upload a file in the multipart field "financialStatement".</summary>
     public string? FinancialStatementText { get; set; }
     public string? ExternalRef { get; set; }
@@ -41,7 +62,8 @@ public sealed class AssessmentRequest
     public AssessmentIntake ToIntake() => new(Business.ToIdentity(), Owners.Select(o => o.ToOwner()).ToList(), BusinessDescription, MerchantCategoryCode,
         AnnualVolume, AverageTicket, HighestTicket, ExistingRelationship, DeliveryDays, CardNotPresentShare, OffersSubscriptions, OffersFreeTrials,
         EmployeeCount, YearsInBusiness, PriorYearRevenue, WebsiteProductCount, HasPhysicalLocation, BankStatementCsv, FinancialStatementText,
-        ExternalRef, Actor, CreateCase, LocationCount, EntityType);
+        ExternalRef, Actor, CreateCase, LocationCount, EntityType, string.IsNullOrWhiteSpace(BankAccountHolderName) ? null : BankAccountHolderName.Trim(),
+        Licenses.Select(l => l.ToAttestation()).ToList());
 }
 
 [ApiController]
