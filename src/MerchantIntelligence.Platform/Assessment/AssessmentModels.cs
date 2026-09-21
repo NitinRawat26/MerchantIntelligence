@@ -125,7 +125,8 @@ public sealed record AssessmentResult(
     long? DecisionLogId,
     AssessmentWorkflowInfo? Workflow = null,
     IReadOnlyList<AgentReport>? Agents = null,
-    MerchantProfile? Profile = null);
+    MerchantProfile? Profile = null,
+    Owners.OwnerAssessment? Owners = null);
 
 /// <summary>Which workflow definition produced a result, for replay and audit, and which stop-gates fired during the run.</summary>
 public sealed record AssessmentWorkflowInfo(string Name, string Version, IReadOnlyList<string> EnabledSteps, IReadOnlyList<StopGateHit>? StopGates = null);

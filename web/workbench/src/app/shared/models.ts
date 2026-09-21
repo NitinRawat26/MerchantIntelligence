@@ -11,7 +11,7 @@ export interface BusinessIdentityRequest {
   legalName: string; tradingName?: string; registrationNumber?: string; taxId?: string;
   addressLine?: string; city?: string; region?: string; postalCode?: string; country?: string; websiteUrl?: string;
 }
-export interface BeneficialOwnerRequest { fullName: string; dateOfBirth?: string; nationality?: string; role?: string; ownershipPercent?: number; }
+export interface BeneficialOwnerRequest { fullName: string; dateOfBirth?: string; nationality?: string; role?: string; ownershipPercent?: number; address?: string; }
 export interface WebsiteComplianceRequest { websiteUrl: string; businessDescription?: string; declaredMcc?: number; legalName?: string; }
 export interface ProhibitedBusinessRequest { text?: string; businessDescription?: string; declaredMcc?: number; }
 export interface RestrictedCategory { code: string; name: string; policy: BusinessPolicy; mccs: number[]; keywords: string[]; notes: string; }
@@ -174,6 +174,9 @@ export interface MerchantProfile {
   entityType: EntityType; entityTypeInferred: boolean; segment: MerchantSegment; registryScope: 'Local' | 'Global' | 'TaxExempt' | 'None'; locationCount: number;
   reasons: string[]; notApplicable: { stepId: string; reason: string }[]; findings: { code: string; message: string; severity: RiskTier }[]; isSmb: boolean;
 }
+export interface PriorApplication { assessmentId: string; merchantName: string; seenAt: string; }
+export interface OwnerCheck { fullName: string; role?: string | null; age?: number | null; dateOfBirthDeclared: boolean; nationalityDeclared: boolean; addressDeclared: boolean; sharesBusinessAddress?: boolean | null; priorApplications: PriorApplication[]; }
+export interface OwnerAssessment { owners: OwnerCheck[]; completenessPercent: number; homeBased: boolean; flags: Flag[]; covered: boolean; }
 export type StepStatus = 'Pending' | 'Running' | 'Succeeded' | 'Failed' | 'Skipped';
 export interface AssessmentStepDescriptor { id: string; name: string; enabled?: boolean; }
 export interface AssessmentAgentDescriptor { id: string; name: string; mandate: string; enabled: boolean; steps: string[]; kind?: 'Evidence' | 'Profiling'; }
@@ -250,7 +253,7 @@ export interface AssessmentResult {
   bankStatement?: CashFlowAnalysis | null; financialStatement?: FinancialStatementAnalysis | null; volumePlausibility?: VolumePlausibilityResult | null;
   creditDecision?: DecisionResult | null; creditExplanation?: DecisionExplanation | null; terms?: TermsRecommendation | null;
   unifiedScore?: UnifiedRiskScore | null; rules?: RulesEvaluation | null; case?: MerchantCase | null; decisionLogId?: number | null;
-  agents?: AgentReport[] | null; profile?: MerchantProfile | null;
+  agents?: AgentReport[] | null; profile?: MerchantProfile | null; owners?: OwnerAssessment | null;
 }
 export interface AssessmentListItem { id: string; merchantName: string; outcome: RuleOutcome; score: number; tier: string; coveragePercent: number; caseId?: string | null; completedAt: string; }
 export type AssessmentEvent =

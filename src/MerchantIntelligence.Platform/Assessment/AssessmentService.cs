@@ -65,12 +65,12 @@ public sealed class AssessmentService
         var steps = ctx.Steps;
         var decision = AssessmentComposer.BuildDecision(ctx.Score, ctx.Rules, steps, ctx.ForcedRefer, ctx.ForcedDecline);
         var explainability = AssessmentComposer.BuildExplainability(intake, decision, ctx.Verification, ctx.Screening, ctx.Website, ctx.Prohibited, ctx.Mcc, ctx.Match,
-            ctx.Bank, ctx.Financials, ctx.Plausibility, ctx.Credit, ctx.CreditExplanation, ctx.Terms, ctx.Score, ctx.Rules, ctx.Signals, ctx.LocalPresence, ctx.Profile);
+            ctx.Bank, ctx.Financials, ctx.Plausibility, ctx.Credit, ctx.CreditExplanation, ctx.Terms, ctx.Score, ctx.Rules, ctx.Signals, ctx.LocalPresence, ctx.Profile, ctx.Owners);
 
         var result = new AssessmentResult(id, ctx.StartedAt, DateTimeOffset.UtcNow, AssessmentComposer.Summarise(intake, bankStatement, financialStatement), steps, decision, explainability,
             ctx.Verification, ctx.Screening, ctx.Website, ctx.Prohibited, ctx.Mcc, ctx.Match, ctx.Bank, ctx.Financials, ctx.Plausibility, ctx.Credit, ctx.CreditExplanation,
             ctx.Terms, ctx.Score, ctx.Rules, ctx.Case, ctx.DecisionLogId,
-            new AssessmentWorkflowInfo(def.Name, def.Version, def.Steps.Where(s => _planner.IsActive(def, s.Id)).Select(s => s.Id).ToList(), ctx.StopGateHits), ctx.Agents, ctx.Profile);
+            new AssessmentWorkflowInfo(def.Name, def.Version, def.Steps.Where(s => _planner.IsActive(def, s.Id)).Select(s => s.Id).ToList(), ctx.StopGateHits), ctx.Agents, ctx.Profile, ctx.Owners);
         Persist(result);
         _audit.Record(ctx.Case?.Id, intake.Actor, "assessment.completed", new { assessmentId = id, decision.Outcome, decision.Score, decision.CoveragePercent, workflow = def.Name, workflowVersion = def.Version });
         return result;

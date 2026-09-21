@@ -11,15 +11,15 @@ public sealed class ScoreStep(UnifiedRiskScorer scorer, RulesEngine rules, RuleS
 {
     public WorkflowStepDescriptor Descriptor { get; } = new("score", "Unified risk score & policy rules",
         "Blends every upstream signal into the 0–1000 score, then evaluates the active policy rule set to reach Approve / Refer / Decline.",
-        ["verification", "presence", "screening", "website", "prohibited", "mcc", "match", "bank", "financials", "plausibility", "credit", "terms"],
-        ["verification", "presence", "screening", "website", "prohibited", "mcc", "match", "bank", "financials", "plausibility", "credit", "terms"], true, []);
+        ["verification", "presence", "screening", "website", "prohibited", "mcc", "match", "owners", "bank", "financials", "plausibility", "credit", "terms"],
+        ["verification", "presence", "screening", "website", "prohibited", "mcc", "match", "owners", "bank", "financials", "plausibility", "credit", "terms"], true, []);
 
     public async Task ExecuteAsync(AssessmentContext ctx)
     {
         var v = ctx.Verification;
         var s = ctx.Screening;
-        ctx.KybRisk ??= AssessmentComposer.KybRisk(v, s, ctx.Website);
-        ctx.Signals = AssessmentComposer.CollectSignals(v, s, ctx.Website, ctx.Prohibited, ctx.Mcc, ctx.Bank, ctx.Financials, ctx.Plausibility);
+        ctx.KybRisk ??= AssessmentComposer.KybRisk(v, s, ctx.Website, ctx.Owners);
+        ctx.Signals = AssessmentComposer.CollectSignals(v, s, ctx.Website, ctx.Prohibited, ctx.Mcc, ctx.Bank, ctx.Financials, ctx.Plausibility, ctx.Owners);
         var registriesReachable = v is not null && AssessmentComposer.RegistriesReachable(v);
         var listsLoaded = s is not null && AssessmentComposer.ListsLoaded(s);
         ctx.ScoreInput = new UnifiedRiskInput(ctx.Application, ctx.Credit, ctx.KybRisk,

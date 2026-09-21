@@ -10,6 +10,7 @@ public static class KybAgentRegistration
     {
         services.AddSingleton<IAssessmentStep, VerificationStep>();
         services.AddSingleton<IAssessmentStep, LocalPresenceStep>();
+        services.AddSingleton<IAssessmentStep, OwnerIdentityStep>();
         services.AddSingleton<IAssessmentStep, ScreeningStep>();
         services.AddSingleton<IAssessmentStep, MatchStep>();
         services.AddSingleton<IAssessmentAgent, KybAgent>();

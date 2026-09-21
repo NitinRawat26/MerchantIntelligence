@@ -2,6 +2,8 @@ using System.Text.Json;
 using MerchantIntelligence.Kyb.Compliance;
 using MerchantIntelligence.Kyb.Registry;
 using MerchantIntelligence.MccValidation.Taxonomy;
+using MerchantIntelligence.Kyb;
+using MerchantIntelligence.Platform.Profiling;
 using Xunit;
 
 namespace MerchantIntelligence.Tests;
@@ -192,5 +194,96 @@ public class PlaceReputationTests
         Assert.Contains("8.7/10", flag.Message);
         Assert.Contains("142 ratings", flag.Message);
         Assert.DoesNotContain(merged.Flags, f => f.Code == "LOCAL_PRESENCE_LOW_RATING");
+    }
+}
+
+public class OwnerIdentityTests
+{
+    private static readonly DateOnly Today = new(2026, 9, 19);
+    private static readonly MerchantIntelligence.Platform.Profiling.MerchantProfile Small = new(
+        MerchantIntelligence.Platform.Profiling.EntityType.MultiMemberLlc, false, MerchantIntelligence.Platform.Profiling.MerchantSegment.Small,
+        MerchantIntelligence.Platform.Profiling.RegistryScope.Local, 1, [], [], []);
+
+    private static MerchantIntelligence.Platform.Assessment.AssessmentIntake Intake(params MerchantIntelligence.Kyb.BeneficialOwner[] owners) =>
+        new(new BusinessIdentity("Aljazzar Meat & Grill LLC", AddressLine: "4213 Bardstown Road", City: "Louisville", Region: "KY", PostalCode: "40218", Country: "US"),
+            owners, "Restaurant", 5812, 600_000m, 28m, 400m, false, YearsInBusiness: 2);
+
+    private static MerchantIntelligence.Platform.Owners.OwnerAssessment Assess(MerchantIntelligence.Platform.Assessment.AssessmentIntake i,
+        Func<MerchantIntelligence.Kyb.BeneficialOwner, IReadOnlyList<MerchantIntelligence.Platform.Owners.PriorApplication>>? history = null) =>
+        MerchantIntelligence.Platform.Owners.OwnerIdentityAssessor.Assess(i, Small, history ?? (_ => []), Today);
+
+    [Fact]
+    public void Complete_owner_has_no_findings_and_full_completeness()
+    {
+        var r = Assess(Intake(new BeneficialOwner("Jane Doe", new DateOnly(1980, 1, 1), "US", "Owner", 100, "12 Elm St, Louisville, KY 40205")));
+        Assert.True(r.Covered);
+        Assert.Equal(1.0, r.CompletenessPercent);
+        Assert.Empty(r.Flags);
+        Assert.Equal(46, r.Owners[0].Age);
+        Assert.False(r.Owners[0].SharesBusinessAddress);
+    }
+
+    [Fact]
+    public void Missing_attributes_are_medium_for_smb_and_lower_completeness()
+    {
+        var r = Assess(Intake(new BeneficialOwner("Jane Doe", Role: "Owner")));
+        var f = Assert.Single(r.Flags, x => x.Code == "OWNER_IDENTITY_INCOMPLETE");
+        Assert.Equal(RiskTier.Medium, f.Severity);
+        Assert.Contains("date of birth", f.Message);
+        Assert.Equal(0, r.CompletenessPercent);
+    }
+
+    [Fact]
+    public void Age_versus_tenure_and_underage_are_flagged()
+    {
+        var young = Intake(new BeneficialOwner("Kid Owner", Today.AddYears(-17), "US", "Owner")) with { YearsInBusiness = 5 };
+        var r = Assess(young);
+        Assert.Contains(r.Flags, x => x.Code == "OWNER_UNDERAGE" && x.Severity == RiskTier.High);
+        Assert.Contains(r.Flags, x => x.Code == "OWNER_AGE_VS_TENURE");
+    }
+
+    [Fact]
+    public void Owner_at_business_address_marks_home_based()
+    {
+        var r = Assess(Intake(new BeneficialOwner("Jane Doe", new DateOnly(1980, 1, 1), "US", "Owner", 100, "4213 Bardstown Rd, Louisville KY 40218")));
+        Assert.True(r.HomeBased);
+        Assert.True(r.Owners[0].SharesBusinessAddress);
+        Assert.Contains(r.Flags, x => x.Code == "OWNER_HOME_BASED");
+    }
+
+    [Fact]
+    public void Prior_applications_become_duplicate_or_velocity_findings()
+    {
+        var one = new List<MerchantIntelligence.Platform.Owners.PriorApplication> { new("a1", "Other Grill LLC", DateTimeOffset.UtcNow.AddDays(-200)) };
+        var dup = Assess(Intake(new BeneficialOwner("Jane Doe", new DateOnly(1980, 1, 1), "US", "Owner")), _ => one);
+        Assert.Contains(dup.Flags, x => x.Code == "OWNER_DUPLICATE_APPLICATION" && x.Severity == RiskTier.Medium);
+
+        var three = Enumerable.Range(1, 3).Select(n => new MerchantIntelligence.Platform.Owners.PriorApplication($"a{n}", $"Shop {n}", DateTimeOffset.UtcNow.AddDays(-n * 10))).ToList();
+        var vel = Assess(Intake(new BeneficialOwner("Jane Doe", new DateOnly(1980, 1, 1), "US", "Owner")), _ => three);
+        Assert.Contains(vel.Flags, x => x.Code == "OWNER_APPLICATION_VELOCITY" && x.Severity == RiskTier.High);
+    }
+
+    [Fact]
+    public void No_owner_is_not_covered()
+    {
+        var r = Assess(Intake());
+        Assert.False(r.Covered);
+        Assert.Empty(r.Flags);
+    }
+
+    [Fact]
+    public void Principal_registry_finds_same_person_behind_other_merchants_only()
+    {
+        using var db = new MerchantIntelligence.Platform.Storage.PlatformDatabase(new MerchantIntelligence.Platform.Storage.PlatformOptions { DatabasePath = ":memory:" });
+        var reg = new MerchantIntelligence.Platform.Owners.PrincipalRegistry(db);
+        var jane = new MerchantIntelligence.Kyb.BeneficialOwner("Jane Doe", new DateOnly(1980, 1, 1));
+        reg.Remember("a1", "First Shop LLC", [jane], DateTimeOffset.UtcNow.AddDays(-30));
+        reg.Remember("a2", "First Shop LLC", [jane], DateTimeOffset.UtcNow.AddDays(-10)); // re-assessment of the same merchant
+        reg.Remember("a3", "Second Shop LLC", [new("Jane Doe")], DateTimeOffset.UtcNow.AddDays(-5)); // no DOB on file
+
+        var prior = reg.PriorApplications(jane, "Third Shop LLC", "a4");
+        Assert.Equal(3, prior.Count);
+        Assert.Equal("Second Shop LLC", Assert.Single(reg.PriorApplications(jane, "First Shop LLC", "a5")).MerchantName);
+        Assert.Empty(reg.PriorApplications(new("John Roe", new DateOnly(1970, 1, 1)), "Third Shop LLC", "a4"));
     }
 }

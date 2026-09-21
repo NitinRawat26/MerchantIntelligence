@@ -108,7 +108,9 @@ export const FIELD_HINTS: Record<string, string> = {
   ownerRole:
     'Label only: shown on the screening subject and MATCH principal; not used in scoring.',
   ownershipPercent:
-    'Recorded on the case / MATCH principal for UBO documentation; not used in scoring.',
+    'Recorded on the case / MATCH principal for UBO documentation; for Micro/Small merchants a total under 75% raises OWNERSHIP_UNDER_DECLARED.',
+  ownerAddress:
+    'Owner identity: compared with the business address (home-based trading) and counts toward identity completeness; missing DOB/nationality/address is Medium for a Micro/Small merchant.',
   actor:
     'Audit only: recorded as the actor on the assessment.completed audit event and as the case creator.',
   externalRef:

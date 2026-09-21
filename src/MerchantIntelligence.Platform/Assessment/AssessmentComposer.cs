@@ -14,6 +14,7 @@ using MerchantIntelligence.Platform.ModelOps;
 using MerchantIntelligence.Platform.Rules;
 using MerchantIntelligence.Platform.Scoring;
 using MerchantIntelligence.Platform.Storage;
+using MerchantIntelligence.Platform.Owners;
 using MerchantIntelligence.Platform.Profiling;
 using MerchantIntelligence.Underwriting.Explainability;
 using MerchantIntelligence.Underwriting.Financials;
@@ -62,23 +63,26 @@ internal static class AssessmentComposer
     /// <summary>Adverse media counts as checked only if every subject's lookup succeeded (or none was attempted).</summary>
     internal static bool MediaChecked(ScreeningReport s) => s.Subjects.All(x => x.AdverseMedia is null || x.AdverseMedia.Succeeded);
 
-    internal static RiskTier? KybRisk(BusinessVerificationResult? v, ScreeningReport? s, WebsiteComplianceResult? w)
+    internal static RiskTier? KybRisk(BusinessVerificationResult? v, ScreeningReport? s, WebsiteComplianceResult? w, OwnerAssessment? owners = null)
     {
         if (v is not null && !RegistriesReachable(v)) v = null;
         if (s is not null && !ListsLoaded(s)) s = null;
-        if (v is null && s is null && w is null) return null;
+        if (owners is { Covered: false }) owners = null;
+        if (v is null && s is null && w is null && owners is null) return null;
         var tiers = new List<RiskTier>();
         if (v is not null) tiers.AddRange(v.Flags.Select(f => f.Severity));
+        if (owners is not null) tiers.AddRange(owners.Flags.Select(f => f.Severity));
         if (s is not null) tiers.Add(s.OverallRisk);
         if (w is not null) tiers.AddRange(w.Checks.Where(c => c.Status == CheckStatus.Fail).Select(c => c.Severity));
         return tiers.Count == 0 ? RiskTier.Low : tiers.Max();
     }
 
     internal static List<RiskSignal> CollectSignals(BusinessVerificationResult? v, ScreeningReport? s, WebsiteComplianceResult? w, ProhibitedBusinessResult? p,
-        MccValidationResult? m, CashFlowAnalysis? b, FinancialStatementAnalysis? f, VolumePlausibilityResult? pl)
+        MccValidationResult? m, CashFlowAnalysis? b, FinancialStatementAnalysis? f, VolumePlausibilityResult? pl, OwnerAssessment? owners = null)
     {
         var list = new List<RiskSignal>();
         if (v is not null) list.AddRange(v.Flags.Select(x => new RiskSignal("verification", x.Code, x.Message, x.Severity)));
+        if (owners is not null) list.AddRange(owners.Flags.Select(x => new RiskSignal("owners", x.Code, x.Message, x.Severity)));
         if (s is not null) list.AddRange(s.Flags.Select(x => new RiskSignal("screening", x.Code, x.Message, x.Severity)));
         if (w is not null) list.AddRange(w.Checks.Where(c => c.Status == CheckStatus.Fail).Select(c => new RiskSignal("website", $"WEB_{c.Code}", c.Detail, c.Severity)));
         if (p is not null) list.AddRange(p.Flags.Select(x => new RiskSignal("prohibited", x.Code, x.Message, x.Severity)));
@@ -120,7 +124,7 @@ internal static class AssessmentComposer
     internal static AssessmentExplainability BuildExplainability(AssessmentIntake intake, AssessmentDecision decision, BusinessVerificationResult? v, ScreeningReport? s,
         WebsiteComplianceResult? w, ProhibitedBusinessResult? p, MccValidationResult? m, MatchResult? match, CashFlowAnalysis? b, FinancialStatementAnalysis? f,
         VolumePlausibilityResult? pl, DecisionResult? credit, DecisionExplanation? explanation, TermsRecommendation? terms, UnifiedRiskScore? score,
-        RulesEvaluation? rules, IReadOnlyList<RiskSignal> signals, LocalPresenceResult? lp = null, MerchantProfile? profile = null)
+        RulesEvaluation? rules, IReadOnlyList<RiskSignal> signals, LocalPresenceResult? lp = null, MerchantProfile? profile = null, OwnerAssessment? owners = null)
     {
         var outcomes = new List<CheckOutcome>();
         var narrative = new List<string>();
@@ -212,6 +216,26 @@ internal static class AssessmentComposer
             outcomes.Add(new("Digital footprint", result, detail, worst, covered));
             narrative.Add($"Digital footprint: contact e-mail domain {fp.EmailDomain} – {detail}");
             if (fp.Flags.Any(f => f.Code == "EMAIL_DOMAIN_NEW")) next.Add("Contact e-mail domain is under six months old; corroborate tenure with a lease, utility bill or bank-account opening date.");
+        }
+
+        // Owner identity depth
+        if (owners is null) outcomes.Add(new("Owner identity", "Not run", "Owner identity checks were not run.", RiskTier.Low, false));
+        else if (!owners.Covered)
+        {
+            var sev = profile?.IsSmb == true ? RiskTier.Medium : RiskTier.Low;
+            outcomes.Add(new("Owner identity", "No principal declared", "Owner identity, age and cross-application checks could not be performed.", sev, false));
+            next.Add("Declare at least one beneficial owner or controlling person with date of birth, nationality and address.");
+        }
+        else
+        {
+            var worst = owners.Flags.Count == 0 ? RiskTier.Low : owners.Flags.Max(f => f.Severity);
+            var people = string.Join("; ", owners.Owners.Select(o => $"{o.FullName}{(o.Role is null ? "" : $" ({o.Role})")}{(o.Age is { } a ? $", {a}" : "")}{(o.PriorApplications.Count > 0 ? $", {o.PriorApplications.Count} prior application(s)" : "")}"));
+            var detail = $"{people}. Identity attributes {owners.CompletenessPercent:P0} complete{(owners.HomeBased ? "; trades from a principal's home address" : "")}." +
+                         (owners.Flags.Count > 0 ? " " + string.Join(" ", owners.Flags.Select(f => f.Message)) : "");
+            outcomes.Add(new("Owner identity", owners.Flags.Count == 0 ? "Complete" : $"{owners.Flags.Count} finding(s)", detail, worst, true));
+            narrative.Add($"Owner identity: {owners.Owners.Count} principal(s), {owners.CompletenessPercent:P0} of identity attributes supplied.{(owners.Flags.Count > 0 ? " " + string.Join(" ", owners.Flags.Select(f => $"{f.Code}: {f.Message}")) : "")}");
+            if (owners.Flags.Any(f => f.Code is "OWNER_DUPLICATE_APPLICATION" or "OWNER_APPLICATION_VELOCITY")) next.Add("Review the earlier applications this principal appeared on before deciding; confirm they are the same person and whether those merchants were approved.");
+            if (owners.Flags.Any(f => f.Code == "OWNER_IDENTITY_INCOMPLETE")) next.Add("Collect the missing owner identity attributes (government ID with date of birth, proof of address).");
         }
 
         // Screening

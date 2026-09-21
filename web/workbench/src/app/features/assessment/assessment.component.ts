@@ -142,7 +142,7 @@ export class AssessmentComponent {
   }
 
   get owners(): FormArray { return this.form.controls.owners; }
-  private owner(fullName = '', role = '') { return this.fb.nonNullable.group({ fullName: [fullName], dateOfBirth: [''], nationality: [''], role: [role], ownershipPercent: [''] }); }
+  private owner(fullName = '', role = '') { return this.fb.nonNullable.group({ fullName: [fullName], dateOfBirth: [''], nationality: [''], role: [role], ownershipPercent: [''], address: [''] }); }
   addOwner(): void { this.owners.push(this.owner()); }
   removeOwner(i: number): void { this.owners.removeAt(i); }
 
@@ -201,7 +201,7 @@ export class AssessmentComponent {
       },
       owners: v.owners.filter(o => o.fullName.trim()).map(o => ({
         fullName: o.fullName.trim(), dateOfBirth: opt(o.dateOfBirth), nationality: opt(o.nationality), role: opt(o.role),
-        ownershipPercent: o.ownershipPercent === '' ? undefined : Number(o.ownershipPercent)
+        ownershipPercent: o.ownershipPercent === '' ? undefined : Number(o.ownershipPercent), address: opt(o.address)
       })),
       businessDescription: opt(v.businessDescription),
       merchantCategoryCode: Number(v.merchantCategoryCode), annualVolume: Number(v.annualVolume), averageTicket: Number(v.averageTicket), highestTicket: Number(v.highestTicket),

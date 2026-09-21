@@ -40,6 +40,7 @@
               <mat-form-field appearance="outline"><mat-label>Nationality</mat-label><input matInput formControlName="nationality"><mi-field-hint matSuffix for="ownerNationality"></mi-field-hint></mat-form-field>
               <mat-form-field appearance="outline"><mat-label>Role</mat-label><input matInput formControlName="role"><mi-field-hint matSuffix for="ownerRole"></mi-field-hint></mat-form-field>
               <mat-form-field appearance="outline" class="pct"><mat-label>%</mat-label><input matInput type="number" formControlName="ownershipPercent"><mi-field-hint matSuffix for="ownershipPercent"></mi-field-hint></mat-form-field>
+              <mat-form-field appearance="outline" class="wide"><mat-label>Residential address</mat-label><input matInput formControlName="address"><mi-field-hint matSuffix for="ownerAddress"></mi-field-hint></mat-form-field>
               <button mat-icon-button type="button" (click)="removeOwner(i)" aria-label="Remove owner"><mat-icon>close</mat-icon></button>
             </div>
           }
@@ -357,6 +358,22 @@
               }
               <p class="muted">Lists: @for (l of s.lists; track l.listName) { <span class="pill small" [class]="l.error ? 'bad' : 'neutral'" [matTooltip]="l.error ?? ''">{{ l.listName }} ({{ l.entityCount | number }})</span> }</p>
             } @else { <p class="muted">Screening did not run.</p> }
+
+            <h3>Owner identity depth @if (r.owners; as ow) { <span class="pill small" [class]="!ow.covered ? 'bad' : ow.flags.length ? 'warn' : 'good'">{{ !ow.covered ? 'No principal' : ow.flags.length ? ow.flags.length + ' finding(s)' : 'Complete' }}</span> }</h3>
+            @if (r.owners; as ow) {
+              @if (ow.covered) {
+                <p class="muted">Identity attributes {{ ow.completenessPercent | percent }} supplied @if (ow.homeBased) { · trades from a principal's home address }</p>
+                <table class="full kv-table">
+                  <thead><tr><th>Principal</th><th>Role</th><th>Age</th><th>DOB</th><th>Nationality</th><th>Address</th><th>Prior applications</th></tr></thead>
+                  <tbody>@for (o of ow.owners; track o.fullName) {
+                    <tr><td>{{ o.fullName }}</td><td>{{ o.role ?? '—' }}</td><td>{{ o.age ?? '—' }}</td><td>{{ o.dateOfBirthDeclared ? '✓' : '—' }}</td><td>{{ o.nationalityDeclared ? '✓' : '—' }}</td>
+                      <td>{{ o.addressDeclared ? (o.sharesBusinessAddress ? 'business address' : 'declared') : '—' }}</td>
+                      <td>@if (o.priorApplications.length) { @for (pa of o.priorApplications; track pa.assessmentId) { <span class="pill small warn" [matTooltip]="pa.seenAt | date:'yyyy-MM-dd'">{{ pa.merchantName }}</span> } } @else { none }</td></tr>
+                  }</tbody>
+                </table>
+                <mi-flags [flags]="ow.flags" emptyText="No owner identity findings."></mi-flags>
+              } @else { <p class="text-high">No principal declared – owner identity, age and cross-application checks were not performed.</p> }
+            } @else { <p class="muted">Owner identity checks did not run.</p> }
 
             <h3>MATCH / terminated merchant</h3>
             @if (r.match; as m) {

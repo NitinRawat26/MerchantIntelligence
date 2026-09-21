@@ -33,8 +33,10 @@ public sealed class BeneficialOwnerRequest
     public string? Nationality { get; set; }
     public string? Role { get; set; }
     [Range(0, 100)] public double? OwnershipPercent { get; set; }
+    /// <summary>Owner's residential address, one line.</summary>
+    public string? Address { get; set; }
 
-    public BeneficialOwner ToOwner() => new(FullName.Trim(), DateOfBirth, Nationality, Role, OwnershipPercent);
+    public BeneficialOwner ToOwner() => new(FullName.Trim(), DateOfBirth, Nationality, Role, OwnershipPercent, string.IsNullOrWhiteSpace(Address) ? null : Address.Trim());
 }
 
 public sealed class ScreeningRequest

@@ -10,7 +10,9 @@ public sealed record BeneficialOwner(
     DateOnly? DateOfBirth = null,
     string? Nationality = null,
     string? Role = null,
-    double? OwnershipPercent = null);
+    double? OwnershipPercent = null,
+    /// <summary>Residential address as declared; compared with the business address for home-based merchants.</summary>
+    string? Address = null);
 
 public sealed record KybRequest(
     BusinessIdentity Business,

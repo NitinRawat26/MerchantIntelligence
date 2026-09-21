@@ -14,7 +14,7 @@ public sealed class TermsStep(ReservePricingRecommender pricing) : IAssessmentSt
     public async Task ExecuteAsync(AssessmentContext ctx)
     {
         var i = ctx.Intake;
-        ctx.KybRisk = AssessmentComposer.KybRisk(ctx.Verification, ctx.Screening, ctx.Website);
+        ctx.KybRisk = AssessmentComposer.KybRisk(ctx.Verification, ctx.Screening, ctx.Website, ctx.Owners);
         var app = ctx.Application;
         ctx.Terms = await ctx.RunAsync(Descriptor,
             () => Task.FromResult(pricing.Recommend(new PricingInput(app, i.DeliveryDays, i.CardNotPresentShare, ctx.KybRisk == RiskTier.High,
