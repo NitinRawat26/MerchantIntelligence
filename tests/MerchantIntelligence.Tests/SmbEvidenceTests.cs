@@ -287,3 +287,93 @@ public class OwnerIdentityTests
         Assert.Empty(reg.PriorApplications(new("John Roe", new DateOnly(1970, 1, 1)), "Third Shop LLC", "a4"));
     }
 }
+
+public class AddressClassifierTests
+{
+    private static GeocodeHit Hit(string? category, string? type, params (string, string)[] extra) =>
+        new(new GeoPoint(38.2, -85.7), category, type, null, extra.ToDictionary(e => e.Item1, e => e.Item2), null);
+
+    private static PlaceRecord Poi(string name, string? category) =>
+        new("OpenStreetMap (Overpass)", name, name, null, 38.2, -85.7, category, null, null, null, null);
+
+    [Fact]
+    public void Po_box_is_a_mail_drop_and_high_for_storefront_mcc()
+    {
+        var c = AddressClassifier.Classify("PO Box 1234", null, [], 5812);
+        Assert.Equal(AddressType.Cmra, c.Type);
+        Assert.Contains(c.Flags, f => f.Code == "ADDRESS_CMRA" && f.Severity == RiskTier.High);
+        Assert.False(c.Covered);
+    }
+
+    [Fact]
+    public void Cmra_operator_at_the_spot_is_a_mail_drop()
+    {
+        var c = AddressClassifier.Classify("123 Main St Ste 200", Hit("building", "commercial"), [Poi("The UPS Store", "shop / copyshop")], 7372);
+        Assert.Equal(AddressType.Cmra, c.Type);
+        Assert.Contains(c.Flags, f => f.Code == "ADDRESS_CMRA" && f.Severity == RiskTier.Medium);
+    }
+
+    [Fact]
+    public void Residential_building_with_storefront_mcc_is_flagged_medium()
+    {
+        var c = AddressClassifier.Classify("45 Elm St Apt 3", Hit("building", "house"), [], 5814);
+        Assert.Equal(AddressType.Residential, c.Type);
+        Assert.True(c.Confidence >= 0.5);
+        Assert.Contains(c.Flags, f => f.Code == "ADDRESS_RESIDENTIAL_STOREFRONT_MCC" && f.Severity == RiskTier.Medium);
+    }
+
+    [Fact]
+    public void Residential_with_home_compatible_mcc_is_consistent()
+    {
+        var c = AddressClassifier.Classify("45 Elm St", Hit("building", "house"), [], 5811);
+        Assert.Equal(AddressType.Residential, c.Type);
+        Assert.Contains(c.Flags, f => f.Code == "ADDRESS_HOME_BASED" && f.Severity == RiskTier.Low);
+    }
+
+    [Fact]
+    public void Restaurant_poi_at_a_commercial_building_is_commercial_with_no_findings()
+    {
+        var c = AddressClassifier.Classify("4213 Bardstown Rd", Hit("amenity", "restaurant"), [Poi("Aljazzar Grill", "amenity / restaurant")], 5812);
+        Assert.Equal(AddressType.Commercial, c.Type);
+        Assert.Empty(c.Flags);
+        Assert.True(c.Covered);
+    }
+
+    [Fact]
+    public void Residential_and_commercial_evidence_is_mixed_use()
+    {
+        var c = AddressClassifier.Classify("10 High St", Hit("building", "apartments", ("landuse", "retail")), [Poi("Corner Cafe", "amenity / cafe"), Poi("Barber", "shop / hairdresser")], 5812);
+        Assert.Equal(AddressType.MixedUse, c.Type);
+        Assert.Empty(c.Flags);
+    }
+
+    [Fact]
+    public void No_evidence_is_unknown_not_commercial()
+    {
+        var c = AddressClassifier.Classify("1 Nowhere Ln", null, [], 5812);
+        Assert.Equal(AddressType.Unknown, c.Type);
+        Assert.False(c.Covered);
+        Assert.Contains(c.Flags, f => f.Code == "ADDRESS_TYPE_UNKNOWN");
+    }
+
+    [Fact]
+    public void Geocoder_hit_parses_extratags()
+    {
+        using var doc = JsonDocument.Parse("""{"lat":"38.2","lon":"-85.7","category":"building","type":"house","addresstype":"building","display_name":"x","extratags":{"building:levels":"2","landuse":"residential"}}""");
+        var hit = NominatimGeocoder.ParseHit(doc.RootElement)!;
+        Assert.Equal("building", hit.Category);
+        Assert.Equal("house", hit.Type);
+        Assert.Equal("residential", hit.ExtraTags["landuse"]);
+        Assert.Equal(38.2, hit.Point.Latitude, 3);
+    }
+
+    [Fact]
+    public void Presence_flags_include_address_type_findings()
+    {
+        var identity = new BusinessIdentity("Acme", AddressLine: "PO Box 9");
+        var v = new BusinessVerificationResult(identity, VerificationStatus.Inconclusive, 0, null, null, null, [], []);
+        var lp = new LocalPresenceResult(LocalPresenceStatus.NotFound, 0, null, [], AddressType: AddressClassifier.Classify("PO Box 9", null, [], 5999));
+        var merged = BusinessVerificationService.WithLocalPresence(v, lp);
+        Assert.Contains(merged.Flags, f => f.Code == "ADDRESS_CMRA");
+    }
+}

@@ -318,6 +318,11 @@
                 </dl>
               } @else if (lp.note) { <p class="muted">{{ lp.note }}</p> }
               <p class="muted">Sources: @for (s of lp.sources; track s.source) { <span class="pill small" [class]="s.succeeded ? 'neutral' : 'bad'" [matTooltip]="s.error ?? ''">{{ s.source }} ({{ s.matches.length }})</span> } — trading evidence only; it does not confirm legal registration.</p>
+              @if (lp.addressType; as at) {
+                <h4>Address type <span class="pill small" [class]="at.type === 'Cmra' ? 'bad' : at.type === 'Commercial' || at.type === 'MixedUse' ? 'good' : at.type === 'Residential' ? 'warn' : 'neutral'">{{ at.type === 'Cmra' ? 'Mail-drop / virtual office' : at.type === 'MixedUse' ? 'Mixed use' : at.type }}@if (at.type !== 'Unknown') { · {{ at.confidence | percent }} }</span></h4>
+                <ul class="muted compact">@for (e of at.evidence; track e) { <li>{{ e }}</li> }</ul>
+                <mi-flags [flags]="at.flags" emptyText="No address-type findings."></mi-flags>
+              }
             }
 
             @if (r.screening; as s) {

@@ -157,6 +157,36 @@ Stored in `ctx.LocalPresence` **and** in `ctx.Verification.LocalPresence`. Timel
 
 ---
 
+## 4b. Address type classification
+
+The same geocode and the same Overpass results are reused to answer a second question: **what kind of place is the declared address?** `AddressClassifier.Classify(addressLine, geocodeHit, nearbyPois, mcc)` produces `LocalPresenceResult.AddressType`.
+
+| Evidence | Weight | Direction |
+|---|---|---|
+| `PO Box`, `PMB`, `Private Mailbox` in the address text | 0.9 | Cmra |
+| `Apt` / `Unit n` / `#n` in the address text | 0.35 | Residential |
+| `Suite` / `Floor` / `Plaza` / `Bldg` in the address text | 0.25 | Commercial |
+| Nominatim feature `building=house|residential|apartments|…` (`extratags=1`) | 0.6 | Residential |
+| Nominatim feature `building=commercial|retail|office|…` or `shop=`/`amenity=`/`office=` POI | 0.5–0.6 | Commercial |
+| `landuse=residential` vs `landuse=commercial|retail|industrial` | 0.3 | either |
+| Named POIs within 40 m of the point with a business category | 0.25 each, max 0.6 | Commercial |
+| A known CMRA / virtual-office operator within 40 m (UPS Store, Regus, WeWork, iPostal, Davinci, …) or `amenity=post_office` / `coworking` | 0.8 | Cmra |
+
+Types: `Residential`, `Commercial`, `MixedUse` (both ≥ 0.5), `Cmra`, `Unknown`. Confidence is the winning weight, capped at 1. **No evidence ⇒ `Unknown`, never `Commercial`.** Text-only evidence (geocoder unavailable) sets `Covered = false`.
+
+MCC fit:
+
+| Code | Severity | Condition |
+|---|---|---|
+| `ADDRESS_CMRA` | High if the MCC is a walk-in storefront (`AddressClassifier.IsStorefrontMcc`), else Medium | mail-drop / virtual office |
+| `ADDRESS_RESIDENTIAL_STOREFRONT_MCC` | Medium | residential ≥ 0.5 and storefront MCC (5812/5814 restaurants, 5411 grocery, 5732 electronics, 7230 salons, …) |
+| `ADDRESS_HOME_BASED` | Low | residential and a home-compatible MCC (5811 catering, 7372 software, 7399 business services, contractors 1520–1799, direct marketing 5964–5969, …) |
+| `ADDRESS_RESIDENTIAL` | Low | residential, MCC neither list |
+| `ADDRESS_TYPE_WEAK` | Low | leaning either way on < 0.5 evidence |
+| `ADDRESS_TYPE_UNKNOWN` | Low | nothing usable; treat premises as unverified |
+
+Flags join the verification flag list (`WithLocalPresence`), so they enter KybRisk and reason codes; the explainability check outcome is *Address type* and the workbench shows type, confidence, evidence lines and flags under Local presence. Combined with `OWNER_HOME_BASED` (owner address = business address, from `owners`) a residential café becomes a coherent story for the analyst: home address, home-based owner, storefront MCC → visit or re-code.
+
 ## 5. Downstream impact
 
 Presence has **no direct scorer input**; everything flows through the updated `ctx.Verification`.

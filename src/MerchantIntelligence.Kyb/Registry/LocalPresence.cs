@@ -62,7 +62,8 @@ public sealed record LocalPresenceResult(
     PlaceMatch? BestMatch,
     IReadOnlyList<PlaceSourceResult> Sources,
     string? Note = null,
-    DigitalFootprint? Footprint = null);
+    DigitalFootprint? Footprint = null,
+    AddressClassification? AddressType = null);
 
 /// <summary>
 /// Registration facts about the merchant's own domains (website and contact e-mail), from RDAP. Gives a tenure signal
@@ -165,7 +166,7 @@ public sealed class LocalPresenceService
     /// Runs the check for an already-verified identity, reusing the verified address coordinates as the search centre.
     /// Never throws: source outages surface as an <see cref="LocalPresenceStatus.Inconclusive"/> result.
     /// </summary>
-    public async Task<LocalPresenceResult> CheckAsync(BusinessVerificationResult verification, CancellationToken ct = default)
+    public async Task<LocalPresenceResult> CheckAsync(BusinessVerificationResult verification, CancellationToken ct = default, int? mcc = null)
     {
         var a = verification.Address;
         var known = a is { Verified: true, Latitude: { } la, Longitude: { } lo } ? new GeoPoint(la, lo) : null;
@@ -173,7 +174,7 @@ public sealed class LocalPresenceService
         LocalPresenceResult result;
         try
         {
-            result = await CheckAsync(verification.Input, known, ct);
+            result = await CheckAsync(verification.Input, known, ct, mcc);
         }
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
@@ -183,15 +184,24 @@ public sealed class LocalPresenceService
         return result with { Footprint = await footprintTask };
     }
 
-    public async Task<LocalPresenceResult> CheckAsync(BusinessIdentity identity, GeoPoint? knownLocation, CancellationToken ct = default)
+    public async Task<LocalPresenceResult> CheckAsync(BusinessIdentity identity, GeoPoint? knownLocation, CancellationToken ct = default, int? mcc = null)
     {
         var hasStreet = !string.IsNullOrWhiteSpace(identity.AddressLine);
         var hasLocality = !string.IsNullOrWhiteSpace(identity.City) || !string.IsNullOrWhiteSpace(identity.PostalCode);
         if (!hasStreet && !hasLocality)
             return new LocalPresenceResult(LocalPresenceStatus.NotChecked, 0, null, Array.Empty<PlaceSourceResult>(), "No address or locality supplied; places sources need a location to search around.");
 
-        var centre = knownLocation;
-        if (centre is null)
+        GeocodeHit? hit = null;
+        try { hit = hasStreet ? await _geocoder.GeocodeDetailedAsync(identity, ct) : null; }
+        catch (Exception ex) when (!ct.IsCancellationRequested)
+        {
+            _logger.LogWarning(ex, "Nominatim geocoding failed");
+            if (knownLocation is null)
+                return new LocalPresenceResult(LocalPresenceStatus.Inconclusive, 0, null, Array.Empty<PlaceSourceResult>(), $"Address could not be geocoded: {ex.Message}",
+                    AddressType: AddressClassifier.Classify(identity.AddressLine, null, [], mcc));
+        }
+        var centre = knownLocation ?? hit?.Point;
+        if (centre is null && !hasStreet)
         {
             try { centre = await _geocoder.GeocodeAsync(identity, ct); }
             catch (Exception ex) when (!ct.IsCancellationRequested)
@@ -201,14 +211,19 @@ public sealed class LocalPresenceService
             }
         }
         if (centre is null)
-            return new LocalPresenceResult(LocalPresenceStatus.Inconclusive, 0, null, Array.Empty<PlaceSourceResult>(), "Declared address could not be geocoded (OpenStreetMap Nominatim found no match).");
+            return new LocalPresenceResult(LocalPresenceStatus.Inconclusive, 0, null, Array.Empty<PlaceSourceResult>(), "Declared address could not be geocoded (OpenStreetMap Nominatim found no match).",
+                AddressType: AddressClassifier.Classify(identity.AddressLine, null, [], mcc));
 
         var radius = hasStreet ? _options.LocalPresenceRadiusMeters : _options.LocalPresenceLocalityRadiusMeters;
+        var nearby = new System.Collections.Concurrent.ConcurrentBag<PlaceRecord>();
         var tasks = _providers.Where(p => p.IsEnabled).Select(async p =>
         {
             try
             {
                 var records = await p.SearchAsync(identity, centre, radius, ct);
+                if (hasStreet)
+                    foreach (var r in records.Where(r => r is { Latitude: { } rl, Longitude: { } ro } && Geo.DistanceMeters(centre.Latitude, centre.Longitude, rl, ro) <= AddressPoiRadiusMeters))
+                        nearby.Add(r);
                 var matches = records.Select(r => Score(identity, r, centre, radius))
                     .Where(m => m.NameScore >= 0.5)
                     .OrderByDescending(m => m.OverallScore)
@@ -237,8 +252,12 @@ public sealed class LocalPresenceService
         var note = status == LocalPresenceStatus.NotFound && sources.Count(s => s.Succeeded) == 1 && sources.Any(s => s.Source.StartsWith("OpenStreetMap", StringComparison.Ordinal) && s.Succeeded)
             ? "Only OpenStreetMap was searched; its coverage of small businesses is partial, so absence is weak evidence. Configure a Foursquare or Google Places key for stronger coverage."
             : null;
-        return new LocalPresenceResult(status, confidence, best, sources, note);
+        var addressType = hasStreet ? AddressClassifier.Classify(identity.AddressLine, hit, nearby.DistinctBy(r => r.SourceId).ToList(), mcc) : null;
+        return new LocalPresenceResult(status, confidence, best, sources, note, AddressType: addressType);
     }
+
+    /// <summary>Points of interest this close to the geocoded point are taken to be at the same address.</summary>
+    internal const int AddressPoiRadiusMeters = 40;
 
     internal static PlaceMatch Score(BusinessIdentity identity, PlaceRecord record, GeoPoint centre, int radiusMeters)
     {
@@ -270,19 +289,31 @@ public sealed class NominatimGeocoder
 
     public NominatimGeocoder(IHttpClientFactory factory) => _factory = factory;
 
-    public async Task<GeoPoint?> GeocodeAsync(BusinessIdentity identity, CancellationToken ct)
+    public async Task<GeoPoint?> GeocodeAsync(BusinessIdentity identity, CancellationToken ct) => (await GeocodeDetailedAsync(identity, ct))?.Point;
+
+    /// <summary>Coordinates plus the OSM category / type / extratags of the matched feature, used to classify the address.</summary>
+    public async Task<GeocodeHit?> GeocodeDetailedAsync(BusinessIdentity identity, CancellationToken ct)
     {
         var client = _factory.CreateClient(KybOptions.HttpClientName);
         var query = string.Join(", ", new[] { AddressMatcher.NumberWordsToDigits(identity.AddressLine), identity.City, identity.Region, identity.PostalCode, identity.Country }
             .Where(s => !string.IsNullOrWhiteSpace(s)));
-        var url = $"https://nominatim.openstreetmap.org/search?q={Uri.EscapeDataString(query)}&format=jsonv2&limit=1";
+        var url = $"https://nominatim.openstreetmap.org/search?q={Uri.EscapeDataString(query)}&format=jsonv2&limit=1&extratags=1";
         using var doc = await client.GetFromJsonAsync<JsonDocument>(url, ct);
         if (doc is null || doc.RootElement.ValueKind != JsonValueKind.Array || doc.RootElement.GetArrayLength() == 0) return null;
-        var hit = doc.RootElement[0];
-        if (double.TryParse(hit.GetProperty("lat").GetString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var lat)
-            && double.TryParse(hit.GetProperty("lon").GetString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var lon))
-            return new GeoPoint(lat, lon);
-        return null;
+        return ParseHit(doc.RootElement[0]);
+    }
+
+    internal static GeocodeHit? ParseHit(JsonElement hit)
+    {
+        if (!double.TryParse(hit.GetProperty("lat").GetString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var lat)
+            || !double.TryParse(hit.GetProperty("lon").GetString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var lon))
+            return null;
+        string? Str(string k) => hit.TryGetProperty(k, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
+        var extra = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (hit.TryGetProperty("extratags", out var et) && et.ValueKind == JsonValueKind.Object)
+            foreach (var pr in et.EnumerateObject())
+                if (pr.Value.ValueKind == JsonValueKind.String) extra[pr.Name] = pr.Value.GetString()!;
+        return new GeocodeHit(new GeoPoint(lat, lon), Str("category"), Str("type"), Str("addresstype"), extra, Str("display_name"));
     }
 }
 

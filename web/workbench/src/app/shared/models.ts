@@ -34,9 +34,14 @@ export interface PlaceRecord {
 }
 export interface PlaceMatch { record: PlaceRecord; nameScore: number; addressScore: number; distanceMeters?: number | null; overallScore: number; }
 export interface PlaceSourceResult { source: string; succeeded: boolean; error?: string | null; matches: PlaceMatch[]; }
+export interface AddressClassification {
+  type: 'Unknown' | 'Residential' | 'Commercial' | 'MixedUse' | 'Cmra' | string;
+  confidence: number; evidence: string[]; flags: Flag[]; covered: boolean;
+}
 export interface LocalPresenceResult {
   status: 'Confirmed' | 'PartialMatch' | 'NotFound' | 'Inconclusive' | 'NotChecked' | string;
   confidencePercent: number; bestMatch?: PlaceMatch | null; sources: PlaceSourceResult[]; note?: string | null;
+  addressType?: AddressClassification | null;
 }
 export interface SanctionsHit {
   entity: { id: string; listName: string; type: string; name: string; aliases: string[]; countries: string[]; programs: string[]; remarks?: string | null; sourceUrl?: string | null };

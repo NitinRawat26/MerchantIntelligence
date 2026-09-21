@@ -204,6 +204,18 @@ internal static class AssessmentComposer
             if (lp.Status == LocalPresenceStatus.NotFound && lp.Sources.Count(x => x.Succeeded) == 1) next.Add("Local presence was searched in OpenStreetMap only; configure a Foursquare or Google Places key, or request a utility bill / lease for the trading address.");
         }
 
+        // Address type (residential / commercial / mixed / mail-drop) against the declared MCC
+        if (lp?.AddressType is { } at)
+        {
+            var worst = at.Flags.Count == 0 ? RiskTier.Low : at.Flags.Max(f => f.Severity);
+            var label = at.Type == AddressType.Unknown ? "Unknown" : $"{at.Type} ({at.Confidence:P0})";
+            var detail = string.Join(" ", at.Evidence) + (at.Flags.Count == 0 ? "" : " " + string.Join(" ", at.Flags.Select(f => f.Message)));
+            outcomes.Add(new("Address type", label, detail, worst, at.Covered && at.Type != AddressType.Unknown));
+            narrative.Add($"Address type: {label}. {detail}");
+            if (at.Type == AddressType.Cmra) next.Add("Declared address is a mail-drop / virtual office; obtain the physical trading address and a lease or utility bill for it.");
+            else if (at.Flags.Any(f => f.Code == "ADDRESS_RESIDENTIAL_STOREFRONT_MCC")) next.Add("Storefront MCC at a residential address: confirm where customers are served (site visit, photos, lease) or re-code the MCC.");
+        }
+
         // Digital footprint (contact e-mail domain via RDAP) – independent of the website scan
         if (lp?.Footprint is { } fp)
         {

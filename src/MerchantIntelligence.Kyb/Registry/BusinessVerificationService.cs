@@ -156,7 +156,7 @@ public sealed class BusinessVerificationService
     public static BusinessVerificationResult WithLocalPresence(BusinessVerificationResult result, LocalPresenceResult presence)
     {
         var identity = result.Input;
-        var flags = result.Flags.Where(f => !f.Code.StartsWith("LOCAL_PRESENCE_", StringComparison.Ordinal) && !f.Code.StartsWith("EMAIL_", StringComparison.Ordinal)).ToList();
+        var flags = result.Flags.Where(f => !f.Code.StartsWith("LOCAL_PRESENCE_", StringComparison.Ordinal) && !f.Code.StartsWith("EMAIL_", StringComparison.Ordinal) && !f.Code.StartsWith("ADDRESS_", StringComparison.Ordinal)).ToList();
         var status = result.Status;
         var confidence = result.ConfidencePercent;
         var pm = presence.BestMatch;
@@ -191,6 +191,7 @@ public sealed class BusinessVerificationService
                 flags.Add(new KybFlag("LOCAL_PRESENCE_LOW_RATING", $"{pm.Record.Source} rating {low:0.#}/{scale:0} across {rep.RatingCount} ratings; poor service history correlates with dispute and chargeback volume.", RiskTier.Low));
         }
         if (presence.Footprint is { } fp) flags.AddRange(fp.Flags);
+        if (presence.AddressType is { } at) flags.AddRange(at.Flags);
         return result with { Status = status, ConfidencePercent = confidence, Flags = flags, LocalPresence = presence };
     }
 
