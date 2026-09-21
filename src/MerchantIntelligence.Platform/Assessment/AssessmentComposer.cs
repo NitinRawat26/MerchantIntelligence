@@ -14,6 +14,7 @@ using MerchantIntelligence.Platform.ModelOps;
 using MerchantIntelligence.Platform.Rules;
 using MerchantIntelligence.Platform.Scoring;
 using MerchantIntelligence.Platform.Storage;
+using MerchantIntelligence.Platform.Profiling;
 using MerchantIntelligence.Underwriting.Explainability;
 using MerchantIntelligence.Underwriting.Financials;
 using MerchantIntelligence.Underwriting.Plausibility;
@@ -109,12 +110,25 @@ internal static class AssessmentComposer
     internal static AssessmentExplainability BuildExplainability(AssessmentIntake intake, AssessmentDecision decision, BusinessVerificationResult? v, ScreeningReport? s,
         WebsiteComplianceResult? w, ProhibitedBusinessResult? p, MccValidationResult? m, MatchResult? match, CashFlowAnalysis? b, FinancialStatementAnalysis? f,
         VolumePlausibilityResult? pl, DecisionResult? credit, DecisionExplanation? explanation, TermsRecommendation? terms, UnifiedRiskScore? score,
-        RulesEvaluation? rules, IReadOnlyList<RiskSignal> signals, LocalPresenceResult? lp = null)
+        RulesEvaluation? rules, IReadOnlyList<RiskSignal> signals, LocalPresenceResult? lp = null, MerchantProfile? profile = null)
     {
         var outcomes = new List<CheckOutcome>();
         var narrative = new List<string>();
         var next = new List<string>();
         var adverseMedia = new List<AdverseMediaEvidence>();
+
+        // Profile – scopes the run; it is reported so the reader knows which questions were asked and why.
+        if (profile is not null)
+        {
+            var entity = MerchantProfiler.Describe(profile.EntityType) + (profile.EntityTypeInferred ? " (inferred)" : "");
+            var locations = profile.LocationCount > 1 ? $", {profile.LocationCount} locations" : "";
+            var skipped = profile.NotApplicable.Count == 0 ? "all checks applicable"
+                : $"not applicable: {string.Join(", ", profile.NotApplicable.Select(n => n.StepId))}";
+            var worst = profile.Findings.Count == 0 ? RiskTier.Low : profile.Findings.Max(pf => pf.Severity);
+            outcomes.Add(new("Merchant profile", $"{profile.Segment} · {entity}", $"Registry scope {profile.RegistryScope}{locations}; {skipped}. Weights: {(profile.IsSmb ? "SMB" : "standard")} table.", worst, true));
+            narrative.Add($"Profile: {profile.Segment} {entity}{locations}. {string.Join(" ", profile.Reasons.Take(3))}");
+            foreach (var pf in profile.Findings) narrative.Add($"Profile finding {pf.Code}: {pf.Message}");
+        }
 
         // Identity
         if (v is null) { outcomes.Add(new("Business identity", "Not run", "Registry verification failed or was unavailable.", RiskTier.Medium, false)); next.Add("Re-run entity verification or obtain a certificate of incorporation manually."); }

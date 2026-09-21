@@ -1,6 +1,7 @@
 using MerchantIntelligence.CreditDecision;
 using MerchantIntelligence.Kyb.Prohibited;
 using MerchantIntelligence.MccValidation.Taxonomy;
+using MerchantIntelligence.Platform.Profiling;
 
 namespace MerchantIntelligence.Platform.Scoring;
 
@@ -25,7 +26,43 @@ public sealed record UnifiedRiskInput(
     int? VolumePlausibilityScore = null,
     string? TermsRiskBand = null,
     bool? MatchFound = null,
-    IReadOnlyList<RiskSignal>? Signals = null);
+    IReadOnlyList<RiskSignal>? Signals = null,
+    MerchantSegment? Segment = null,
+    IReadOnlyCollection<string>? NotApplicableComponents = null);
+
+/// <summary>
+/// Component weights per merchant segment. Small merchants are judged more on who they are and whether the declared
+/// volume fits a shop of that kind, less on a website they may not have; the credit model still carries most weight.
+/// Weights only redistribute emphasis – the profile never lowers a component's score or lifts the approve threshold.
+/// </summary>
+public static class ScoreWeights
+{
+    public static readonly IReadOnlyDictionary<string, double> Standard = new Dictionary<string, double>
+    {
+        ["CreditModel"] = 0.30, ["Kyb"] = 0.20, ["Screening"] = 0.15, ["WebsiteCompliance"] = 0.10,
+        ["VolumePlausibility"] = 0.10, ["BusinessPolicy"] = 0.10, ["Pricing"] = 0.05
+    };
+
+    public static readonly IReadOnlyDictionary<string, double> Smb = new Dictionary<string, double>
+    {
+        ["CreditModel"] = 0.25, ["Kyb"] = 0.25, ["Screening"] = 0.15, ["WebsiteCompliance"] = 0.05,
+        ["VolumePlausibility"] = 0.15, ["BusinessPolicy"] = 0.10, ["Pricing"] = 0.05
+    };
+
+    public static IReadOnlyDictionary<string, double> For(MerchantSegment? segment) =>
+        segment is MerchantSegment.Micro or MerchantSegment.Small ? Smb : Standard;
+
+    /// <summary>Score components that a not-applicable step would have fed; they leave the denominator instead of counting as gaps.</summary>
+    public static IEnumerable<string> ComponentsOfStep(string stepId) => stepId switch
+    {
+        "website" => ["WebsiteCompliance"],
+        "credit" => ["CreditModel"],
+        "plausibility" => ["VolumePlausibility"],
+        "prohibited" => ["BusinessPolicy"],
+        "terms" => ["Pricing"],
+        _ => []
+    };
+}
 
 public sealed record ScoreComponent(string Name, double Weight, double Score, double Weighted, string Detail, bool Covered);
 
@@ -53,23 +90,28 @@ public sealed class UnifiedRiskScorer
 
     public UnifiedRiskScore Score(UnifiedRiskInput input)
     {
-        var components = new List<ScoreComponent>();
+        var all = new List<ScoreComponent>();
         var reasons = new List<UnifiedReasonCode>();
         var hardStops = new List<string>();
+        var w = ScoreWeights.For(input.Segment);
 
-        AddCredit(input, components, reasons);
-        AddKyb(input, components, reasons);
-        AddScreening(input, components, reasons, hardStops);
-        AddProhibited(input, components, reasons, hardStops);
-        AddComponent(components, "WebsiteCompliance", 0.10, input.WebsiteComplianceScore,
+        AddCredit(input, all, reasons, w["CreditModel"]);
+        AddKyb(input, all, reasons, w["Kyb"]);
+        AddScreening(input, all, reasons, hardStops, w["Screening"]);
+        AddProhibited(input, all, reasons, hardStops, w["BusinessPolicy"]);
+        AddComponent(all, "WebsiteCompliance", w["WebsiteCompliance"], input.WebsiteComplianceScore,
             s => $"Website compliance {s}/100.");
         if (input.WebsiteComplianceScore is < 60)
             reasons.Add(new("WEBSITE_NON_COMPLIANT", $"Website compliance score {input.WebsiteComplianceScore}/100 below card-brand expectations.", RiskTier.Medium, "WebsiteCompliance"));
-        AddComponent(components, "VolumePlausibility", 0.10, input.VolumePlausibilityScore,
+        AddComponent(all, "VolumePlausibility", w["VolumePlausibility"], input.VolumePlausibilityScore,
             s => $"Declared-volume plausibility {s}/100.");
         if (input.VolumePlausibilityScore is < 50)
             reasons.Add(new("VOLUME_IMPLAUSIBLE", $"Declared volume plausibility {input.VolumePlausibilityScore}/100.", RiskTier.Medium, "VolumePlausibility"));
-        AddTerms(input, components, reasons);
+        AddTerms(input, all, reasons, w["Pricing"]);
+
+        // A component the profile ruled not applicable is neither evidence nor a gap: it leaves the denominator.
+        var notApplicable = input.NotApplicableComponents ?? [];
+        var components = all.Where(c => c.Covered || !notApplicable.Contains(c.Name)).ToList();
 
         if (input.MatchFound == true)
         {
@@ -110,27 +152,27 @@ public sealed class UnifiedRiskScorer
         return new UnifiedRiskScore(score, tier, action, components, ordered, gaps, hardStops, Math.Round(coverage * 100, 1));
     }
 
-    private static void AddCredit(UnifiedRiskInput input, List<ScoreComponent> components, List<UnifiedReasonCode> reasons)
+    private static void AddCredit(UnifiedRiskInput input, List<ScoreComponent> components, List<UnifiedReasonCode> reasons, double weight)
     {
         if (input.CreditDecision is null)
         {
-            components.Add(new("CreditModel", 0.30, 0, 0, "Credit decision not run.", false));
+            components.Add(new("CreditModel", weight, 0, 0, "Credit decision not run.", false));
             return;
         }
         var pApprove = input.CreditDecision.Probabilities.GetValueOrDefault(Decision.Approved);
         var s = pApprove * 100;
-        components.Add(new("CreditModel", 0.30, Round(s), Round(s * 0.30), $"P(approve)={pApprove:P1}, predicted {input.CreditDecision.Decision}.", true));
+        components.Add(new("CreditModel", weight, Round(s), Round(s * weight), $"P(approve)={pApprove:P1}, predicted {input.CreditDecision.Decision}.", true));
         if (input.CreditDecision.Decision == Decision.Declined)
             reasons.Add(new("MODEL_DECLINE", $"Credit model predicts decline ({input.CreditDecision.Confidence:P0} confidence).", pApprove < 0.2 ? RiskTier.High : RiskTier.Medium, "CreditModel"));
         else if (input.CreditDecision.Decision == Decision.Cancelled)
             reasons.Add(new("MODEL_CANCEL_RISK", "Credit model predicts the merchant would be cancelled after boarding.", RiskTier.Medium, "CreditModel"));
     }
 
-    private static void AddKyb(UnifiedRiskInput input, List<ScoreComponent> components, List<UnifiedReasonCode> reasons)
+    private static void AddKyb(UnifiedRiskInput input, List<ScoreComponent> components, List<UnifiedReasonCode> reasons, double weight)
     {
         if (input.KybRisk is null && input.BusinessVerified is null)
         {
-            components.Add(new("Kyb", 0.20, 0, 0, "KYB not run.", false));
+            components.Add(new("Kyb", weight, 0, 0, "KYB not run.", false));
             return;
         }
         var s = input.KybRisk switch { RiskTier.High => 20.0, RiskTier.Medium => 55.0, _ => 90.0 };
@@ -147,14 +189,14 @@ public sealed class UnifiedRiskScorer
             reasons.Add(new("NEW_ENTITY", $"Entity registered {input.EntityAgeMonths} months ago.", RiskTier.Medium, "Kyb"));
         }
         s = Math.Clamp(s, 0, 100);
-        components.Add(new("Kyb", 0.20, Round(s), Round(s * 0.20), $"KYB overall risk {input.KybRisk?.ToString() ?? "n/a"}, verified={input.BusinessVerified?.ToString() ?? "n/a"}.", true));
+        components.Add(new("Kyb", weight, Round(s), Round(s * weight), $"KYB overall risk {input.KybRisk?.ToString() ?? "n/a"}, verified={input.BusinessVerified?.ToString() ?? "n/a"}.", true));
     }
 
-    private static void AddScreening(UnifiedRiskInput input, List<ScoreComponent> components, List<UnifiedReasonCode> reasons, List<string> hardStops)
+    private static void AddScreening(UnifiedRiskInput input, List<ScoreComponent> components, List<UnifiedReasonCode> reasons, List<string> hardStops, double weight)
     {
         if (input.SanctionsMatch is null && input.PepMatch is null && input.AdverseMedia is null)
         {
-            components.Add(new("Screening", 0.15, 0, 0, "Sanctions/PEP/adverse-media screening not run.", false));
+            components.Add(new("Screening", weight, 0, 0, "Sanctions/PEP/adverse-media screening not run.", false));
             return;
         }
         var s = 100.0;
@@ -175,14 +217,14 @@ public sealed class UnifiedRiskScorer
             reasons.Add(new("ADVERSE_MEDIA", "Adverse media coverage found for the business or its owners.", RiskTier.Medium, "Screening"));
         }
         s = Math.Clamp(s, 0, 100);
-        components.Add(new("Screening", 0.15, Round(s), Round(s * 0.15), "Sanctions/PEP/adverse-media screening.", true));
+        components.Add(new("Screening", weight, Round(s), Round(s * weight), "Sanctions/PEP/adverse-media screening.", true));
     }
 
-    private static void AddProhibited(UnifiedRiskInput input, List<ScoreComponent> components, List<UnifiedReasonCode> reasons, List<string> hardStops)
+    private static void AddProhibited(UnifiedRiskInput input, List<ScoreComponent> components, List<UnifiedReasonCode> reasons, List<string> hardStops, double weight)
     {
         if (input.ProhibitedVerdict is null)
         {
-            components.Add(new("BusinessPolicy", 0.10, 0, 0, "Prohibited-business check not run.", false));
+            components.Add(new("BusinessPolicy", weight, 0, 0, "Prohibited-business check not run.", false));
             return;
         }
         var (s, reason) = input.ProhibitedVerdict switch
@@ -194,18 +236,18 @@ public sealed class UnifiedRiskScorer
         };
         if (input.ProhibitedVerdict == BusinessPolicy.Prohibited) hardStops.Add("PROHIBITED_BUSINESS");
         if (reason is not null) reasons.Add(reason);
-        components.Add(new("BusinessPolicy", 0.10, s, Round(s * 0.10), $"Policy verdict {input.ProhibitedVerdict}.", true));
+        components.Add(new("BusinessPolicy", weight, s, Round(s * weight), $"Policy verdict {input.ProhibitedVerdict}.", true));
     }
 
-    private static void AddTerms(UnifiedRiskInput input, List<ScoreComponent> components, List<UnifiedReasonCode> reasons)
+    private static void AddTerms(UnifiedRiskInput input, List<ScoreComponent> components, List<UnifiedReasonCode> reasons, double weight)
     {
         if (string.IsNullOrEmpty(input.TermsRiskBand))
         {
-            components.Add(new("Pricing", 0.05, 0, 0, "Terms recommendation not run.", false));
+            components.Add(new("Pricing", weight, 0, 0, "Terms recommendation not run.", false));
             return;
         }
         var s = input.TermsRiskBand.ToUpperInvariant() switch { "A" => 95.0, "B" => 80.0, "C" => 60.0, "D" => 35.0, _ => 15.0 };
-        components.Add(new("Pricing", 0.05, s, Round(s * 0.05), $"Terms risk band {input.TermsRiskBand}.", true));
+        components.Add(new("Pricing", weight, s, Round(s * weight), $"Terms risk band {input.TermsRiskBand}.", true));
         if (s <= 35) reasons.Add(new("HEAVY_RESERVE_REQUIRED", $"Pricing band {input.TermsRiskBand} implies a significant reserve and settlement delay.", RiskTier.Medium, "Pricing"));
     }
 
