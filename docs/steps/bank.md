@@ -190,7 +190,7 @@ For a **Micro / Small** profile the bank statement is the primary identity, volu
 ```mermaid
 flowchart TD
     P[Profile.IsSmb] -->|required| R{Statement supplied?}
-    R -- no --> REQ[BANK_STATEMENT_REQUIRED Medium · Covered=false]
+    R -- no --> REQ[BANK_STATEMENT_REQUIRED High · Covered=false]
     R -- yes --> H{Account-holder name}
     H -- blank --> HU[BANK_HOLDER_UNDECLARED]
     H -- ≈ legal / trading name ≥ 0.85 --> HM[BANK_HOLDER_MATCH]
@@ -217,7 +217,7 @@ flowchart TD
 
 Semantics that matter for auditors:
 
-* **Missing ≠ clean.** For an SMB the skipped step is written to the timeline as *required primary evidence … recorded as a coverage gap*, the brief lists **Bank evidence: Required · missing** as uncovered, and a next step asks for three months of statements. For Mid / Enterprise the assessment is silent (no flags), preserving today's behaviour.
+* **Missing ≠ clean.** For an SMB the skipped step is written to the timeline as *required primary evidence … recorded as a coverage gap*, the brief lists **Bank evidence: Required · missing** as uncovered, and a next step asks for three months of statements. The flag is **High** on purpose: the bank statement is not a score component, so its absence does not lower `coveragePercent`; the High reason code is what routes the application to `HIGH_SEVERITY_REFER` instead of `AUTO_APPROVE` — a Small merchant with no statement can still score well on registry, screening and plausibility, but it is referred, never auto-approved. For Mid / Enterprise the assessment is silent (no flags), preserving today's behaviour.
 * **Holder mismatch is High** because a settlement account outside the applicant's name is the classic bust-out / third-party processing pattern; an owner-named account is expected for a sole proprietorship (Low) and questionable for an LLC / corporation (Medium).
 * **Deposits vs declared** uses total inflows, not card deposits — an SMB applying for its first terminal legitimately has cash/cheque deposits and no card payouts. `BANK_NO_CARD_PAYOUTS` is therefore informational (Low) and only confirms the merchant is new to card acceptance.
 * Flags are dual-sourced with the cash-flow flags in §3 by design: `BANK_NSF_SMB` restates NSF stress at High for small merchants where `FREQUENT_NSF` would only trigger at a higher count.

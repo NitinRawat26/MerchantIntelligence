@@ -406,7 +406,7 @@ public class BankEvidenceTests
     {
         var smb = MerchantIntelligence.Platform.Financial.BankEvidenceAssessor.Assess(Intake(), Small, null, null);
         Assert.True(smb.Required); Assert.False(smb.Supplied); Assert.False(smb.Covered);
-        Assert.Contains(smb.Flags, f => f.Code == "BANK_STATEMENT_REQUIRED" && f.Severity == RiskTier.Medium);
+        Assert.Contains(smb.Flags, f => f.Code == "BANK_STATEMENT_REQUIRED" && f.Severity == RiskTier.High);
 
         var ent = MerchantIntelligence.Platform.Financial.BankEvidenceAssessor.Assess(Intake(), Enterprise, null, null);
         Assert.False(ent.Required); Assert.Empty(ent.Flags);

@@ -100,7 +100,7 @@ export const FIELD_HINTS: Record<string, string> = {
   bankStatement:
     'Bank statement cash-flow analysis: monthly inflows, card deposits, NSF/overdrafts, negative-balance days, volatility → findings.\n' +
     'Volume plausibility: annualised card deposits vs declared volume (>2× −30 DECLARED_FAR_ABOVE_STATEMENTS, far below → possible volume splitting).\n' +
-    'Optional for Mid / Enterprise. For Micro / Small merchants it is the primary evidence: blank = BANK_STATEMENT_REQUIRED (Medium) and the step is reported as a coverage gap; when supplied, deposits are compared with declared volume, months without deposits and existing card payouts are reported.',
+    'Optional for Mid / Enterprise. For Micro / Small merchants it is the primary evidence: blank = BANK_STATEMENT_REQUIRED (High → Refer, never auto-approve) and the step is reported as a coverage gap; when supplied, deposits are compared with declared volume, months without deposits and existing card payouts are reported.',
   financialStatement:
     'P&L / balance-sheet analysis: margins, leverage, liquidity ratios → findings; statement revenue is compared with declared volume and fills Prior-year revenue when blank.\n' +
     'Optional: blank = check skipped and listed as a coverage gap.',

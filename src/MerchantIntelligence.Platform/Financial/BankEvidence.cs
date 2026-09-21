@@ -41,7 +41,7 @@ public static class BankEvidenceAssessor
         if (bank is null)
         {
             if (required)
-                flags.Add(new("BANK_STATEMENT_REQUIRED", $"A {profile!.Segment} merchant is underwritten primarily on its bank statement and none was analysed; identity, volume and cash-flow evidence are all missing.", RiskTier.Medium));
+                flags.Add(new("BANK_STATEMENT_REQUIRED", $"A {profile!.Segment} merchant is underwritten primarily on its bank statement and none was analysed; identity, volume and cash-flow evidence are all missing; the application cannot be auto-approved without it.", RiskTier.High));
             return new BankEvidenceAssessment(required, false, null, null, null, 0, [], flags, false);
         }
 
