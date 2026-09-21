@@ -89,6 +89,11 @@
             @if (!bankFile()) {
               <mat-form-field appearance="outline" class="full"><mat-label>…or paste CSV (date,description,amount[,balance])</mat-label><textarea matInput class="mono" rows="5" formControlName="bankStatementCsv"></textarea></mat-form-field>
             }
+            <mat-form-field appearance="outline" class="full">
+              <mat-label>Account holder name (as printed on the statement)</mat-label>
+              <input matInput formControlName="bankAccountHolderName">
+              <mi-field-hint matSuffix for="bankAccountHolderName"></mi-field-hint>
+            </mat-form-field>
           </div>
           <div>
             <h4>P&amp;L / balance sheet <mi-field-hint class="inline" for="financialStatement"></mi-field-hint></h4>
@@ -443,6 +448,19 @@
               <mi-flags [flags]="b.flags" emptyText="No cash-flow flags."></mi-flags>
               @for (w of b.warnings; track w) { <p class="text-medium">{{ w }}</p> }
             } @else { <p class="muted">No bank statement analysed.</p> }
+
+            @if (r.bankEvidence; as be) {
+              <h3>Bank evidence <span class="pill small" [class]="!be.supplied ? (be.required ? 'bad' : 'neutral') : 'neutral'">{{ be.required ? 'required' : 'optional' }}{{ be.supplied ? '' : ' · missing' }}</span></h3>
+              @if (be.supplied) {
+                <dl class="kv">
+                  <dt>Account holder</dt><dd>@if (be.holderNameScore != null) { matches applicant {{ be.holderNameScore | percent }} } @else { <span class="muted">not recorded</span> }</dd>
+                  @if (be.inflowsToDeclaredRatio != null) { <dt>Deposits vs declared</dt><dd>{{ be.inflowsToDeclaredRatio | percent }} of declared annual volume</dd> }
+                  @if (be.cardDepositsToDeclaredRatio != null) { <dt>Existing card payouts</dt><dd>{{ be.cardDepositsToDeclaredRatio | percent }} of declared · {{ be.processors.join(', ') }}</dd> }
+                  <dt>Months without deposits</dt><dd [class.text-high]="be.monthsWithoutInflows > 0">{{ be.monthsWithoutInflows }}</dd>
+                </dl>
+              }
+              <mi-flags [flags]="be.flags" emptyText="No bank-evidence findings."></mi-flags>
+            }
 
             @if (r.financialStatement; as f) {
               <h3>P&amp;L / balance sheet</h3>

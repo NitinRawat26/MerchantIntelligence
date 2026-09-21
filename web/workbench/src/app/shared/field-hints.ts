@@ -91,10 +91,12 @@ export const FIELD_HINTS: Record<string, string> = {
     'Volume plausibility only: for online-only merchants (Physical location = No / Unknown) a thin catalogue with large volume is flagged THIN_CATALOGUE_LARGE_VOLUME (−20).',
   hasPhysicalLocation:
     'Volume plausibility only: "Yes" disables the thin-catalogue check; "No / Unknown" keeps it active.',
+  bankAccountHolderName:
+    'Name printed on the bank statement header. Compared with the legal / trading name (BANK_HOLDER_MATCH) and the declared owners (BANK_HOLDER_IS_OWNER); no match = BANK_HOLDER_MISMATCH (High). Blank for a Micro / Small merchant = BANK_HOLDER_UNDECLARED.',
   bankStatement:
     'Bank statement cash-flow analysis: monthly inflows, card deposits, NSF/overdrafts, negative-balance days, volatility → findings.\n' +
     'Volume plausibility: annualised card deposits vs declared volume (>2× −30 DECLARED_FAR_ABOVE_STATEMENTS, far below → possible volume splitting).\n' +
-    'Optional: blank = check skipped and listed as a coverage gap.',
+    'Optional for Mid / Enterprise. For Micro / Small merchants it is the primary evidence: blank = BANK_STATEMENT_REQUIRED (Medium) and the step is reported as a coverage gap; when supplied, deposits are compared with declared volume, months without deposits and existing card payouts are reported.',
   financialStatement:
     'P&L / balance-sheet analysis: margins, leverage, liquidity ratios → findings; statement revenue is compared with declared volume and fills Prior-year revenue when blank.\n' +
     'Optional: blank = check skipped and listed as a coverage gap.',

@@ -377,3 +377,77 @@ public class AddressClassifierTests
         Assert.Contains(merged.Flags, f => f.Code == "ADDRESS_CMRA");
     }
 }
+
+public class BankEvidenceTests
+{
+    private static readonly MerchantIntelligence.Platform.Profiling.MerchantProfile Small = new(
+        MerchantIntelligence.Platform.Profiling.EntityType.MultiMemberLlc, false, MerchantIntelligence.Platform.Profiling.MerchantSegment.Small,
+        MerchantIntelligence.Platform.Profiling.RegistryScope.Local, 1, [], [], []);
+    private static readonly MerchantIntelligence.Platform.Profiling.MerchantProfile Enterprise = new(
+        MerchantIntelligence.Platform.Profiling.EntityType.PublicCorporation, false, MerchantIntelligence.Platform.Profiling.MerchantSegment.Enterprise,
+        MerchantIntelligence.Platform.Profiling.RegistryScope.Global, 1, [], [], []);
+
+    private static MerchantIntelligence.Platform.Assessment.AssessmentIntake Intake(decimal volume = 600_000m, MerchantIntelligence.Platform.Profiling.EntityType? type = null) =>
+        new(new BusinessIdentity("Aljazzar Meat & Grill LLC", "Aljazzar Grill"), [new BeneficialOwner("Nour Example", Role: "Owner")], "Restaurant", 5812, volume, 28m, 400m, false,
+            CardNotPresentShare: 0.1, EntityType: type);
+
+    private static MerchantIntelligence.Underwriting.Financials.CashFlowAnalysis Statement(decimal monthlyInflows, int months = 6, int nsf = 0, decimal cardMonthly = 0, params int[] dryMonths)
+    {
+        var monthly = Enumerable.Range(0, months).Select(i => new MerchantIntelligence.Underwriting.Financials.MonthlySummary($"2026-0{i + 1}", dryMonths.Contains(i) ? 0 : monthlyInflows, monthlyInflows * 0.8m, 0, cardMonthly, 20, 5000)).ToList();
+        return new(new DateOnly(2026, 1, 1), new DateOnly(2026, 6, 30), months, 120, monthlyInflows * months, 0, monthlyInflows, monthlyInflows * 0.8m, monthlyInflows * 0.2m,
+            cardMonthly, cardMonthly * 12, 5000, 1000, 0, nsf, 0, 0, 0, 0, monthlyInflows, 0.1, 0.1,
+            cardMonthly > 0 ? ["Square"] : [], monthly, [], []);
+    }
+
+    [Fact]
+    public void Missing_statement_is_required_gap_for_smb_but_silent_for_enterprise()
+    {
+        var smb = MerchantIntelligence.Platform.Financial.BankEvidenceAssessor.Assess(Intake(), Small, null, null);
+        Assert.True(smb.Required); Assert.False(smb.Supplied); Assert.False(smb.Covered);
+        Assert.Contains(smb.Flags, f => f.Code == "BANK_STATEMENT_REQUIRED" && f.Severity == RiskTier.Medium);
+
+        var ent = MerchantIntelligence.Platform.Financial.BankEvidenceAssessor.Assess(Intake(), Enterprise, null, null);
+        Assert.False(ent.Required); Assert.Empty(ent.Flags);
+    }
+
+    [Fact]
+    public void Holder_matching_the_business_supports_declared_volume()
+    {
+        var r = MerchantIntelligence.Platform.Financial.BankEvidenceAssessor.Assess(Intake(), Small, Statement(50_000m, cardMonthly: 30_000m), "ALJAZZAR MEAT & GRILL LLC");
+        Assert.True(r.Covered);
+        Assert.True(r.HolderNameScore >= 0.85);
+        Assert.Equal(1.0m, r.InflowsToDeclaredRatio);
+        Assert.Contains(r.Flags, f => f.Code == "BANK_HOLDER_MATCH");
+        Assert.Contains(r.Flags, f => f.Code == "BANK_DEPOSITS_SUPPORT_DECLARED");
+        Assert.Contains(r.Flags, f => f.Code == "BANK_EXISTING_CARD_PAYOUTS");
+        Assert.Equal(0.6m, r.CardDepositsToDeclaredRatio);
+    }
+
+    [Fact]
+    public void Holder_that_is_an_owner_is_low_for_sole_prop_and_medium_for_llc()
+    {
+        var sole = MerchantIntelligence.Platform.Financial.BankEvidenceAssessor.Assess(Intake(type: MerchantIntelligence.Platform.Profiling.EntityType.SoleProprietorship), Small, Statement(50_000m), "Nour Example");
+        Assert.Contains(sole.Flags, f => f.Code == "BANK_HOLDER_IS_OWNER" && f.Severity == RiskTier.Low);
+        var llc = MerchantIntelligence.Platform.Financial.BankEvidenceAssessor.Assess(Intake(type: MerchantIntelligence.Platform.Profiling.EntityType.MultiMemberLlc), Small, Statement(50_000m), "Nour Example");
+        Assert.Contains(llc.Flags, f => f.Code == "BANK_HOLDER_IS_OWNER" && f.Severity == RiskTier.Medium);
+    }
+
+    [Fact]
+    public void Third_party_holder_is_high()
+    {
+        var r = MerchantIntelligence.Platform.Financial.BankEvidenceAssessor.Assess(Intake(), Small, Statement(50_000m), "Unrelated Holdings Inc");
+        Assert.Contains(r.Flags, f => f.Code == "BANK_HOLDER_MISMATCH" && f.Severity == RiskTier.High);
+    }
+
+    [Fact]
+    public void Deposits_far_below_declared_and_dry_months_and_nsf_are_flagged()
+    {
+        var r = MerchantIntelligence.Platform.Financial.BankEvidenceAssessor.Assess(Intake(volume: 2_000_000m), Small, Statement(20_000m, nsf: 3, dryMonths: [2, 4]), null);
+        Assert.Contains(r.Flags, f => f.Code == "BANK_HOLDER_UNDECLARED");
+        Assert.Contains(r.Flags, f => f.Code == "BANK_DEPOSITS_BELOW_DECLARED" && f.Severity == RiskTier.Medium);
+        Assert.Contains(r.Flags, f => f.Code == "BANK_MONTHS_WITHOUT_DEPOSITS" && f.Severity == RiskTier.Medium);
+        Assert.Contains(r.Flags, f => f.Code == "BANK_NSF_SMB" && f.Severity == RiskTier.High);
+        Assert.Contains(r.Flags, f => f.Code == "BANK_NO_CARD_PAYOUTS");
+        Assert.Equal(2, r.MonthsWithoutInflows);
+    }
+}

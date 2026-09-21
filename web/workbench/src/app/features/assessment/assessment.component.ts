@@ -82,6 +82,7 @@ export class AssessmentComponent {
     websiteProductCount: ['' as string | number],
     hasPhysicalLocation: ['' as '' | 'true' | 'false'],
     bankStatementCsv: [PRESET_FINANCIALS.clean.bankStatementCsv],
+    bankAccountHolderName: [''],
     financialStatementText: [PRESET_FINANCIALS.clean.financialStatementText],
     externalRef: [''],
     actor: ['analyst', Validators.required],
@@ -210,6 +211,7 @@ export class AssessmentComponent {
       employeeCount: num(v.employeeCount), locationCount: num(v.locationCount), entityType: v.entityType === '' ? null : v.entityType, yearsInBusiness: num(v.yearsInBusiness), priorYearRevenue: num(v.priorYearRevenue), websiteProductCount: num(v.websiteProductCount),
       hasPhysicalLocation: v.hasPhysicalLocation === '' ? null : v.hasPhysicalLocation === 'true',
       bankStatementCsv: this.bankFile() ? null : opt(v.bankStatementCsv) ?? null,
+      bankAccountHolderName: opt(v.bankAccountHolderName) ?? null,
       financialStatementText: this.financialFile() ? null : opt(v.financialStatementText) ?? null,
       externalRef: opt(v.externalRef) ?? null, actor: v.actor.trim() || 'analyst', createCase: v.createCase
     };

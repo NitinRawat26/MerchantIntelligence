@@ -78,7 +78,7 @@ internal static class AssessmentComposer
     }
 
     internal static List<RiskSignal> CollectSignals(BusinessVerificationResult? v, ScreeningReport? s, WebsiteComplianceResult? w, ProhibitedBusinessResult? p,
-        MccValidationResult? m, CashFlowAnalysis? b, FinancialStatementAnalysis? f, VolumePlausibilityResult? pl, OwnerAssessment? owners = null)
+        MccValidationResult? m, CashFlowAnalysis? b, FinancialStatementAnalysis? f, VolumePlausibilityResult? pl, OwnerAssessment? owners = null, Financial.BankEvidenceAssessment? bankEvidence = null)
     {
         var list = new List<RiskSignal>();
         if (v is not null) list.AddRange(v.Flags.Select(x => new RiskSignal("verification", x.Code, x.Message, x.Severity)));
@@ -88,6 +88,7 @@ internal static class AssessmentComposer
         if (p is not null) list.AddRange(p.Flags.Select(x => new RiskSignal("prohibited", x.Code, x.Message, x.Severity)));
         if (m is not null) list.AddRange(m.RiskFlags.Select(x => new RiskSignal("mcc", x.Code, x.Message, x.Severity)));
         if (b is not null) list.AddRange(b.Flags.Select(x => new RiskSignal("bank", x.Code, x.Message, x.Severity)));
+        if (bankEvidence is not null) list.AddRange(bankEvidence.Flags.Select(x => new RiskSignal("bank", x.Code, x.Message, x.Severity)));
         if (f is not null) list.AddRange(f.Flags.Select(x => new RiskSignal("financials", x.Code, x.Message, x.Severity)));
         if (pl is not null) list.AddRange(pl.Flags.Select(x => new RiskSignal("plausibility", x.Code, x.Message, x.Severity)));
         return list.GroupBy(x => (x.Source, x.Code)).Select(g => g.First()).ToList();
@@ -124,7 +125,7 @@ internal static class AssessmentComposer
     internal static AssessmentExplainability BuildExplainability(AssessmentIntake intake, AssessmentDecision decision, BusinessVerificationResult? v, ScreeningReport? s,
         WebsiteComplianceResult? w, ProhibitedBusinessResult? p, MccValidationResult? m, MatchResult? match, CashFlowAnalysis? b, FinancialStatementAnalysis? f,
         VolumePlausibilityResult? pl, DecisionResult? credit, DecisionExplanation? explanation, TermsRecommendation? terms, UnifiedRiskScore? score,
-        RulesEvaluation? rules, IReadOnlyList<RiskSignal> signals, LocalPresenceResult? lp = null, MerchantProfile? profile = null, OwnerAssessment? owners = null)
+        RulesEvaluation? rules, IReadOnlyList<RiskSignal> signals, LocalPresenceResult? lp = null, MerchantProfile? profile = null, OwnerAssessment? owners = null, Financial.BankEvidenceAssessment? bankEvidence = null)
     {
         var outcomes = new List<CheckOutcome>();
         var narrative = new List<string>();
@@ -352,6 +353,36 @@ internal static class AssessmentComposer
                 (b.Flags.Count > 0 ? $" Flags: {string.Join("; ", b.Flags.Select(x => x.Message))}" : "");
             outcomes.Add(new("Bank statement", $"{b.MonthsCovered}m · {b.Flags.Count} flag(s)", detail, b.Flags.Count == 0 ? RiskTier.Low : b.Flags.Max(x => x.Severity), true));
             narrative.Add($"Cash flow: {detail}");
+        }
+
+        // Bank statement as small-merchant evidence (requiredness, account holder, deposits vs declared, payouts)
+        if (bankEvidence is { } be)
+        {
+            var worst = be.Flags.Count == 0 ? RiskTier.Low : be.Flags.Max(x => x.Severity);
+            var detail = string.Join(" ", be.Flags.Select(x => x.Message));
+            if (!be.Supplied)
+            {
+                if (be.Required)
+                {
+                    outcomes.Add(new("Bank evidence", "Required · missing", detail, worst, false));
+                    narrative.Add($"Bank evidence: {detail}");
+                    next.Add("Obtain the merchant's last three months of business bank statements; for a Micro / Small merchant they are the primary identity, volume and liquidity evidence.");
+                }
+            }
+            else
+            {
+                var label = string.Join(" · ", new[]
+                {
+                    be.HolderNameScore is { } h ? $"holder {h:P0}" : "holder n/a",
+                    be.InflowsToDeclaredRatio is { } r ? $"deposits {r:P0} of declared" : null,
+                    be.Processors.Count > 0 ? $"{be.Processors.Count} processor(s)" : null
+                }.Where(x => x is not null));
+                outcomes.Add(new("Bank evidence", label, detail, worst, true));
+                narrative.Add($"Bank evidence: {detail}");
+                if (be.Flags.Any(x => x.Code == "BANK_HOLDER_MISMATCH")) next.Add("Bank account holder is neither the business nor an owner: obtain a voided cheque or bank letter for an account in the legal entity's name before boarding.");
+                if (be.Flags.Any(x => x.Code == "BANK_HOLDER_UNDECLARED")) next.Add("Record the account-holder name from the statement header so the settlement account can be tied to the applicant.");
+                if (be.Flags.Any(x => x.Code == "BANK_DEPOSITS_BELOW_DECLARED")) next.Add("Declared volume is not supported by deposits: ask the merchant to reconcile, or underwrite on the evidenced figure.");
+            }
         }
 
         // Financials

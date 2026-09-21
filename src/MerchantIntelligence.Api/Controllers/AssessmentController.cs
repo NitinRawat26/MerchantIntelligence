@@ -32,6 +32,8 @@ public sealed class AssessmentRequest
     public bool? HasPhysicalLocation { get; set; }
     /// <summary>Inline bank-statement CSV; alternatively upload a file in the multipart field "bankStatement".</summary>
     public string? BankStatementCsv { get; set; }
+    /// <summary>Account-holder name printed on the bank statement.</summary>
+    public string? BankAccountHolderName { get; set; }
     /// <summary>Inline P&amp;L / balance-sheet text; alternatively upload a file in the multipart field "financialStatement".</summary>
     public string? FinancialStatementText { get; set; }
     public string? ExternalRef { get; set; }
@@ -41,7 +43,7 @@ public sealed class AssessmentRequest
     public AssessmentIntake ToIntake() => new(Business.ToIdentity(), Owners.Select(o => o.ToOwner()).ToList(), BusinessDescription, MerchantCategoryCode,
         AnnualVolume, AverageTicket, HighestTicket, ExistingRelationship, DeliveryDays, CardNotPresentShare, OffersSubscriptions, OffersFreeTrials,
         EmployeeCount, YearsInBusiness, PriorYearRevenue, WebsiteProductCount, HasPhysicalLocation, BankStatementCsv, FinancialStatementText,
-        ExternalRef, Actor, CreateCase, LocationCount, EntityType);
+        ExternalRef, Actor, CreateCase, LocationCount, EntityType, string.IsNullOrWhiteSpace(BankAccountHolderName) ? null : BankAccountHolderName.Trim());
 }
 
 [ApiController]

@@ -44,7 +44,9 @@ public sealed record AssessmentIntake(
     string Actor = "analyst",
     bool CreateCase = true,
     int? LocationCount = null,
-    EntityType? EntityType = null);
+    EntityType? EntityType = null,
+    /// <summary>Account-holder name as printed on the bank statement, recorded by the analyst; compared with the business and owner names.</summary>
+    string? BankAccountHolderName = null);
 
 public sealed record UploadedDocument(string FileName, byte[] Content);
 
@@ -126,7 +128,8 @@ public sealed record AssessmentResult(
     AssessmentWorkflowInfo? Workflow = null,
     IReadOnlyList<AgentReport>? Agents = null,
     MerchantProfile? Profile = null,
-    Owners.OwnerAssessment? Owners = null);
+    Owners.OwnerAssessment? Owners = null,
+    Financial.BankEvidenceAssessment? BankEvidence = null);
 
 /// <summary>Which workflow definition produced a result, for replay and audit, and which stop-gates fired during the run.</summary>
 public sealed record AssessmentWorkflowInfo(string Name, string Version, IReadOnlyList<string> EnabledSteps, IReadOnlyList<StopGateHit>? StopGates = null);
@@ -183,7 +186,9 @@ public sealed record AssessmentIntakeSummary(
     string? ExternalRef,
     string Actor,
     int? LocationCount = null,
-    EntityType? EntityType = null);
+    EntityType? EntityType = null,
+    /// <summary>Account-holder name as printed on the bank statement, recorded by the analyst; compared with the business and owner names.</summary>
+    string? BankAccountHolderName = null);
 
 public sealed record AssessmentListItem(
     string Id,

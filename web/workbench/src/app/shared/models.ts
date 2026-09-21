@@ -164,7 +164,7 @@ export interface AssessmentRequest {
   deliveryDays?: number | null; cardNotPresentShare: number; offersSubscriptions: boolean; offersFreeTrials: boolean;
   employeeCount?: number | null; yearsInBusiness?: number | null; priorYearRevenue?: number | null; websiteProductCount?: number | null; hasPhysicalLocation?: boolean | null;
   locationCount?: number | null; entityType?: EntityType | null;
-  bankStatementCsv?: string | null; financialStatementText?: string | null; externalRef?: string | null; actor: string; createCase: boolean;
+  bankStatementCsv?: string | null; bankAccountHolderName?: string | null; financialStatementText?: string | null; externalRef?: string | null; actor: string; createCase: boolean;
 }
 export type EntityType = 'Unknown' | 'SoleProprietorship' | 'SingleMemberLlc' | 'MultiMemberLlc' | 'Partnership' | 'SCorporation' | 'CCorporation'
   | 'PublicCorporation' | 'NonProfit' | 'Government' | 'Trust' | 'Other';
@@ -181,6 +181,10 @@ export interface MerchantProfile {
 }
 export interface PriorApplication { assessmentId: string; merchantName: string; seenAt: string; }
 export interface OwnerCheck { fullName: string; role?: string | null; age?: number | null; dateOfBirthDeclared: boolean; nationalityDeclared: boolean; addressDeclared: boolean; sharesBusinessAddress?: boolean | null; priorApplications: PriorApplication[]; }
+export interface BankEvidenceAssessment {
+  required: boolean; supplied: boolean; holderNameScore?: number | null; inflowsToDeclaredRatio?: number | null; cardDepositsToDeclaredRatio?: number | null;
+  monthsWithoutInflows: number; processors: string[]; flags: Flag[]; covered: boolean;
+}
 export interface OwnerAssessment { owners: OwnerCheck[]; completenessPercent: number; homeBased: boolean; flags: Flag[]; covered: boolean; }
 export type StepStatus = 'Pending' | 'Running' | 'Succeeded' | 'Failed' | 'Skipped';
 export interface AssessmentStepDescriptor { id: string; name: string; enabled?: boolean; }
@@ -258,7 +262,7 @@ export interface AssessmentResult {
   bankStatement?: CashFlowAnalysis | null; financialStatement?: FinancialStatementAnalysis | null; volumePlausibility?: VolumePlausibilityResult | null;
   creditDecision?: DecisionResult | null; creditExplanation?: DecisionExplanation | null; terms?: TermsRecommendation | null;
   unifiedScore?: UnifiedRiskScore | null; rules?: RulesEvaluation | null; case?: MerchantCase | null; decisionLogId?: number | null;
-  agents?: AgentReport[] | null; profile?: MerchantProfile | null; owners?: OwnerAssessment | null;
+  agents?: AgentReport[] | null; profile?: MerchantProfile | null; owners?: OwnerAssessment | null; bankEvidence?: BankEvidenceAssessment | null;
 }
 export interface AssessmentListItem { id: string; merchantName: string; outcome: RuleOutcome; score: number; tier: string; coveragePercent: number; caseId?: string | null; completedAt: string; }
 export type AssessmentEvent =
