@@ -20,8 +20,10 @@ public sealed class BusinessIdentityRequest
     public string? PostalCode { get; set; }
     public string? Country { get; set; }
     public string? WebsiteUrl { get; set; }
+    [EmailAddress] public string? ContactEmail { get; set; }
 
-    public BusinessIdentity ToIdentity() => new(LegalName.Trim(), TradingName, RegistrationNumber, TaxId, AddressLine, City, Region, PostalCode, Country, WebsiteUrl);
+    public BusinessIdentity ToIdentity() => new(LegalName.Trim(), TradingName, RegistrationNumber, TaxId, AddressLine, City, Region, PostalCode, Country, WebsiteUrl,
+        string.IsNullOrWhiteSpace(ContactEmail) ? null : ContactEmail.Trim());
 }
 
 public sealed class BeneficialOwnerRequest

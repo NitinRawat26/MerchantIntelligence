@@ -198,7 +198,7 @@ public sealed class LocalPresenceTests
     }
 
     private static LocalPresenceService Service(params ILocalPresenceProvider[] providers) =>
-        new(providers, new NominatimGeocoder(new NoHttp()), new KybOptions(), Microsoft.Extensions.Logging.Abstractions.NullLogger<LocalPresenceService>.Instance);
+        new(providers, new NominatimGeocoder(new NoHttp()), new MerchantIntelligence.Kyb.Compliance.RdapDomainLookup(new NoHttp(), Microsoft.Extensions.Logging.Abstractions.NullLogger<MerchantIntelligence.Kyb.Compliance.RdapDomainLookup>.Instance), new KybOptions(), Microsoft.Extensions.Logging.Abstractions.NullLogger<LocalPresenceService>.Instance);
 
     private static PlaceRecord Place(string name, double lat, double lon, string? status = null) =>
         new("OpenStreetMap", "node/1", name, "100 Main St, Austin", lat, lon, "bakery", null, null, status, null);

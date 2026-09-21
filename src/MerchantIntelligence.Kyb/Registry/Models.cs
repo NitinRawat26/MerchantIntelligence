@@ -12,7 +12,8 @@ public sealed record BusinessIdentity(
     string? Region = null,
     string? PostalCode = null,
     string? Country = null,
-    string? WebsiteUrl = null)
+    string? WebsiteUrl = null,
+    string? ContactEmail = null)
 {
     public string FullAddress => string.Join(", ",
         new[] { AddressLine, City, Region, PostalCode, Country }.Where(s => !string.IsNullOrWhiteSpace(s)));

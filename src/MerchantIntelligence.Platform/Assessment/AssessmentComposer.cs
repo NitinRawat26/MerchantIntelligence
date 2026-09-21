@@ -49,6 +49,16 @@ internal static class AssessmentComposer
     /// <summary>Screening against zero loaded lists is not a clear result; treat it as not run.</summary>
     internal static bool ListsLoaded(ScreeningReport s) => s.Lists.Any(l => l.Error is null && l.EntityCount > 0);
 
+    private static string ReputationText(PlaceMatch pm)
+    {
+        if (pm.Record.Reputation is not { } rep) return string.Empty;
+        var parts = new List<string>();
+        if (rep.Rating is { } r) parts.Add($"rated {r:0.#}/{rep.RatingScale:0}{(rep.RatingCount is { } c ? $" ({c} ratings)" : "")}");
+        if (rep.Popularity is { } p) parts.Add($"popularity {p:P0}");
+        if (rep.ListedSince is { } s) parts.Add($"listed since {s:yyyy-MM-dd}");
+        return parts.Count == 0 ? string.Empty : $" {pm.Record.Source}: {string.Join(", ", parts)}.";
+    }
+
     /// <summary>Adverse media counts as checked only if every subject's lookup succeeded (or none was attempted).</summary>
     internal static bool MediaChecked(ScreeningReport s) => s.Subjects.All(x => x.AdverseMedia is null || x.AdverseMedia.Succeeded);
 
@@ -183,11 +193,25 @@ internal static class AssessmentComposer
         {
             var searched = string.Join(", ", lp.Sources.Where(x => x.Succeeded).Select(x => x.Source));
             var detail = lp.BestMatch is { } pm
-                ? $"'{pm.Record.Name}' via {pm.Record.Source}{(pm.DistanceMeters is { } dm ? $", {dm:F0} m from the declared address" : "")}{(pm.Record.Category is null ? "" : $" ({pm.Record.Category})")}; name {pm.NameScore:P0}, overall {pm.OverallScore:P0}. Searched {searched}."
+                ? $"'{pm.Record.Name}' via {pm.Record.Source}{(pm.DistanceMeters is { } dm ? $", {dm:F0} m from the declared address" : "")}{(pm.Record.Category is null ? "" : $" ({pm.Record.Category})")}; name {pm.NameScore:P0}, overall {pm.OverallScore:P0}.{ReputationText(pm)} Searched {searched}."
                 : $"No business matching the declared name near the address in {searched}.{(lp.Note is null ? "" : " " + lp.Note)}";
             outcomes.Add(new("Local presence", $"{lp.Status} ({lp.ConfidencePercent:F0}%)", detail, lp.Status == LocalPresenceStatus.NotFound ? RiskTier.Medium : RiskTier.Low, true));
             narrative.Add($"Local presence: {(lp.Status == LocalPresenceStatus.Confirmed ? "a business with this name trades at the declared address" : lp.Status == LocalPresenceStatus.PartialMatch ? "a similarly named business trades near the declared address" : "no business with this name was found near the declared address")} – trading evidence, not legal registration. {detail}");
             if (lp.Status == LocalPresenceStatus.NotFound && lp.Sources.Count(x => x.Succeeded) == 1) next.Add("Local presence was searched in OpenStreetMap only; configure a Foursquare or Google Places key, or request a utility bill / lease for the trading address.");
+        }
+
+        // Digital footprint (contact e-mail domain via RDAP) – independent of the website scan
+        if (lp?.Footprint is { } fp)
+        {
+            var worst = fp.Flags.Count == 0 ? RiskTier.Low : fp.Flags.Max(f => f.Severity);
+            var result = fp.EmailIsFreeMail ? "Free-mail"
+                : fp.EmailDomainAgeMonths is { } months ? $"Domain {months / 12} yr {months % 12} mo"
+                : "Tenure unknown";
+            var covered = fp.EmailIsFreeMail || fp.EmailDomainAgeMonths is not null;
+            var detail = string.Join(" ", fp.Flags.Select(f => f.Message));
+            outcomes.Add(new("Digital footprint", result, detail, worst, covered));
+            narrative.Add($"Digital footprint: contact e-mail domain {fp.EmailDomain} – {detail}");
+            if (fp.Flags.Any(f => f.Code == "EMAIL_DOMAIN_NEW")) next.Add("Contact e-mail domain is under six months old; corroborate tenure with a lease, utility bill or bank-account opening date.");
         }
 
         // Screening

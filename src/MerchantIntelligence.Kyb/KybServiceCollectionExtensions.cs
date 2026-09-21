@@ -61,6 +61,7 @@ public static class KybServiceCollectionExtensions
         services.AddSingleton<SanctionsScreeningService>();
 
         services.AddSingleton(ProhibitedBusinessDetector.Default);
+        services.AddSingleton<RdapDomainLookup>();
         services.AddSingleton<WebsiteComplianceScanner>();
         services.AddSingleton<KybReportService>();
         return services;
