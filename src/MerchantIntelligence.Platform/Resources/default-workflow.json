@@ -1,9 +1,10 @@
 {
   "name": "Standard onboarding",
   "version": "default",
-  "description": "Every deterministic check, grouped under four rule-based agents. Pre-check and KYB run first, Financial & credit follows, Decision & case closes.",
+  "description": "Every deterministic check, grouped under five rule-based agents. Profile classifies the applicant first and scopes the run; Pre-check, KYB and Financial then gather evidence in parallel; Decision & case closes.",
   "haltOnHardStop": false,
   "agents": [
+    { "id": "profile", "enabled": true, "stepOrder": "Parallel", "steps": ["entity", "segment"] },
     { "id": "precheck", "enabled": true, "stepOrder": "Parallel", "steps": ["website", "prohibited", "mcc"] },
     { "id": "kyb", "enabled": true, "stepOrder": "Parallel", "steps": ["verification", "screening", "match", "presence"] },
     { "id": "financial", "enabled": true, "stepOrder": "Parallel", "steps": ["bank", "financials", "plausibility", "credit"] },
@@ -16,6 +17,8 @@
     { "from": "financial", "to": "decision", "when": "Always" }
   ],
   "steps": [
+    { "id": "entity", "enabled": true, "onFail": "Skip" },
+    { "id": "segment", "enabled": true, "onFail": "Skip" },
     { "id": "verification", "enabled": true, "onFail": "Skip" },
     { "id": "screening", "enabled": true, "onFail": "Skip" },
     { "id": "website", "enabled": true, "onFail": "Skip" },

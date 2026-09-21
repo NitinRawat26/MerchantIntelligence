@@ -69,15 +69,18 @@ public sealed class WorkflowTests : IClassFixture<WebApplicationFactory<Program>
         var plan = Planner.Plan(Default());
         Assert.Empty(plan.Warnings);
         Assert.Empty(plan.Disabled);
-        // Pre-check and KYB agents run concurrently; inside each (Parallel by default) only dependencies sequence steps
-        Assert.Equal(["verification", "screening", "website", "mcc", "match"], plan.Stages[0].Steps);
-        Assert.Equal(["prohibited", "presence"], plan.Stages[1].Steps);   // prohibited needs website, presence waits for verification
+        // Profile runs alone first; Pre-check and KYB agents then run concurrently; inside each (Parallel by default) only dependencies sequence steps
+        Assert.Equal(["entity"], plan.Stages[0].Steps);
+        Assert.Equal(["segment"], plan.Stages[1].Steps);
+        Assert.Equal(["verification", "screening", "website", "mcc", "match"], plan.Stages[2].Steps);
+        Assert.Equal(["prohibited", "presence"], plan.Stages[3].Steps);   // prohibited needs website, presence waits for verification
         Assert.Equal(["score"], plan.Stages[^2].Steps);
         Assert.Equal(["case"], plan.Stages[^1].Steps);
-        Assert.Equal(["precheck", "kyb", "financial", "decision"], plan.Agents.Select(a => a.Id));
-        Assert.Equal([1, 1, 2, 3], plan.Agents.Select(a => a.Stage));
-        Assert.Equal(["kyb"], plan.Agents.Single(a => a.Id == "financial").WaitsFor);       // credit needs match
-        Assert.Equal(["financial", "kyb", "precheck"], plan.Agents.Single(a => a.Id == "decision").WaitsFor);
+        Assert.Equal(["profile", "precheck", "kyb", "financial", "decision"], plan.Agents.Select(a => a.Id));
+        Assert.Equal([1, 2, 2, 3, 4], plan.Agents.Select(a => a.Stage));
+        Assert.Equal(["profile"], plan.Agents.Single(a => a.Id == "precheck").WaitsFor);
+        Assert.Equal(["kyb", "profile"], plan.Agents.Single(a => a.Id == "financial").WaitsFor);       // credit needs match
+        Assert.Equal(["financial", "kyb", "precheck", "profile"], plan.Agents.Single(a => a.Id == "decision").WaitsFor);
         Assert.StartsWith("flowchart LR", plan.Mermaid);
     }
 
@@ -91,7 +94,7 @@ public sealed class WorkflowTests : IClassFixture<WebApplicationFactory<Program>
 
         var upgraded = Planner.Upgrade(old);
         Assert.NotSame(old, upgraded);
-        Assert.Equal(14, upgraded.Steps.Count);
+        Assert.Equal(16, upgraded.Steps.Count);
         Assert.True(upgraded.Steps.FindIndex(s => s.Id == "presence") > upgraded.Steps.FindIndex(s => s.Id == "verification"));
         Assert.Contains("presence", upgraded.Agents!.Single(a => a.Id == "kyb").Steps);
         Assert.Empty(Planner.Plan(upgraded).Warnings);
@@ -157,8 +160,8 @@ public sealed class WorkflowTests : IClassFixture<WebApplicationFactory<Program>
         var def = Default();
         def.Transitions = [new() { From = "precheck", To = "kyb", When = TransitionCondition.Success }, new() { From = "kyb", To = "financial" }, new() { From = "financial", To = "decision" }];
         var plan = Planner.Plan(def);
-        Assert.Equal([1, 2, 3, 4], plan.Agents.Select(a => a.Stage));
-        Assert.Equal(["precheck"], plan.Agents.Single(a => a.Id == "kyb").WaitsFor);
+        Assert.Equal([1, 2, 3, 4, 5], plan.Agents.Select(a => a.Stage));
+        Assert.Equal(["precheck", "profile"], plan.Agents.Single(a => a.Id == "kyb").WaitsFor);
         Assert.Single(plan.Agents.Single(a => a.Id == "kyb").RunsWhen);
         Assert.Contains(plan.Warnings, w => w.Contains("'kyb' runs only when 'precheck' on success"));
         Assert.Contains("on success", plan.Mermaid);
@@ -210,10 +213,11 @@ public sealed class WorkflowTests : IClassFixture<WebApplicationFactory<Program>
         // stored definitions from before these fields existed still load and get the default flow
         var legacy = JsonSerializer.Deserialize<WorkflowDefinition>("""{"name":"Old","version":"1","steps":[{"id":"score"}]}""", RulesEngine.JsonOptions)!;
         var upgraded = Planner.Upgrade(legacy);
-        Assert.Equal(14, upgraded.Steps.Count);
+        Assert.Equal(16, upgraded.Steps.Count);
+        Assert.Equal("profile", upgraded.Agents![0].Id);
         Assert.All(upgraded.Agents!, a => Assert.Equal(AgentStepOrder.Parallel, a.StepOrder));
         Assert.Empty(Planner.Plan(upgraded).Agents.SelectMany(a => a.RunsWhen)); // no transitions → dependency-driven order, as before
-        Assert.Equal([1, 1, 2, 3], Planner.Plan(upgraded).Agents.Select(a => a.Stage));
+        Assert.Equal([1, 2, 2, 3, 4], Planner.Plan(upgraded).Agents.Select(a => a.Stage));
     }
 
     [Fact]
@@ -268,10 +272,10 @@ public sealed class WorkflowTests : IClassFixture<WebApplicationFactory<Program>
     {
         var active = await Json(await _client.GetAsync("/api/workflows/active"));
         Assert.Equal("default", active.GetProperty("version").GetString());
-        Assert.Equal(14, active.GetProperty("steps").GetArrayLength());
+        Assert.Equal(16, active.GetProperty("steps").GetArrayLength());
 
         var catalog = await Json(await _client.GetAsync("/api/workflows/catalog"));
-        Assert.Equal(14, catalog.GetArrayLength());
+        Assert.Equal(16, catalog.GetArrayLength());
 
         var draft = Default();
         draft.Name = "No website scan";
@@ -338,7 +342,7 @@ public sealed class WorkflowTests : IClassFixture<WebApplicationFactory<Program>
         }));
 
         var steps = root.GetProperty("steps").EnumerateArray().Select(s => (Id: s.GetProperty("id").GetString()!, Status: s.GetProperty("status").GetString()!, Summary: s.GetProperty("summary").GetString()!)).ToList();
-        Assert.Equal(14, steps.Count);
+        Assert.Equal(16, steps.Count);
         Assert.Equal(def.Steps.Select(s => s.Id), steps.Select(s => s.Id));
         Assert.Equal("Skipped", steps.Single(s => s.Id == "website").Status);
         Assert.Contains("Disabled in workflow 'Lean'", steps.Single(s => s.Id == "website").Summary);
@@ -380,10 +384,12 @@ public sealed class WorkflowTests : IClassFixture<WebApplicationFactory<Program>
     // ---- agents ----
 
     [Fact]
-    public void Agent_catalog_has_four_agents_owning_every_step()
+    public void Agent_catalog_has_five_agents_owning_every_step()
     {
         var agents = Planner.AgentCatalog;
-        Assert.Equal(["precheck", "kyb", "financial", "decision"], agents.Select(a => a.Id));
+        Assert.Equal(["profile", "precheck", "kyb", "financial", "decision"], agents.Select(a => a.Id));
+        Assert.Equal("profile", Planner.ProfileAgentId);
+        Assert.Equal(["entity", "segment"], Planner.ProfileSteps.OrderBy(x => x));
         Assert.Equal(Planner.Catalog.Select(s => s.Id).OrderBy(x => x), agents.SelectMany(a => a.DefaultSteps).OrderBy(x => x));
 
         var noAgents = Default();
@@ -430,7 +436,46 @@ public sealed class WorkflowTests : IClassFixture<WebApplicationFactory<Program>
         Assert.Equal(["website", "prohibited", "mcc"], plan.Disabled);
         Assert.Contains(plan.Warnings, w => w.Contains("Agent 'precheck' is disabled"));
         Assert.Equal(0, plan.Agents.Single(a => a.Id == "precheck").Stage);
-        Assert.Equal(["financial", "kyb"], plan.Agents.Single(a => a.Id == "decision").WaitsFor);
+        Assert.Equal(["financial", "kyb", "profile"], plan.Agents.Single(a => a.Id == "decision").WaitsFor);
+    }
+
+    [Fact]
+    public void Profile_agent_must_run_first_and_cannot_be_disabled_gated_or_fed()
+    {
+        var def = Default();
+        def.Agents!.Single(a => a.Id == "profile").Enabled = false;
+        Assert.Contains("cannot be disabled", Assert.Throws<WorkflowValidationException>(() => Planner.Validate(def)).Message);
+
+        def = Default();
+        def.Step("segment")!.Enabled = false;
+        Assert.Contains("cannot be disabled", Assert.Throws<WorkflowValidationException>(() => Planner.Validate(def)).Message);
+
+        def = Default();
+        def.Transitions!.Add(new() { From = "precheck", To = "profile" });
+        Assert.Contains("always runs first", Assert.Throws<WorkflowValidationException>(() => Planner.Validate(def)).Message);
+
+        def = Default();
+        def.Step("entity")!.DependsOn = ["website"];
+        Assert.Contains("cannot depend on evidence step", Assert.Throws<WorkflowValidationException>(() => Planner.Validate(def)).Message);
+
+        def = Default();
+        def.Step("segment")!.StopGate = new StopGateConfig { When = StopGateTrigger.Failed };
+        Assert.Contains("cannot carry a stop-gate", Assert.Throws<WorkflowValidationException>(() => Planner.Validate(def)).Message);
+
+        def = Default();
+        def.Agents!.Single(a => a.Id == "profile").Steps.Add("website");
+        def.Agents!.Single(a => a.Id == "precheck").Steps.Remove("website");
+        Assert.Contains("cannot be owned by the profiling agent", Assert.Throws<WorkflowValidationException>(() => Planner.Validate(def)).Message);
+
+        // even with every transition removed and a step that declares no dependencies, nothing is scheduled before the profile
+        def = Default();
+        def.Transitions = [];
+        var plan = Planner.Plan(def);
+        Assert.Equal(1, plan.Agents.Single(a => a.Id == "profile").Stage);
+        Assert.All(plan.Agents.Where(a => a.Id != "profile"), a => Assert.Contains("profile", a.WaitsFor));
+        Assert.Equal(["entity"], plan.Stages[0].Steps);
+        Assert.DoesNotContain("segment --> website", plan.Mermaid); // implicit dependency is not drawn as a step edge
+        Assert.Contains("profile --> precheck", plan.Mermaid);
     }
 
     [Fact]
@@ -457,10 +502,15 @@ public sealed class WorkflowTests : IClassFixture<WebApplicationFactory<Program>
         Assert.NotNull(result);
 
         var agents = result.Value.GetProperty("agents").EnumerateArray().ToList();
-        Assert.Equal(["precheck", "kyb", "financial", "decision"], agents.Select(a => a.GetProperty("id").GetString()));
+        Assert.Equal(["profile", "precheck", "kyb", "financial", "decision"], agents.Select(a => a.GetProperty("id").GetString()));
         Assert.All(agents, a => Assert.Equal("Succeeded", a.GetProperty("status").GetString()));
 
-        var precheck = agents[0].GetProperty("findings").EnumerateArray().Select(f => f.GetProperty("code").GetString()).ToList();
+        var profile = agents[0].GetProperty("findings").EnumerateArray().Select(f => f.GetProperty("code").GetString()).ToList();
+        Assert.Contains("SMB_NO_BANK_STATEMENT", profile);
+        Assert.Contains("NOT_APPLICABLE_WEBSITE", profile);
+        Assert.Equal("Skipped", result.Value.GetProperty("steps").EnumerateArray().Single(s => s.GetProperty("id").GetString() == "website").GetProperty("status").GetString());
+
+        var precheck = agents[1].GetProperty("findings").EnumerateArray().Select(f => f.GetProperty("code").GetString()).ToList();
         Assert.Contains("NO_WEBSITE", precheck);
         Assert.Contains("NO_BANK_STATEMENT", precheck);
         Assert.Contains("NO_OWNERS", precheck);
@@ -469,7 +519,7 @@ public sealed class WorkflowTests : IClassFixture<WebApplicationFactory<Program>
         // the run went all the way: score produced, decision is the rules engine's, advisories did not abort anything
         Assert.Equal("Succeeded", result.Value.GetProperty("steps").EnumerateArray().Single(s => s.GetProperty("id").GetString() == "score").GetProperty("status").GetString());
         Assert.Contains(result.Value.GetProperty("decision").GetProperty("outcome").GetString(), new[] { "Approve", "Refer", "Decline" });
-        Assert.StartsWith(result.Value.GetProperty("decision").GetProperty("outcome").GetString()!, agents[3].GetProperty("summary").GetString());
+        Assert.StartsWith(result.Value.GetProperty("decision").GetProperty("outcome").GetString()!, agents[4].GetProperty("summary").GetString());
     }
 
     [Fact]

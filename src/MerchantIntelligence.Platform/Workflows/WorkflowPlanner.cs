@@ -14,23 +14,51 @@ public sealed class WorkflowPlanner
     private readonly Dictionary<string, WorkflowStepDescriptor> _catalog;
     private readonly Dictionary<string, WorkflowAgentDescriptor> _agents;
     private readonly List<string> _agentOrder;
+    private readonly HashSet<string> _profileSteps;
 
     public WorkflowPlanner(IEnumerable<IAssessmentStep> steps, IEnumerable<IAssessmentAgent> agents)
     {
         _catalog = steps.ToDictionary(s => s.Descriptor.Id, s => s.Descriptor);
         var list = agents.Select(a => a.Descriptor).ToList();
+        // the profiling agent always leads the catalogue, whatever order it was registered in
+        list = list.Where(a => a.Kind == AgentKind.Profiling).Concat(list.Where(a => a.Kind != AgentKind.Profiling)).ToList();
         _agents = list.ToDictionary(a => a.Id);
         _agentOrder = list.Select(a => a.Id).ToList();
+        _profileSteps = _catalog.Values.Where(s => s.Profiling).Select(s => s.Id).ToHashSet();
+
+        var profilers = list.Where(a => a.Kind == AgentKind.Profiling).ToList();
+        if (profilers.Count > 1)
+            throw new InvalidOperationException($"Exactly one profiling agent is allowed; found {string.Join(", ", profilers.Select(p => p.Id))}.");
+        ProfileAgentId = profilers.SingleOrDefault()?.Id;
     }
 
     public IReadOnlyList<WorkflowStepDescriptor> Catalog => _catalog.Values.ToList();
 
     public IReadOnlyList<WorkflowAgentDescriptor> AgentCatalog => _agentOrder.Select(id => _agents[id]).ToList();
 
+    /// <summary>The agent that profiles the applicant and must run before every other agent; null when none is registered.</summary>
+    public string? ProfileAgentId { get; }
+
+    /// <summary>Steps that build the merchant profile; every other step implicitly depends on them.</summary>
+    public IReadOnlySet<string> ProfileSteps => _profileSteps;
+
+    public bool IsProfileStep(string id) => _profileSteps.Contains(id);
+
     public WorkflowStepDescriptor Describe(string id) => _catalog[id];
 
-    /// <summary>Effective dependencies of a configured step (override or catalogue default), enabled or not.</summary>
-    public IReadOnlyList<string> DependenciesOf(WorkflowStepConfig step) => step.DependsOn ?? _catalog[step.Id].DependsOn;
+    /// <summary>
+    /// Effective dependencies of a configured step (override or catalogue default), enabled or not. Every non-profile step
+    /// additionally depends on the profile steps, so nothing can be scheduled before the applicant has been profiled.
+    /// </summary>
+    public IReadOnlyList<string> DependenciesOf(WorkflowStepConfig step)
+    {
+        var declared = DeclaredDependenciesOf(step);
+        if (_profileSteps.Count == 0 || _profileSteps.Contains(step.Id)) return declared;
+        return declared.Concat(_profileSteps.Where(p => !declared.Contains(p))).ToList();
+    }
+
+    /// <summary>Dependencies as written by the author or the catalogue, without the implicit profile dependency.</summary>
+    public IReadOnlyList<string> DeclaredDependenciesOf(WorkflowStepConfig step) => step.DependsOn ?? _catalog[step.Id].DependsOn;
 
     /// <summary>The agent grouping in force for a definition: the configured one, or the catalogue defaults.</summary>
     public IReadOnlyList<WorkflowAgentConfig> AgentsOf(WorkflowDefinition def) =>
@@ -59,9 +87,12 @@ public sealed class WorkflowPlanner
         // a definition without an agents block gets the default ownership made explicit; agents missing from an existing block start empty
         var agents = def.Agents?.Select(a => new WorkflowAgentConfig { Id = a.Id, Enabled = a.Enabled, Steps = a.Steps.ToList(), StepOrder = a.StepOrder }).ToList() ?? [];
         foreach (var id in newAgents)
-            agents.Add(new WorkflowAgentConfig { Id = id, Enabled = true, Steps = def.Agents is null ? _agents[id].DefaultSteps.Where(known.Contains).ToList() : [] });
+        {
+            var cfg = new WorkflowAgentConfig { Id = id, Enabled = true, Steps = def.Agents is null ? _agents[id].DefaultSteps.Where(known.Contains).ToList() : [] };
+            if (_agents[id].Kind == AgentKind.Profiling) agents.Insert(0, cfg); else agents.Add(cfg);
+        }
 
-        foreach (var id in newSteps)
+        foreach (var id in newSteps.OrderBy(id => _profileSteps.Contains(id) ? 0 : 1))
         {
             var deps = _catalog[id].DependsOn;
             var after = steps.Select((s, i) => (s.Id, i)).Where(x => deps.Contains(x.Id)).Select(x => x.i).DefaultIfEmpty(-1).Max();
@@ -109,7 +140,7 @@ public sealed class WorkflowPlanner
 
         foreach (var step in active)
         {
-            var missing = DependenciesOf(step).Where(d => !activeIds.Contains(d)).ToList();
+            var missing = DeclaredDependenciesOf(step).Where(d => !activeIds.Contains(d)).ToList();
             if (missing.Count > 0)
                 warnings.Add($"'{step.Id}' will run without input from {string.Join(", ", missing.Select(m => $"'{m}'"))} (disabled) – results are degraded.");
         }
@@ -282,6 +313,7 @@ public sealed class WorkflowPlanner
 
         ValidateAgents(def);
         ValidateTransitions(def);
+        ValidateProfile(def);
 
         // Active dependencies must be acyclic; list position is not significant (slots and agents[].steps order schedule).
         var active = def.Steps.Where(s => IsActive(def, s.Id)).Select(s => s.Id).ToHashSet();
@@ -324,6 +356,34 @@ public sealed class WorkflowPlanner
             throw new WorkflowValidationException($"Step '{step}' is not owned by any agent – assign it to one.");
     }
 
+    /// <summary>
+    /// The profiling agent scopes the run, so it must be first and alone: it owns exactly the profile steps, is never
+    /// disabled, depends on nothing outside itself, receives no transition and carries no stop-gate.
+    /// </summary>
+    private void ValidateProfile(WorkflowDefinition def)
+    {
+        if (ProfileAgentId is null) return;
+        var agents = AgentsOf(def);
+        var profile = agents.Single(a => a.Id == ProfileAgentId);
+        if (!profile.Enabled)
+            throw new WorkflowValidationException($"Agent '{ProfileAgentId}' profiles the applicant and decides which checks apply; it must run first and cannot be disabled.");
+        foreach (var s in profile.Steps.Where(s => !_profileSteps.Contains(s)))
+            throw new WorkflowValidationException($"Step '{s}' gathers evidence and cannot be owned by the profiling agent '{ProfileAgentId}'.");
+        foreach (var s in _profileSteps.Where(s => !profile.Steps.Contains(s)))
+            throw new WorkflowValidationException($"Step '{s}' builds the merchant profile and must be owned by agent '{ProfileAgentId}'.");
+        foreach (var t in TransitionsOf(def).Where(t => t.To == ProfileAgentId))
+            throw new WorkflowValidationException($"Transition '{t.From}' → '{ProfileAgentId}' is not allowed: the profiling agent always runs first, nothing can run before it.");
+        foreach (var step in def.Steps.Where(s => _profileSteps.Contains(s.Id)))
+        {
+            if (!step.Enabled)
+                throw new WorkflowValidationException($"Step '{step.Id}' builds the merchant profile and cannot be disabled.");
+            if (step.StopGate is not null)
+                throw new WorkflowValidationException($"Step '{step.Id}' scopes the run rather than deciding it and cannot carry a stop-gate.");
+            foreach (var dep in DeclaredDependenciesOf(step).Where(d => !_profileSteps.Contains(d)))
+                throw new WorkflowValidationException($"Step '{step.Id}' builds the merchant profile and cannot depend on evidence step '{dep}' – the profile is decided before any evidence is gathered.");
+        }
+    }
+
     private void ValidateTransitions(WorkflowDefinition def)
     {
         var pairs = new HashSet<(string, string)>();
@@ -356,7 +416,7 @@ public sealed class WorkflowPlanner
             }
         }
         foreach (var step in def.Steps.Where(s => active.Contains(s.Id)))
-            foreach (var dep in DependenciesOf(step))
+            foreach (var dep in DeclaredDependenciesOf(step))
                 sb.Append(active.Contains(dep) ? $"  {dep} --> {step.Id}\n" : $"  {dep} -.-> {step.Id}\n");
         sb.Append("  classDef off fill:#eee,stroke:#bbb,color:#888,stroke-dasharray: 4 4\n");
         return sb.ToString();
