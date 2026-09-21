@@ -14,16 +14,19 @@ public sealed record IndustryBenchmark(
     double ChargebackRate,
     int DeliveryDays,
     int MaxEmployeesPerLocation,
-    int MaxEmployees);
+    int MaxEmployees,
+    double VolumePerLocationP10,
+    double VolumePerLocationP90);
 
 /// <summary>Embedded per-category / per-MCC SMB benchmarks used for plausibility and exposure maths.</summary>
 public sealed class IndustryBenchmarks
 {
     private sealed record Raw(double[] RevenuePerEmployee, double[] Ticket, double ChargebackRate, int DeliveryDays,
-        int? MaxEmployeesPerLocation = null, int? MaxEmployees = null);
+        int? MaxEmployeesPerLocation = null, int? MaxEmployees = null, double[]? VolumePerLocation = null);
 
     private const int DefaultMaxEmployeesPerLocation = 300;
     private const int DefaultMaxEmployees = 5000;
+    private static readonly double[] DefaultVolumePerLocation = [50_000, 10_000_000];
     private sealed record File(Dictionary<string, Raw> Categories, Dictionary<string, Raw> MccOverrides);
 
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
@@ -54,7 +57,9 @@ public sealed class IndustryBenchmarks
         r.RevenuePerEmployee[0], r.RevenuePerEmployee[1], r.RevenuePerEmployee[2],
         r.Ticket[0], r.Ticket[1], r.ChargebackRate, r.DeliveryDays,
         r.MaxEmployeesPerLocation ?? categoryFallback?.MaxEmployeesPerLocation ?? DefaultMaxEmployeesPerLocation,
-        r.MaxEmployees ?? categoryFallback?.MaxEmployees ?? DefaultMaxEmployees);
+        r.MaxEmployees ?? categoryFallback?.MaxEmployees ?? DefaultMaxEmployees,
+        (r.VolumePerLocation ?? categoryFallback?.VolumePerLocation ?? DefaultVolumePerLocation)[0],
+        (r.VolumePerLocation ?? categoryFallback?.VolumePerLocation ?? DefaultVolumePerLocation)[1]);
 
     private static IndustryBenchmarks LoadEmbedded(MccCatalog catalog)
     {

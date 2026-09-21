@@ -153,6 +153,27 @@ public sealed class VolumePlausibilityTests
     }
 
     [Fact]
+    public void Volume_per_location_is_benchmarked_against_the_mcc_band()
+    {
+        // Two grills declaring $600k in total: $300k each, inside the 5812 band.
+        var ok = Analyzer.Analyze(new VolumeDeclaration(600_000, 28, 400, 5812, LocationCount: 2));
+        Assert.DoesNotContain(ok.Flags, f => f.Code.StartsWith("VOLUME_PER_LOCATION"));
+        Assert.Contains(ok.Metrics, m => m.Name == "Card volume / location" && m.Assessment == "Within p10-p90");
+
+        // One restaurant declaring $15M cannot be a single site.
+        var high = Analyzer.Analyze(new VolumeDeclaration(15_000_000, 28, 400, 5812, LocationCount: 1));
+        Assert.Contains(high.Flags, f => f.Code == "VOLUME_PER_LOCATION_FAR_ABOVE_MCC" && f.Severity == RiskTier.High);
+
+        // Ten locations sharing $200k: $20k each, under a quarter of p10.
+        var low = Analyzer.Analyze(new VolumeDeclaration(200_000, 28, 400, 5812, LocationCount: 10));
+        Assert.Contains(low.Flags, f => f.Code == "VOLUME_PER_LOCATION_FAR_BELOW_MCC" && f.Severity == RiskTier.Medium);
+
+        // Physical merchant without a count is treated as one location; online-only gets no per-location metric.
+        Assert.Contains(Analyzer.Analyze(new VolumeDeclaration(600_000, 28, 400, 5812, HasPhysicalLocation: true)).Metrics, m => m.Name == "Card volume / location");
+        Assert.DoesNotContain(Analyzer.Analyze(new VolumeDeclaration(600_000, 28, 400, 5812, HasPhysicalLocation: false)).Metrics, m => m.Name == "Card volume / location");
+    }
+
+    [Fact]
     public void Startup_with_huge_volume_and_tiny_headcount_is_flagged()
     {
         var r = Analyzer.Analyze(new VolumeDeclaration(20_000_000, 50, 500, 5812, EmployeeCount: 1, YearsInBusiness: 0.2m));
