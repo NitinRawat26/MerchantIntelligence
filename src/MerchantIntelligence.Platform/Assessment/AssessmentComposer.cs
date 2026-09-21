@@ -376,5 +376,5 @@ internal static class AssessmentComposer
         i.WebsiteProductCount, i.HasPhysicalLocation,
         bank?.FileName ?? (i.BankStatementCsv is null ? null : "inline CSV"),
         fin?.FileName ?? (i.FinancialStatementText is null ? null : "inline text"),
-        i.ExternalRef, i.Actor, i.LocationCount);
+        i.ExternalRef, i.Actor, i.LocationCount, i.EntityType);
 }

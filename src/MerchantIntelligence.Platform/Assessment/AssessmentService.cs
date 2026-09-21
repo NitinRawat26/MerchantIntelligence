@@ -70,7 +70,7 @@ public sealed class AssessmentService
         var result = new AssessmentResult(id, ctx.StartedAt, DateTimeOffset.UtcNow, AssessmentComposer.Summarise(intake, bankStatement, financialStatement), steps, decision, explainability,
             ctx.Verification, ctx.Screening, ctx.Website, ctx.Prohibited, ctx.Mcc, ctx.Match, ctx.Bank, ctx.Financials, ctx.Plausibility, ctx.Credit, ctx.CreditExplanation,
             ctx.Terms, ctx.Score, ctx.Rules, ctx.Case, ctx.DecisionLogId,
-            new AssessmentWorkflowInfo(def.Name, def.Version, def.Steps.Where(s => _planner.IsActive(def, s.Id)).Select(s => s.Id).ToList(), ctx.StopGateHits), ctx.Agents);
+            new AssessmentWorkflowInfo(def.Name, def.Version, def.Steps.Where(s => _planner.IsActive(def, s.Id)).Select(s => s.Id).ToList(), ctx.StopGateHits), ctx.Agents, ctx.Profile);
         Persist(result);
         _audit.Record(ctx.Case?.Id, intake.Actor, "assessment.completed", new { assessmentId = id, decision.Outcome, decision.Score, decision.CoveragePercent, workflow = def.Name, workflowVersion = def.Version });
         return result;

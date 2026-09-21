@@ -8,6 +8,7 @@ using MerchantIntelligence.MccValidation.Taxonomy;
 using MerchantIntelligence.MccValidation.Validation;
 using MerchantIntelligence.Platform.Cases;
 using MerchantIntelligence.Platform.Integrations;
+using MerchantIntelligence.Platform.Profiling;
 using MerchantIntelligence.Platform.Rules;
 using MerchantIntelligence.Platform.Scoring;
 using MerchantIntelligence.Platform.Workflows;
@@ -42,7 +43,8 @@ public sealed record AssessmentIntake(
     string? ExternalRef = null,
     string Actor = "analyst",
     bool CreateCase = true,
-    int? LocationCount = null);
+    int? LocationCount = null,
+    EntityType? EntityType = null);
 
 public sealed record UploadedDocument(string FileName, byte[] Content);
 
@@ -122,7 +124,8 @@ public sealed record AssessmentResult(
     MerchantCase? Case,
     long? DecisionLogId,
     AssessmentWorkflowInfo? Workflow = null,
-    IReadOnlyList<AgentReport>? Agents = null);
+    IReadOnlyList<AgentReport>? Agents = null,
+    MerchantProfile? Profile = null);
 
 /// <summary>Which workflow definition produced a result, for replay and audit, and which stop-gates fired during the run.</summary>
 public sealed record AssessmentWorkflowInfo(string Name, string Version, IReadOnlyList<string> EnabledSteps, IReadOnlyList<StopGateHit>? StopGates = null);
@@ -178,7 +181,8 @@ public sealed record AssessmentIntakeSummary(
     string? FinancialStatementSource,
     string? ExternalRef,
     string Actor,
-    int? LocationCount = null);
+    int? LocationCount = null,
+    EntityType? EntityType = null);
 
 public sealed record AssessmentListItem(
     string Id,
