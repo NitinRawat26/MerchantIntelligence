@@ -154,11 +154,13 @@ public sealed class CompositeAdverseMediaProvider : IAdverseMediaProvider
 {
     private readonly IReadOnlyList<IAdverseMediaSource> _sources;
     private readonly ILogger<CompositeAdverseMediaProvider> _logger;
+    private readonly TimeSpan _sourceTimeout;
 
-    public CompositeAdverseMediaProvider(IEnumerable<IAdverseMediaSource> sources, ILogger<CompositeAdverseMediaProvider> logger)
+    public CompositeAdverseMediaProvider(IEnumerable<IAdverseMediaSource> sources, ILogger<CompositeAdverseMediaProvider> logger, SanctionsOptions? options = null)
     {
         _sources = sources.ToList();
         _logger = logger;
+        _sourceTimeout = TimeSpan.FromSeconds(Math.Max(1, options?.AdverseMediaSourceTimeoutSeconds ?? SanctionsOptions.DefaultAdverseMediaSourceTimeoutSeconds));
     }
 
     public string Name => _sources.Count == 0 ? "none" : string.Join(" + ", _sources.Select(s => s.Name));
@@ -167,10 +169,17 @@ public sealed class CompositeAdverseMediaProvider : IAdverseMediaProvider
     {
         var tasks = _sources.Select(async source =>
         {
+            using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            deadline.CancelAfter(_sourceTimeout);
             try
             {
-                var articles = await source.SearchAsync(subject, ct);
+                var articles = await source.SearchAsync(subject, deadline.Token);
                 return (source.Name, Articles: (IReadOnlyList<AdverseMediaArticle>)articles.Select(a => AdverseMediaAnalyzer.Grade(subject, a with { Provider = source.Name })).ToList(), Error: (string?)null);
+            }
+            catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+            {
+                _logger.LogWarning("Adverse media source {Source} exceeded {Timeout}s for {Subject}", source.Name, _sourceTimeout.TotalSeconds, subject.Name);
+                return (source.Name, Articles: (IReadOnlyList<AdverseMediaArticle>)Array.Empty<AdverseMediaArticle>(), Error: (string?)$"no response within {_sourceTimeout.TotalSeconds:0} s");
             }
             catch (Exception ex) when (!ct.IsCancellationRequested)
             {
@@ -215,12 +224,18 @@ public sealed class CompositeAdverseMediaProvider : IAdverseMediaProvider
     }
 }
 
-/// <summary>GDELT 2.0 DOC API: free global news index, no key. Enforces GDELT's one-request-per-5-seconds rule process-wide and retries once on 429.</summary>
+/// <summary>
+/// GDELT 2.0 DOC API: free global news index, no key. Enforces GDELT's one-request-per-5-seconds rule process-wide and retries
+/// once on 429; when GDELT keeps throttling this client the source backs off and fails fast for a minute instead of holding every
+/// subject in the queue.
+/// </summary>
 public sealed class GdeltAdverseMediaSource : IAdverseMediaSource
 {
     private static readonly SemaphoreSlim Gate = new(1, 1);
     private static readonly TimeSpan MinInterval = TimeSpan.FromSeconds(5.2);
+    private static readonly TimeSpan ThrottleBackoff = TimeSpan.FromMinutes(1);
     private static DateTimeOffset _lastRequest = DateTimeOffset.MinValue;
+    private static DateTimeOffset _throttledUntil = DateTimeOffset.MinValue;
 
     private readonly IHttpClientFactory _factory;
 
@@ -236,6 +251,9 @@ public sealed class GdeltAdverseMediaSource : IAdverseMediaSource
 
         for (var attempt = 0; ; attempt++)
         {
+            if (_throttledUntil > DateTimeOffset.UtcNow)
+                throw new HttpRequestException($"GDELT is throttling this client (HTTP 429); skipped until {_throttledUntil:HH:mm:ss} UTC.");
+
             string body;
             HttpStatusCode status;
             await Gate.WaitAsync(ct);
@@ -257,6 +275,7 @@ public sealed class GdeltAdverseMediaSource : IAdverseMediaSource
             if (status == HttpStatusCode.TooManyRequests)
             {
                 if (attempt == 0) continue;
+                _throttledUntil = DateTimeOffset.UtcNow + ThrottleBackoff;
                 throw new HttpRequestException("GDELT rate limit reached after retry (one request per 5 seconds).");
             }
 

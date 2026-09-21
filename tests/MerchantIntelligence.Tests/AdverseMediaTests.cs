@@ -90,6 +90,31 @@ public sealed class CompositeAdverseMediaProviderTests
     }
 
     [Fact]
+    public async Task Slow_source_is_cut_off_at_the_deadline_and_reported_as_unavailable()
+    {
+        var provider = new CompositeAdverseMediaProvider(
+        [
+            new StubSource("Fast", () => [A("Jane Roe opens new shop", "https://a.example/1")]),
+            new HangingSource("Slow")
+        ], NullLogger<CompositeAdverseMediaProvider>.Instance, new SanctionsOptions { AdverseMediaSourceTimeoutSeconds = 1 });
+
+        var r = await provider.SearchAsync(Subject, CancellationToken.None);
+        Assert.True(r.Succeeded);
+        Assert.Contains("Slow: no response within 1 s", r.Error);
+        Assert.True(r.Providers!.Single(p => p.Provider == "Fast").Succeeded);
+    }
+
+    private sealed class HangingSource(string name) : IAdverseMediaSource
+    {
+        public string Name => name;
+        public async Task<IReadOnlyList<AdverseMediaArticle>> SearchAsync(ScreeningSubject subject, CancellationToken ct)
+        {
+            await Task.Delay(TimeSpan.FromMinutes(5), ct);
+            return [];
+        }
+    }
+
+    [Fact]
     public async Task All_sources_failing_is_not_success()
     {
         var provider = new CompositeAdverseMediaProvider(

@@ -45,9 +45,9 @@ public static class KybServiceCollectionExtensions
             services.AddSingleton<ISanctionsListSource, OfacSdnSource>();
             services.AddSingleton<ISanctionsListSource, UnConsolidatedSource>();
         }
-        foreach (var source in sanctionsOptions.AdverseMediaSources)
+        foreach (var source in sanctionsOptions.AdverseMediaSources.Select(s => s.Trim().ToLowerInvariant()).Distinct())
         {
-            switch (source.Trim().ToLowerInvariant())
+            switch (source)
             {
                 case "gdelt": services.AddSingleton<IAdverseMediaSource, GdeltAdverseMediaSource>(); break;
                 case "googlenews": services.AddSingleton<IAdverseMediaSource, GoogleNewsAdverseMediaSource>(); break;

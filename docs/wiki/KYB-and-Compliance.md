@@ -106,7 +106,7 @@ All sources are free and keyless; they run **in parallel per subject** and are m
 
 | Key | Source | Query | Notes |
 |---|---|---|---|
-| `gdelt` | GDELT DOC 2.0 (`ArtList`, last 3 months, tone) | `"<name>" (16 query terms)` | rate-limited ~1 req / 5 s per IP → calls are serialised process-wide with a 5.2 s gap and one retry on HTTP 429 |
+| `gdelt` | GDELT DOC 2.0 (`ArtList`, last 3 months, tone) | `"<name>" (16 query terms)` | rate-limited ~1 req / 5 s per IP → calls are serialised process-wide with a 5.2 s gap and one retry on HTTP 429; persistent throttling backs the source off for 60 s. Every source is also bounded by `Sanctions:AdverseMediaSourceTimeoutSeconds` (12 s) per subject |
 | `googlenews` | Google News RSS | `"<name>" (16 query terms)` | headlines + snippets, unlimited |
 | `bingnews` | Bing News RSS | `"<name>" (first 8 query terms)` | headlines + snippets |
 | `wikipedia` | MediaWiki search API | `"<name>" first 10 query terms` | encyclopaedic snippets (controversies, legal history) |
