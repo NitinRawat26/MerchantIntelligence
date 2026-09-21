@@ -158,12 +158,25 @@ export interface AssessmentRequest {
   merchantCategoryCode: number; annualVolume: number; averageTicket: number; highestTicket: number; existingRelationship: boolean;
   deliveryDays?: number | null; cardNotPresentShare: number; offersSubscriptions: boolean; offersFreeTrials: boolean;
   employeeCount?: number | null; yearsInBusiness?: number | null; priorYearRevenue?: number | null; websiteProductCount?: number | null; hasPhysicalLocation?: boolean | null;
-  locationCount?: number | null;
+  locationCount?: number | null; entityType?: EntityType | null;
   bankStatementCsv?: string | null; financialStatementText?: string | null; externalRef?: string | null; actor: string; createCase: boolean;
+}
+export type EntityType = 'Unknown' | 'SoleProprietorship' | 'SingleMemberLlc' | 'MultiMemberLlc' | 'Partnership' | 'SCorporation' | 'CCorporation'
+  | 'PublicCorporation' | 'NonProfit' | 'Government' | 'Trust' | 'Other';
+export const ENTITY_TYPES: { value: EntityType; label: string }[] = [
+  { value: 'SoleProprietorship', label: 'Sole proprietorship / DBA' }, { value: 'SingleMemberLlc', label: 'Single-member LLC' },
+  { value: 'MultiMemberLlc', label: 'Multi-member LLC' }, { value: 'Partnership', label: 'Partnership / LLP' }, { value: 'SCorporation', label: 'S-Corporation' },
+  { value: 'CCorporation', label: 'C-Corporation (private)' }, { value: 'PublicCorporation', label: 'Public corporation' }, { value: 'NonProfit', label: 'Non-profit' },
+  { value: 'Government', label: 'Government / public body' }, { value: 'Trust', label: 'Trust' }, { value: 'Other', label: 'Other' }
+];
+export type MerchantSegment = 'Micro' | 'Small' | 'Mid' | 'Enterprise';
+export interface MerchantProfile {
+  entityType: EntityType; entityTypeInferred: boolean; segment: MerchantSegment; registryScope: 'Local' | 'Global' | 'TaxExempt' | 'None'; locationCount: number;
+  reasons: string[]; notApplicable: { stepId: string; reason: string }[]; findings: { code: string; message: string; severity: RiskTier }[]; isSmb: boolean;
 }
 export type StepStatus = 'Pending' | 'Running' | 'Succeeded' | 'Failed' | 'Skipped';
 export interface AssessmentStepDescriptor { id: string; name: string; enabled?: boolean; }
-export interface AssessmentAgentDescriptor { id: string; name: string; mandate: string; enabled: boolean; steps: string[]; }
+export interface AssessmentAgentDescriptor { id: string; name: string; mandate: string; enabled: boolean; steps: string[]; kind?: 'Evidence' | 'Profiling'; }
 export type AgentFindingKind = 'Advisory' | 'Action' | 'Observation';
 export interface AgentFinding { kind: AgentFindingKind; code: string; message: string; impact?: string | null; }
 export interface AgentReport { id: string; name: string; mandate: string; status: StepStatus; steps: string[]; summary: string; findings: AgentFinding[]; durationMs: number; }
@@ -186,11 +199,11 @@ export interface WorkflowDefinition {
   name: string; version: string; description?: string | null; haltOnHardStop: boolean; steps: WorkflowStepConfig[];
   agents?: WorkflowAgentConfig[] | null; transitions?: WorkflowTransition[] | null;
 }
-export interface WorkflowAgentDescriptor { id: string; name: string; mandate: string; description: string; defaultSteps: string[]; }
+export interface WorkflowAgentDescriptor { id: string; name: string; mandate: string; description: string; defaultSteps: string[]; kind?: 'Evidence' | 'Profiling'; }
 export interface WorkflowAgentPlan { id: string; name: string; enabled: boolean; stage: number; steps: string[]; waitsFor: string[]; runsWhen: WorkflowTransition[]; stepStages: string[][]; }
 export interface WorkflowVersion { version: number; name: string; author: string; comment?: string | null; createdAt: string; active: boolean; enabledSteps: number; totalSteps: number; }
 export interface WorkflowParamDescriptor { name: string; type: string; default: string; description: string; }
-export interface WorkflowStepDescriptor { id: string; name: string; description: string; dependsOn: string[]; consumes: string[]; required: boolean; params: WorkflowParamDescriptor[]; }
+export interface WorkflowStepDescriptor { id: string; name: string; description: string; dependsOn: string[]; consumes: string[]; required: boolean; params: WorkflowParamDescriptor[]; profiling?: boolean; }
 export interface WorkflowStage { index: number; steps: string[]; }
 export interface WorkflowPlan { stages: WorkflowStage[]; warnings: string[]; disabled: string[]; mermaid: string; agents: WorkflowAgentPlan[]; }
 export interface WorkflowValidationResponse { valid: boolean; error?: string | null; plan?: WorkflowPlan | null; }
@@ -222,7 +235,7 @@ export interface AssessmentIntakeSummary {
   business: BusinessIdentityRequest & { fullAddress?: string }; owners: BeneficialOwnerRequest[]; businessDescription?: string | null; merchantCategoryCode: number;
   annualVolume: number; averageTicket: number; highestTicket: number; existingRelationship: boolean; deliveryDays?: number | null; cardNotPresentShare: number;
   offersSubscriptions: boolean; offersFreeTrials: boolean; employeeCount?: number | null; yearsInBusiness?: number | null; priorYearRevenue?: number | null;
-  websiteProductCount?: number | null; hasPhysicalLocation?: boolean | null; locationCount?: number | null; bankStatementSource?: string | null; financialStatementSource?: string | null; externalRef?: string | null; actor: string;
+  websiteProductCount?: number | null; hasPhysicalLocation?: boolean | null; locationCount?: number | null; entityType?: EntityType | null; bankStatementSource?: string | null; financialStatementSource?: string | null; externalRef?: string | null; actor: string;
 }
 export interface MccValidationSummary {
   declaredMcc: number; declaredDescription: string; declaredRiskTier: RiskTier; websiteUrl: string; verdict: 'Consistent' | 'Questionable' | 'Inconsistent' | 'Insufficient';
@@ -237,7 +250,7 @@ export interface AssessmentResult {
   bankStatement?: CashFlowAnalysis | null; financialStatement?: FinancialStatementAnalysis | null; volumePlausibility?: VolumePlausibilityResult | null;
   creditDecision?: DecisionResult | null; creditExplanation?: DecisionExplanation | null; terms?: TermsRecommendation | null;
   unifiedScore?: UnifiedRiskScore | null; rules?: RulesEvaluation | null; case?: MerchantCase | null; decisionLogId?: number | null;
-  agents?: AgentReport[] | null;
+  agents?: AgentReport[] | null; profile?: MerchantProfile | null;
 }
 export interface AssessmentListItem { id: string; merchantName: string; outcome: RuleOutcome; score: number; tier: string; coveragePercent: number; caseId?: string | null; completedAt: string; }
 export type AssessmentEvent =

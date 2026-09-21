@@ -59,7 +59,8 @@ type Selection = { kind: 'agent'; id: string } | { kind: 'transition'; index: nu
 interface Point { x: number; y: number; }
 
 /**
- * Visual editor for a workflow definition: the four fixed agents on a canvas connected by conditional transitions,
+ * Visual editor for a workflow definition: the fixed agents on a canvas connected by conditional transitions (the profiling
+ * agent is pinned first – nothing may run before it, and it cannot be disabled, gated or removed),
  * one step lane per placed agent (ordered or all-parallel), and an inspector for the selected agent, transition or step.
  * Mutates the bound definition in place and emits `changed` so the host can re-validate.
  */
@@ -82,7 +83,7 @@ interface Point { x: number; y: number; }
                   <div *cdkDragPlaceholder class="pal-item placeholder"></div>
                 </div>
               }
-              @if (!unplacedAgents().length) { <div class="muted small">All four agents are on the canvas.</div> }
+              @if (!unplacedAgents().length) { <div class="muted small">All agents are on the canvas.</div> }
             </div>
 
             <div #canvas class="canvas" (click)="select(null)">
@@ -122,11 +123,12 @@ interface Point { x: number; y: number; }
               }
 
               @for (a of placed(); track a.id) {
-                <div class="node" cdkDrag [cdkDragData]="a.id" [cdkDragFreeDragPosition]="posOf(a.id)" cdkDragBoundary=".canvas"
-                     (cdkDragEnded)="nodeMoved(a.id, $event)" [class.selected]="isSelected('agent', a.id)" [class.disabled]="!a.enabled"
-                     [class.link-target]="linking() && linking()!.from !== a.id" (click)="pick({ kind: 'agent', id: a.id }, $event)"
+                <div class="node" cdkDrag [cdkDragData]="a.id" [cdkDragFreeDragPosition]="posOf(a.id)" cdkDragBoundary=".canvas" [cdkDragDisabled]="isProfile(a.id)"
+                     (cdkDragEnded)="nodeMoved(a.id, $event)" [class.selected]="isSelected('agent', a.id)" [class.disabled]="!a.enabled" [class.locked]="isProfile(a.id)"
+                     [class.link-target]="linking() && linking()!.from !== a.id && !isProfile(a.id)" (click)="pick({ kind: 'agent', id: a.id }, $event)"
                      (mouseup)="finishLink(a.id, $event)" [style.--agent]="color(a.id)">
-                  <div class="port in" matTooltip="incoming"></div>
+                  @if (isProfile(a.id)) { <mat-icon class="lock" inline matTooltip="Pinned first: the profile agent classifies the applicant before any evidence is gathered. Nothing can run before it and it cannot be disabled.">lock</mat-icon> }
+                  @else { <div class="port in" matTooltip="incoming"></div> }
                   <div class="node-body">
                     <mat-icon>{{ icon(a.id) }}</mat-icon>
                     <div class="node-text">
@@ -160,6 +162,7 @@ interface Point { x: number; y: number; }
                   <div class="lane-head" (click)="pick({ kind: 'agent', id: a.id }, $event)">
                     <mat-icon>{{ icon(a.id) }}</mat-icon>
                     <strong>{{ name(a.id) }}</strong>
+                    @if (isProfile(a.id)) { <mat-icon inline class="lock" matTooltip="Runs first; only profile steps may live here">lock</mat-icon> }
                     @if (agentPlan(a.id); as ap) {
                       @if (ap.enabled) { <span class="pill small good">stage {{ ap.stage }}</span> } @else { <span class="pill small warn">skipped</span> }
                     }
@@ -172,7 +175,7 @@ interface Point { x: number; y: number; }
                   <div class="lane-body" cdkDropList [id]="laneId(a.id)" [cdkDropListData]="a.steps" [cdkDropListConnectedTo]="laneIds(a.id)" (cdkDropListDropped)="dropStep($event)">
                     @for (id of a.steps; track id; let i = $index) {
                       @if (step(id); as s) {
-                        <div class="step-card" cdkDrag [cdkDragData]="id" [class.selected]="isSelected('step', id)" [class.off]="!s.enabled" [class.required]="describe(id)?.required"
+                        <div class="step-card" cdkDrag [cdkDragData]="id" [cdkDragDisabled]="isProfileStep(id)" [class.selected]="isSelected('step', id)" [class.off]="!s.enabled" [class.required]="describe(id)?.required || isProfileStep(id)"
                              [class.grp]="groupPos(a, i)" [class.grp-start]="groupPos(a, i) === 'start'" [class.grp-end]="groupPos(a, i) === 'end'"
                              (click)="pick({ kind: 'step', id }, $event)">
                           @if (groupPos(a, i) === 'start') { <div class="grp-label" matTooltip="These steps are dispatched at the same time (a dependency badge still forces a step to wait for its input)">∥ run together</div> }
@@ -211,7 +214,8 @@ interface Point { x: number; y: number; }
               @if (agent(selectedId()); as a) {
                 <div class="insp-head" [style.--agent]="color(a.id)"><mat-icon>{{ icon(a.id) }}</mat-icon><div><strong>{{ name(a.id) }}</strong><div class="muted small">{{ agentDesc(a.id)?.mandate }}</div></div></div>
                 <p class="muted small">{{ agentDesc(a.id)?.description }}</p>
-                <mat-slide-toggle [(ngModel)]="a.enabled" (ngModelChange)="emit()">Enabled</mat-slide-toggle>
+                <mat-slide-toggle [(ngModel)]="a.enabled" (ngModelChange)="emit()" [disabled]="isProfile(a.id)">Enabled</mat-slide-toggle>
+                @if (isProfile(a.id)) { <p class="muted small"><mat-icon inline>lock</mat-icon> Always runs first, alone. Every evidence step implicitly waits for its profile; it cannot be disabled, fed by an arrow, or removed.</p> }
                 <div class="sec">Step execution</div>
                 <mat-button-toggle-group hideSingleSelectionIndicator [value]="a.stepOrder ?? 'Parallel'" (change)="setOrder(a, $event.value)">
                   <mat-button-toggle value="Ordered">Ordered</mat-button-toggle><mat-button-toggle value="Parallel">All parallel</mat-button-toggle>
@@ -226,9 +230,11 @@ interface Point { x: number; y: number; }
                   <p class="small">{{ ap.enabled ? 'Stage ' + ap.stage : 'Skipped' }}{{ ap.waitsFor.length ? ' · waits for ' + ap.waitsFor.join(', ') : '' }}</p>
                   <ol class="small plain-ol">@for (st of ap.stepStages; track $index) { <li>{{ st.join(' ∥ ') }}</li> }</ol>
                 }
-                <div class="sec">Remove</div>
-                <button mat-stroked-button color="warn" type="button" (click)="removeAgent(a.id)"><mat-icon>delete</mat-icon> Remove from canvas</button>
-                <p class="muted small">Its checks go back to the palette and its arrows are dropped.</p>
+                @if (!isProfile(a.id)) {
+                  <div class="sec">Remove</div>
+                  <button mat-stroked-button color="warn" type="button" (click)="removeAgent(a.id)"><mat-icon>delete</mat-icon> Remove from canvas</button>
+                  <p class="muted small">Its checks go back to the palette and its arrows are dropped.</p>
+                }
               }
             }
             @case ('transition') {
@@ -248,8 +254,9 @@ interface Point { x: number; y: number; }
               @if (step(selectedId()); as s) {
                 <div class="insp-head" [style.--agent]="color(ownerOf(s.id) ?? '')"><mat-icon>{{ icon(ownerOf(s.id) ?? '') }}</mat-icon><div><strong>{{ describe(s.id)?.name ?? s.id }}</strong><div class="muted small"><code>{{ s.id }}</code> · {{ name(ownerOf(s.id) ?? '') }}</div></div></div>
                 <p class="muted small">{{ describe(s.id)?.description }}</p>
-                <mat-slide-toggle [(ngModel)]="s.enabled" (ngModelChange)="emit()">Enabled</mat-slide-toggle>
+                <mat-slide-toggle [(ngModel)]="s.enabled" (ngModelChange)="emit()" [disabled]="isProfileStep(s.id)">Enabled</mat-slide-toggle>
                 @if (describe(s.id)?.required) { <p class="muted small"><mat-icon inline>star</mat-icon> Decision authority – disabling forces every decision to Refer.</p> }
+                @if (isProfileStep(s.id)) { <p class="muted small"><mat-icon inline>lock</mat-icon> Builds the merchant profile from intake alone – always on, no stop-gate, stays in the profile lane.</p> }
 
                 <div class="sec">Position</div>
                 @if (owner(s.id); as o) {
@@ -271,8 +278,9 @@ interface Point { x: number; y: number; }
                 </mat-form-field>
 
                 <div class="sec">Stop-gate</div>
-                <mat-slide-toggle [ngModel]="!!s.stopGate" (ngModelChange)="toggleGate(s, $event)" [disabled]="!!describe(s.id)?.required">Stop the flow on this step's result</mat-slide-toggle>
+                <mat-slide-toggle [ngModel]="!!s.stopGate" (ngModelChange)="toggleGate(s, $event)" [disabled]="!!describe(s.id)?.required || isProfileStep(s.id)">Stop the flow on this step's result</mat-slide-toggle>
                 @if (describe(s.id)?.required) { <p class="muted small">Decision steps cannot carry a stop-gate.</p> }
+                @if (isProfileStep(s.id)) { <p class="muted small">Profile steps scope the run rather than deciding it; they cannot carry a stop-gate.</p> }
                 @if (s.stopGate; as g) {
                   <mat-form-field appearance="outline" class="full" subscriptSizing="dynamic"><mat-label>Fires when</mat-label>
                     <mat-select [(ngModel)]="g.when" (ngModelChange)="emit()">@for (t of triggers; track t.value) { <mat-option [value]="t.value">{{ t.label }}</mat-option> }</mat-select>
@@ -298,7 +306,7 @@ interface Point { x: number; y: number; }
                 }
 
                 <div class="sec">Remove</div>
-                <button mat-stroked-button color="warn" type="button" (click)="removeStep(s.id)" [disabled]="!!describe(s.id)?.required"><mat-icon>remove_circle_outline</mat-icon> Remove from workflow</button>
+                <button mat-stroked-button color="warn" type="button" (click)="removeStep(s.id)" [disabled]="!!describe(s.id)?.required || isProfileStep(s.id)"><mat-icon>remove_circle_outline</mat-icon> Remove from workflow</button>
               }
             }
             @default {
@@ -351,6 +359,8 @@ interface Point { x: number; y: number; }
     .node.selected { box-shadow: 0 0 0 2px var(--agent, var(--mi-primary, #3f51b5)); }
     .node.disabled { opacity: .55; border-left-color: var(--mi-text-2); }
     .node.link-target { box-shadow: 0 0 0 2px var(--mi-good, #2e7d32); }
+    .node.locked { cursor: default; border-style: double; } .node .lock { position: absolute; left: -9px; top: 50%; margin-top: -8px; font-size: 16px; width: 16px; height: 16px; color: var(--agent, var(--mi-primary, #3f51b5)); background: var(--mi-surface, #fff); border-radius: 50%; }
+    .lane-head .lock { font-size: 16px; color: var(--mi-text-2); }
     .node-body { display: flex; gap: 8px; align-items: center; padding: 8px 10px; height: 100%; box-sizing: border-box; }
     .node-text strong { font-size: 13px; line-height: 1.2; } .node-text span { font-size: 11px; }
     .node-body mat-icon { color: var(--agent, var(--mi-primary, #3f51b5)); }
@@ -599,6 +609,10 @@ export class WorkflowDesignerComponent {
     this.moved.update(all => ({ ...all, [id]: { x: p.x, y: p.y } }));
   }
 
+  isProfile(agentId: string): boolean { return this.agentCatalog()[agentId]?.kind === 'Profiling'; }
+  isProfileStep(stepId: string): boolean { return !!this.catalog()[stepId]?.profiling; }
+  private profileAgentId(): string | null { return Object.values(this.agentCatalog()).find(a => a.kind === 'Profiling')?.id ?? null; }
+
   dropAgent(e: CdkDragDrop<string[]>): void {
     const d = this.def(); if (!d) return;
     if (e.previousContainer === e.container) return; // free drag inside the canvas is handled by nodeMoved
@@ -609,14 +623,16 @@ export class WorkflowDesignerComponent {
     const y = rect ? Math.max(0, Math.min(rect.height - NODE_H, e.dropPoint.y - rect.top - NODE_H / 2)) : 30;
     this.moved.update(all => ({ ...all, [id]: { x, y } }));
     d.agents ??= [];
-    d.agents.push({ id, enabled: true, steps: [], stepOrder: 'Parallel' });
+    const profileSteps = this.isProfile(id) ? Object.keys(this.catalog()).filter(s => this.isProfileStep(s) && !this.step(s)) : [];
+    for (const s of profileSteps) d.steps.push({ id: s, enabled: true, onFail: 'Skip', slot: null, stopGate: null });
+    d.agents.push({ id, enabled: true, steps: profileSteps, stepOrder: 'Parallel' });
     d.agents.sort((a, b) => this.agentOrder().indexOf(a.id) - this.agentOrder().indexOf(b.id));
     this.select({ kind: 'agent', id });
     this.emit();
   }
 
   removeAgent(id: string): void {
-    const d = this.def(); const a = this.agent(id); if (!d || !a) return;
+    const d = this.def(); const a = this.agent(id); if (!d || !a || this.isProfile(id)) return;
     const gone = new Set(a.steps);
     d.steps = d.steps.filter(s => !gone.has(s.id));
     d.agents = (d.agents ?? []).filter(x => x.id !== id);
@@ -642,6 +658,10 @@ export class WorkflowDesignerComponent {
     e.stopPropagation();
     this.linking.set(null);
     const d = this.def(); if (!d || l.from === to) return;
+    if (this.isProfile(to)) {
+      this.showNotice(`${this.name(to)} always runs first – nothing can feed into it. Every other agent already waits for its profile.`, 'flow');
+      return;
+    }
     d.transitions ??= [];
     if (d.transitions.some(t => t.from === l.from && t.to === to)) return;
     const path = this.routeBetween(to, l.from);
@@ -741,6 +761,14 @@ export class WorkflowDesignerComponent {
     const fromPalette = e.previousContainer.id === 'step-palette';
     const toPalette = e.container.id === 'step-palette';
     if (fromPalette && toPalette) return;
+    const target = this.placed().find(a => this.laneId(a.id) === e.container.id);
+    if (target && this.isProfile(target.id) !== this.isProfileStep(id)) {
+      this.showNotice(this.isProfileStep(id)
+        ? `${this.describe(id)?.name ?? id} builds the merchant profile and can only live in the ${this.name(target.id)} lane.`.replace(this.name(target.id), this.name(this.profileAgentId() ?? ''))
+        : `${this.describe(id)?.name ?? id} gathers evidence and cannot run inside ${this.name(target.id)} – the profile is decided before any evidence is gathered.`, 'lanes');
+      return;
+    }
+    if (toPalette && this.isProfileStep(id)) return;
     if (fromPalette) {
       const desc = this.describe(id);
       d.steps.push({ id, enabled: true, onFail: desc?.required ? 'Refer' : 'Skip', slot: null, stopGate: null });
@@ -795,7 +823,7 @@ export class WorkflowDesignerComponent {
   }
 
   removeStep(id: string): void {
-    const d = this.def(); if (!d) return;
+    const d = this.def(); if (!d || this.isProfileStep(id)) return;
     d.steps = d.steps.filter(s => s.id !== id);
     for (const a of d.agents ?? []) a.steps = a.steps.filter(x => x !== id);
     for (const s of d.steps) if (s.dependsOn) s.dependsOn = s.dependsOn.filter(x => x !== id);
@@ -809,6 +837,7 @@ export class WorkflowDesignerComponent {
   }
 
   toggleGate(s: WorkflowStepConfig, on: boolean): void {
+    if (this.isProfileStep(s.id)) return;
     s.stopGate = on ? { when: 'Failed', scope: 'Agent', forceOutcome: 'None', code: null } : null;
     this.emit();
   }

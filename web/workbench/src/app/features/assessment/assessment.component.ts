@@ -18,11 +18,11 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Subscription } from 'rxjs';
 import { SuiteApiService, describeError } from '../../shared/suite-api.service';
-import { AgentFindingKind, AgentReport, AssessmentAgentDescriptor, AssessmentListItem, AssessmentRequest, AssessmentResult, AssessmentStep, AssessmentStepDescriptor, Flag, StepStatus } from '../../shared/models';
+import { AgentFindingKind, AgentReport, AssessmentAgentDescriptor, AssessmentListItem, AssessmentRequest, AssessmentResult, AssessmentStep, AssessmentStepDescriptor, ENTITY_TYPES, EntityType, Flag, StepStatus } from '../../shared/models';
 import { FieldHintComponent, FlagsComponent, GaugeComponent, JsonViewComponent, StatusComponent, outcomeClass, tierClass } from '../../shared/ui';
 import { PRESET_FINANCIALS } from './preset-financials';
 
-const AGENT_ICONS: Record<string, string> = { precheck: 'fact_check', kyb: 'verified_user', financial: 'account_balance', decision: 'gavel' };
+const AGENT_ICONS: Record<string, string> = { profile: 'badge', precheck: 'fact_check', kyb: 'verified_user', financial: 'account_balance', decision: 'gavel' };
 
 interface AgentLane { id: string; name: string; mandate: string; status: StepStatus; steps: AssessmentStep[]; report: AgentReport | null; }
 
@@ -76,6 +76,7 @@ export class AssessmentComponent {
     offersFreeTrials: [false],
     employeeCount: ['' as string | number],
     locationCount: ['' as string | number],
+    entityType: ['' as '' | EntityType],
     yearsInBusiness: ['' as string | number],
     priorYearRevenue: ['' as string | number],
     websiteProductCount: ['' as string | number],
@@ -151,23 +152,25 @@ export class AssessmentComponent {
   }
   clearFile(kind: 'bank' | 'financial'): void { (kind === 'bank' ? this.bankFile : this.financialFile).set(null); }
 
+  readonly entityTypes = ENTITY_TYPES;
+
   preset(p: Preset): void {
     this.owners.clear();
     this.bankFile.set(null); this.financialFile.set(null);
     const fin = p === 'sanctioned' ? { bankStatementCsv: '', financialStatementText: '' } : PRESET_FINANCIALS[p];
-    this.form.patchValue(fin);
+    this.form.patchValue({ ...fin, entityType: '' });
     switch (p) {
       case 'approved':
         this.form.patchValue({ legalName: 'Starbucks Corporation', tradingName: 'Starbucks', country: 'US', addressLine: '2401 Utah Avenue South', city: 'Seattle', region: 'WA', postalCode: '98134',
           websiteUrl: 'https://www.starbucks.com', businessDescription: 'Coffeehouse chain selling brewed coffee, espresso drinks, pastries and packaged coffee in stores and online.', merchantCategoryCode: 5814,
-          annualVolume: 900_000, averageTicket: 40, highestTicket: 400, employeeCount: 50, yearsInBusiness: 15, priorYearRevenue: 1_000_000, hasPhysicalLocation: 'true',
+          annualVolume: 900_000, averageTicket: 40, highestTicket: 400, employeeCount: 50, yearsInBusiness: 15, priorYearRevenue: 1_000_000, hasPhysicalLocation: 'true', entityType: 'PublicCorporation',
           existingRelationship: true, cardNotPresentShare: 0.3, deliveryDays: 0, offersSubscriptions: false, offersFreeTrials: false });
         this.owners.push(this.owner('Brian Niccol', 'CEO'));
         break;
       case 'clean':
         this.form.patchValue({ legalName: 'Apple Inc.', tradingName: '', country: 'US', addressLine: 'One Apple Park Way', city: 'Cupertino', region: 'CA', postalCode: '95014',
           websiteUrl: 'https://www.apple.com', businessDescription: 'Consumer electronics, software and online services.', merchantCategoryCode: 5732,
-          annualVolume: 12_000_000, averageTicket: 850, highestTicket: 6000, employeeCount: 40, locationCount: 1, yearsInBusiness: 48, priorYearRevenue: 11_500_000, hasPhysicalLocation: 'true', offersSubscriptions: false, offersFreeTrials: false });
+          annualVolume: 12_000_000, averageTicket: 850, highestTicket: 6000, employeeCount: 40, locationCount: 1, yearsInBusiness: 48, priorYearRevenue: 11_500_000, hasPhysicalLocation: 'true', entityType: 'PublicCorporation', offersSubscriptions: false, offersFreeTrials: false });
         this.owners.push(this.owner('Tim Cook', 'CEO'));
         break;
       case 'sanctioned':
@@ -180,7 +183,7 @@ export class AssessmentComponent {
       case 'restricted':
         this.form.patchValue({ legalName: 'Green Leaf Wellness LLC', tradingName: 'GreenLeaf CBD', country: 'US', addressLine: '12 Market St', city: 'Denver', region: 'CO', postalCode: '80202',
           websiteUrl: '', businessDescription: 'Online store selling CBD oil, hemp gummies and kratom with free-trial subscription boxes; supplements ship in 21 days.', merchantCategoryCode: 5912,
-          annualVolume: 4_800_000, averageTicket: 45, highestTicket: 900, employeeCount: 2, yearsInBusiness: 0.5, hasPhysicalLocation: 'false', offersSubscriptions: true, offersFreeTrials: true, deliveryDays: 21 });
+          annualVolume: 4_800_000, averageTicket: 45, highestTicket: 900, employeeCount: 2, yearsInBusiness: 0.5, hasPhysicalLocation: 'false', entityType: 'SingleMemberLlc', offersSubscriptions: true, offersFreeTrials: true, deliveryDays: 21 });
         this.owners.push(this.owner('Jane Doe', 'Owner'));
         break;
     }
@@ -204,7 +207,7 @@ export class AssessmentComponent {
       merchantCategoryCode: Number(v.merchantCategoryCode), annualVolume: Number(v.annualVolume), averageTicket: Number(v.averageTicket), highestTicket: Number(v.highestTicket),
       existingRelationship: v.existingRelationship, deliveryDays: num(v.deliveryDays), cardNotPresentShare: Number(v.cardNotPresentShare),
       offersSubscriptions: v.offersSubscriptions, offersFreeTrials: v.offersFreeTrials,
-      employeeCount: num(v.employeeCount), locationCount: num(v.locationCount), yearsInBusiness: num(v.yearsInBusiness), priorYearRevenue: num(v.priorYearRevenue), websiteProductCount: num(v.websiteProductCount),
+      employeeCount: num(v.employeeCount), locationCount: num(v.locationCount), entityType: v.entityType === '' ? null : v.entityType, yearsInBusiness: num(v.yearsInBusiness), priorYearRevenue: num(v.priorYearRevenue), websiteProductCount: num(v.websiteProductCount),
       hasPhysicalLocation: v.hasPhysicalLocation === '' ? null : v.hasPhysicalLocation === 'true',
       bankStatementCsv: this.bankFile() ? null : opt(v.bankStatementCsv) ?? null,
       financialStatementText: this.financialFile() ? null : opt(v.financialStatementText) ?? null,

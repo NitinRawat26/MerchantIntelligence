@@ -156,7 +156,7 @@ public sealed record AgentReport(
 
 public sealed record AssessmentStepDescriptor(string Id, string Name, bool Enabled = true);
 
-public sealed record AssessmentAgentDescriptor(string Id, string Name, string Mandate, bool Enabled, IReadOnlyList<string> Steps);
+public sealed record AssessmentAgentDescriptor(string Id, string Name, string Mandate, bool Enabled, IReadOnlyList<string> Steps, AgentKind Kind = AgentKind.Evidence);
 
 /// <summary>Intake echoed back without the bulky statement payloads.</summary>
 public sealed record AssessmentIntakeSummary(

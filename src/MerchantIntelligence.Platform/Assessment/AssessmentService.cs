@@ -49,7 +49,7 @@ public sealed class AssessmentService
     {
         var def = workflow ?? _workflows.Active;
         var byId = _planner.AgentCatalog.ToDictionary(a => a.Id);
-        return _planner.AgentsOf(def).Select(a => new AssessmentAgentDescriptor(a.Id, byId[a.Id].Name, byId[a.Id].Mandate, a.Enabled, a.Steps)).ToList();
+        return _planner.AgentsOf(def).Select(a => new AssessmentAgentDescriptor(a.Id, byId[a.Id].Name, byId[a.Id].Mandate, a.Enabled, a.Steps, byId[a.Id].Kind)).ToList();
     }
 
     public async Task<AssessmentResult> RunAsync(AssessmentIntake intake, UploadedDocument? bankStatement, UploadedDocument? financialStatement,
