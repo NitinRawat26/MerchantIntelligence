@@ -13,6 +13,7 @@
         <button mat-stroked-button type="button" (click)="preset('clean')">Refer (Apple – MCC mismatch)</button>
         <button mat-stroked-button type="button" (click)="preset('sanctioned')">Sanctions hit (Rosneft / Bout)</button>
         <button mat-stroked-button type="button" (click)="preset('restricted')">Restricted (CBD + free trials)</button>
+        <button mat-stroked-button type="button" (click)="preset('smb')">SMB (Aljazzar Meat &amp; Grill, Louisville KY)</button>
       </div>
 
       <form [formGroup]="form" (ngSubmit)="submit()">
@@ -28,6 +29,7 @@
           <mat-form-field appearance="outline"><mat-label>Postal code</mat-label><input matInput formControlName="postalCode"><mi-field-hint matSuffix for="postalCode"></mi-field-hint></mat-form-field>
           <mat-form-field appearance="outline"><mat-label>Country (ISO-2)</mat-label><input matInput formControlName="country" maxlength="2"><mi-field-hint matSuffix for="country"></mi-field-hint></mat-form-field>
           <mat-form-field appearance="outline"><mat-label>Website</mat-label><input matInput formControlName="websiteUrl" placeholder="https://"><mat-hint>Drives website compliance, prohibited-content and MCC checks</mat-hint><mi-field-hint matSuffix for="websiteUrl"></mi-field-hint></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Contact e-mail</mat-label><input matInput type="email" formControlName="contactEmail" placeholder="owner@business.com"><mat-hint>Domain age via RDAP; free-mail noted</mat-hint><mi-field-hint matSuffix for="contactEmail"></mi-field-hint></mat-form-field>
           <mat-form-field appearance="outline" class="wide"><mat-label>Business description</mat-label><textarea matInput rows="2" formControlName="businessDescription"></textarea><mi-field-hint matSuffix for="businessDescription"></mi-field-hint></mat-form-field>
         </div>
 
@@ -45,6 +47,24 @@
             </div>
           }
           @if (!owners.length) { <p class="muted">No owners declared — ownership screening will be limited to the business entity.</p> }
+        </div>
+
+        <h3><mat-icon>verified</mat-icon> Licences &amp; permits <mi-field-hint class="inline" for="licenses"></mi-field-hint> <button mat-button type="button" (click)="addLicense()"><mat-icon>add</mat-icon> Add licence</button></h3>
+        <div formArrayName="licenses">
+          @for (l of licenses.controls; track l; let i = $index) {
+            <div class="owner license" [formGroupName]="i">
+              <mat-form-field appearance="outline"><mat-label>Type</mat-label>
+                <mat-select formControlName="type"><mat-option value="">— none —</mat-option>@for (t of licenseTypes; track t.value) {<mat-option [value]="t.value">{{ t.label }}</mat-option>}</mat-select>
+              </mat-form-field>
+              <mat-form-field appearance="outline"><mat-label>Licence number</mat-label><input matInput formControlName="number"></mat-form-field>
+              <mat-form-field appearance="outline"><mat-label>Issuing authority</mat-label><input matInput formControlName="issuingAuthority" placeholder="e.g. Louisville Metro Public Health"></mat-form-field>
+              <mat-form-field appearance="outline"><mat-label>Issued</mat-label><input matInput type="date" formControlName="issueDate"></mat-form-field>
+              <mat-form-field appearance="outline"><mat-label>Expires</mat-label><input matInput type="date" formControlName="expiryDate"></mat-form-field>
+              <mat-form-field appearance="outline" class="wide"><mat-label>Evidence (document / where sighted)</mat-label><input matInput formControlName="evidenceReference"></mat-form-field>
+              <button mat-icon-button type="button" (click)="removeLicense(i)" aria-label="Remove licence"><mat-icon>close</mat-icon></button>
+            </div>
+          }
+          @if (!licenses.length) { <p class="muted">No licence attested — regulated MCCs (food service, alcohol, pharmacy, healthcare, MSB, gaming …) will report the permit as missing.</p> }
         </div>
 
         <h3><mat-icon>payments</mat-icon> Processing profile</h3>
@@ -306,6 +326,10 @@
                   <dt>Match scores</dt><dd>name {{ bm.nameScore | percent }} · address {{ bm.addressScore | percent }} · overall {{ bm.overallScore | percent }}</dd>
                   @if (v.entityAgeMonths != null) { <dt>Entity age</dt><dd>{{ v.entityAgeMonths }} months</dd> }
                   @if (v.address; as a) { <dt>Address</dt><dd>{{ a.verified ? 'verified' : 'not verified' }} <span class="muted">via {{ a.provider }}</span></dd> }
+                  @if (bm.record.status) { <dt>Standing</dt><dd>{{ bm.record.status }}@if (bm.record.entityType) { · {{ bm.record.entityType }} }@if (bm.record.incorporationDate) { · organised {{ bm.record.incorporationDate | date:'yyyy-MM-dd' }} }</dd> }
+                  @if (bm.record.address) { <dt>Registry address</dt><dd>{{ bm.record.address }}</dd> }
+                  @for (kv of recordExtra(bm.record); track kv.key) { <dt>{{ kv.key }}</dt><dd>{{ kv.value }}</dd> }
+                  @if (bm.record.sourceUrl) { <dt>Record</dt><dd><a [href]="bm.record.sourceUrl" target="_blank" rel="noopener">{{ bm.record.source }} #{{ bm.record.registrationNumber ?? bm.record.sourceId }}</a></dd> }
                 </dl>
               } @else { <p class="muted">No registry record matched.</p> }
               <p class="muted">Sources: @for (s of v.sources; track s.source) { <span class="pill small" [class]="s.succeeded ? 'neutral' : 'bad'" [matTooltip]="s.error ?? ''">{{ s.source }} ({{ s.matches.length }})</span> }</p>
@@ -320,9 +344,20 @@
                   <dt>Match scores</dt><dd>name {{ pm.nameScore | percent }}@if (pm.distanceMeters != null) { · {{ pm.distanceMeters | number:'1.0-0' }} m from declared address } · overall {{ pm.overallScore | percent }}</dd>
                   @if (pm.record.category) { <dt>Category</dt><dd>{{ pm.record.category }}</dd> }
                   @if (pm.record.address) { <dt>Place address</dt><dd>{{ pm.record.address }}@if (pm.record.phone) { · {{ pm.record.phone }} }@if (pm.record.website) { · {{ pm.record.website }} }</dd> }
+                  @if (pm.record.reputation; as rp) {
+                    <dt>Reputation</dt><dd>@if (rp.rating != null) { {{ rp.rating | number:'1.1-1' }}@if (rp.ratingScale) { / {{ rp.ratingScale }} }@if (rp.ratingCount != null) { ({{ rp.ratingCount }} ratings) } }@if (rp.popularity != null) { · popularity {{ rp.popularity | percent }} }@if (rp.listedSince) { · listed since {{ rp.listedSince | date:'yyyy-MM-dd' }} }@if (rp.openNow != null) { · {{ rp.openNow ? 'open now' : 'closed now' }} }</dd>
+                  }
                 </dl>
               } @else if (lp.note) { <p class="muted">{{ lp.note }}</p> }
               <p class="muted">Sources: @for (s of lp.sources; track s.source) { <span class="pill small" [class]="s.succeeded ? 'neutral' : 'bad'" [matTooltip]="s.error ?? ''">{{ s.source }} ({{ s.matches.length }})</span> } — trading evidence only; it does not confirm legal registration.</p>
+              @if (lp.footprint; as fp) {
+                <h4>Digital footprint</h4>
+                <dl class="kv">
+                  @if (fp.emailDomain) { <dt>E-mail domain</dt><dd>{{ fp.emailDomain }}@if (fp.emailIsFreeMail) { <span class="pill small neutral">free-mail</span> } @else if (fp.emailDomainAgeMonths != null) { · registered {{ fp.emailDomainAgeMonths }} months ago } @else { · tenure unknown }@if (fp.emailMatchesWebsite === false) { · differs from website domain }</dd> }
+                  @if (fp.websiteDomain) { <dt>Website domain</dt><dd>{{ fp.websiteDomain }}</dd> }
+                </dl>
+                <mi-flags [flags]="fp.flags" emptyText="No footprint findings."></mi-flags>
+              }
               @if (lp.addressType; as at) {
                 <h4>Address type <span class="pill small" [class]="at.type === 'Cmra' ? 'bad' : at.type === 'Commercial' || at.type === 'MixedUse' ? 'good' : at.type === 'Residential' ? 'warn' : 'neutral'">{{ at.type === 'Cmra' ? 'Mail-drop / virtual office' : at.type === 'MixedUse' ? 'Mixed use' : at.type }}@if (at.type !== 'Unknown') { · {{ at.confidence | percent }} }</span></h4>
                 <ul class="muted compact">@for (e of at.evidence; track e) { <li>{{ e }}</li> }</ul>
@@ -384,6 +419,26 @@
                 <mi-flags [flags]="ow.flags" emptyText="No owner identity findings."></mi-flags>
               } @else { <p class="text-high">No principal declared – owner identity, age and cross-application checks were not performed.</p> }
             } @else { <p class="muted">Owner identity checks did not run.</p> }
+
+            <h3>Licences &amp; permits @if (r.licensing; as lic) { <span class="pill small" [class]="!lic.covered ? 'bad' : lic.flags.length ? 'warn' : 'good'">{{ !lic.covered ? 'Missing' : lic.flags.length ? lic.flags.length + ' finding(s)' : 'Attested' }}</span> }</h3>
+            @if (r.licensing; as lic) {
+              @if (lic.requirements.length || lic.unrequested.length) {
+                <table class="full kv-table">
+                  <thead><tr><th>Licence</th><th>Status</th><th>Number</th><th>Issuer</th><th>Expires</th><th>Evidence</th></tr></thead>
+                  <tbody>
+                    @for (q of lic.requirements; track q.type) {
+                      <tr [matTooltip]="q.reason"><td>{{ licenseLabel(q.type) }} <span class="muted">required</span></td><td [class.text-high]="q.status === 'Missing' || q.status === 'Expired'">{{ q.status }}</td>
+                        <td>{{ q.attested?.number ?? '—' }}</td><td>{{ q.attested?.issuingAuthority ?? '—' }}</td><td>{{ q.attested?.expiryDate ? (q.attested!.expiryDate | date:'yyyy-MM-dd') : '—' }}</td><td>{{ q.attested?.evidenceReference ?? '—' }}</td></tr>
+                    }
+                    @for (u of lic.unrequested; track u.type) {
+                      <tr><td>{{ licenseLabel(u.type) }} <span class="muted">additional</span></td><td>Attested</td><td>{{ u.number ?? '—' }}</td><td>{{ u.issuingAuthority ?? '—' }}</td><td>{{ u.expiryDate ? (u.expiryDate | date:'yyyy-MM-dd') : '—' }}</td><td>{{ u.evidenceReference ?? '—' }}</td></tr>
+                    }
+                  </tbody>
+                </table>
+                <p class="muted">Analyst-attested from the merchant's documents; an active company registration is not a licence.</p>
+                <mi-flags [flags]="lic.flags" emptyText="No licence findings."></mi-flags>
+              } @else { <p class="muted">MCC carries no licence requirement; none attested.</p> }
+            } @else { <p class="muted">Licence check did not run.</p> }
 
             <h3>MATCH / terminated merchant</h3>
             @if (r.match; as m) {

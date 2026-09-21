@@ -9,7 +9,7 @@ export interface Flag { code: string; message: string; severity: RiskTier; }
 
 export interface BusinessIdentityRequest {
   legalName: string; tradingName?: string; registrationNumber?: string; taxId?: string;
-  addressLine?: string; city?: string; region?: string; postalCode?: string; country?: string; websiteUrl?: string;
+  addressLine?: string; city?: string; region?: string; postalCode?: string; country?: string; websiteUrl?: string; contactEmail?: string;
 }
 export interface BeneficialOwnerRequest { fullName: string; dateOfBirth?: string; nationality?: string; role?: string; ownershipPercent?: number; address?: string; }
 export interface WebsiteComplianceRequest { websiteUrl: string; businessDescription?: string; declaredMcc?: number; legalName?: string; }
@@ -31,6 +31,7 @@ export interface BusinessVerificationResult {
 export interface PlaceRecord {
   source: string; sourceId: string; name: string; address?: string | null; latitude?: number | null; longitude?: number | null;
   category?: string | null; website?: string | null; phone?: string | null; status?: string | null; sourceUrl?: string | null;
+  reputation?: { rating?: number | null; ratingScale?: number | null; ratingCount?: number | null; popularity?: number | null; listedSince?: string | null; openNow?: boolean | null } | null;
 }
 export interface PlaceMatch { record: PlaceRecord; nameScore: number; addressScore: number; distanceMeters?: number | null; overallScore: number; }
 export interface PlaceSourceResult { source: string; succeeded: boolean; error?: string | null; matches: PlaceMatch[]; }
@@ -42,6 +43,11 @@ export interface LocalPresenceResult {
   status: 'Confirmed' | 'PartialMatch' | 'NotFound' | 'Inconclusive' | 'NotChecked' | string;
   confidencePercent: number; bestMatch?: PlaceMatch | null; sources: PlaceSourceResult[]; note?: string | null;
   addressType?: AddressClassification | null;
+  footprint?: DigitalFootprint | null;
+}
+export interface DigitalFootprint {
+  emailDomain?: string | null; emailIsFreeMail: boolean; emailDomainInfo?: { registered?: string | null; registrar?: string | null; error?: string | null } | null;
+  emailDomainAgeMonths?: number | null; websiteDomain?: string | null; emailMatchesWebsite?: boolean | null; flags: Flag[];
 }
 export interface SanctionsHit {
   entity: { id: string; listName: string; type: string; name: string; aliases: string[]; countries: string[]; programs: string[]; remarks?: string | null; sourceUrl?: string | null };
@@ -165,7 +171,20 @@ export interface AssessmentRequest {
   employeeCount?: number | null; yearsInBusiness?: number | null; priorYearRevenue?: number | null; websiteProductCount?: number | null; hasPhysicalLocation?: boolean | null;
   locationCount?: number | null; entityType?: EntityType | null;
   bankStatementCsv?: string | null; bankAccountHolderName?: string | null; financialStatementText?: string | null; externalRef?: string | null; actor: string; createCase: boolean;
+  licenses?: LicenseAttestationRequest[];
 }
+export type LicenseType = 'FoodService' | 'Alcohol' | 'Tobacco' | 'Pharmacy' | 'HealthcareProfessional' | 'Legal' | 'PersonalCare' | 'ChildCare' | 'MoneyServices' | 'Gaming' | 'Firearms' | 'PassengerTransport' | 'Contractor' | 'Lodging' | 'Other';
+export const LICENSE_TYPES: { value: LicenseType; label: string }[] = [
+  { value: 'FoodService', label: 'Food service permit' }, { value: 'Alcohol', label: 'Alcoholic-beverage licence' }, { value: 'Tobacco', label: 'Tobacco retail licence' },
+  { value: 'Pharmacy', label: 'Pharmacy licence' }, { value: 'HealthcareProfessional', label: 'Healthcare professional licence' }, { value: 'Legal', label: 'Bar admission' },
+  { value: 'PersonalCare', label: 'Personal-care establishment licence' }, { value: 'ChildCare', label: 'Child-care licence' }, { value: 'MoneyServices', label: 'MSB / money-transmitter licence' },
+  { value: 'Gaming', label: 'Gaming licence' }, { value: 'Firearms', label: 'Federal firearms licence' }, { value: 'PassengerTransport', label: 'Passenger-transport permit' },
+  { value: 'Contractor', label: 'Contractor licence' }, { value: 'Lodging', label: 'Lodging permit' }, { value: 'Other', label: 'Other' }
+];
+export interface LicenseAttestationRequest { type: LicenseType; number?: string; issuingAuthority?: string; issueDate?: string; expiryDate?: string; evidenceReference?: string; }
+export interface LicenseAttestation { type: LicenseType; number?: string | null; issuingAuthority?: string | null; issueDate?: string | null; expiryDate?: string | null; evidenceReference?: string | null; }
+export interface LicenseRequirement { type: LicenseType; reason: string; severityIfMissing: RiskTier; attested?: LicenseAttestation | null; status: string; }
+export interface LicensingAssessment { requirements: LicenseRequirement[]; unrequested: LicenseAttestation[]; flags: Flag[]; covered: boolean; }
 export type EntityType = 'Unknown' | 'SoleProprietorship' | 'SingleMemberLlc' | 'MultiMemberLlc' | 'Partnership' | 'SCorporation' | 'CCorporation'
   | 'PublicCorporation' | 'NonProfit' | 'Government' | 'Trust' | 'Other';
 export const ENTITY_TYPES: { value: EntityType; label: string }[] = [
@@ -262,7 +281,7 @@ export interface AssessmentResult {
   bankStatement?: CashFlowAnalysis | null; financialStatement?: FinancialStatementAnalysis | null; volumePlausibility?: VolumePlausibilityResult | null;
   creditDecision?: DecisionResult | null; creditExplanation?: DecisionExplanation | null; terms?: TermsRecommendation | null;
   unifiedScore?: UnifiedRiskScore | null; rules?: RulesEvaluation | null; case?: MerchantCase | null; decisionLogId?: number | null;
-  agents?: AgentReport[] | null; profile?: MerchantProfile | null; owners?: OwnerAssessment | null; bankEvidence?: BankEvidenceAssessment | null;
+  agents?: AgentReport[] | null; profile?: MerchantProfile | null; owners?: OwnerAssessment | null; bankEvidence?: BankEvidenceAssessment | null; licensing?: LicensingAssessment | null;
 }
 export interface AssessmentListItem { id: string; merchantName: string; outcome: RuleOutcome; score: number; tier: string; coveragePercent: number; caseId?: string | null; completedAt: string; }
 export type AssessmentEvent =

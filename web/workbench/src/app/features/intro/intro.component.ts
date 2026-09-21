@@ -338,7 +338,7 @@ const STEP_ORDER = ['entity', 'segment', 'website', 'prohibited', 'mcc', 'verifi
         <footer class="verdict-foot">
           <div class="chips">
             <span class="chip">Coverage {{ verdict()?.coveragePercent ?? '—' }}%</span>
-            <span class="chip">16 checks · 5 agents · 1 decision</span>
+            <span class="chip">18 checks · 5 agents · 1 decision</span>
             <span class="chip ok">Illustrative result for a low-risk coffeehouse</span>
           </div>
           <button mat-flat-button color="primary" class="enter" (click)="finish()">Enter the workbench<mat-icon>arrow_forward</mat-icon></button>

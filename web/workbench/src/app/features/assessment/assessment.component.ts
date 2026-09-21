@@ -18,7 +18,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Subscription } from 'rxjs';
 import { SuiteApiService, describeError } from '../../shared/suite-api.service';
-import { AgentFindingKind, AgentReport, AssessmentAgentDescriptor, AssessmentListItem, AssessmentRequest, AssessmentResult, AssessmentStep, AssessmentStepDescriptor, ENTITY_TYPES, EntityType, Flag, StepStatus } from '../../shared/models';
+import { AgentFindingKind, AgentReport, AssessmentAgentDescriptor, AssessmentListItem, AssessmentRequest, AssessmentResult, AssessmentStep, AssessmentStepDescriptor, ENTITY_TYPES, EntityType, Flag, LICENSE_TYPES, LicenseType, StepStatus } from '../../shared/models';
 import { FieldHintComponent, FlagsComponent, GaugeComponent, JsonViewComponent, StatusComponent, outcomeClass, tierClass } from '../../shared/ui';
 import { PRESET_FINANCIALS } from './preset-financials';
 
@@ -26,7 +26,7 @@ const AGENT_ICONS: Record<string, string> = { profile: 'badge', precheck: 'fact_
 
 interface AgentLane { id: string; name: string; mandate: string; status: StepStatus; steps: AssessmentStep[]; report: AgentReport | null; }
 
-type Preset = 'approved' | 'clean' | 'sanctioned' | 'restricted';
+type Preset = 'approved' | 'clean' | 'sanctioned' | 'restricted' | 'smb';
 
 @Component({
   selector: 'mi-assessment',
@@ -63,8 +63,10 @@ export class AssessmentComponent {
     postalCode: ['95014'],
     country: ['US'],
     websiteUrl: ['https://www.apple.com'],
+    contactEmail: [''],
     businessDescription: ['Consumer electronics, software and online services.'],
     owners: this.fb.array([this.owner('Tim Cook', 'CEO')]),
+    licenses: this.fb.array([this.license()]),
     merchantCategoryCode: [5732, [Validators.required, Validators.min(1), Validators.max(9999)]],
     annualVolume: [1_200_000, [Validators.required, Validators.min(0)]],
     averageTicket: [85, [Validators.required, Validators.min(0.01)]],
@@ -145,6 +147,15 @@ export class AssessmentComponent {
   get owners(): FormArray { return this.form.controls.owners; }
   private owner(fullName = '', role = '') { return this.fb.nonNullable.group({ fullName: [fullName], dateOfBirth: [''], nationality: [''], role: [role], ownershipPercent: [''], address: [''] }); }
   addOwner(): void { this.owners.push(this.owner()); }
+  get licenses(): FormArray { return this.form.controls.licenses; }
+  private license(type: LicenseType | '' = '', number = '', issuingAuthority = '', issueDate = '', expiryDate = '', evidenceReference = '') {
+    return this.fb.nonNullable.group({ type: [type], number: [number], issuingAuthority: [issuingAuthority], issueDate: [issueDate], expiryDate: [expiryDate], evidenceReference: [evidenceReference] });
+  }
+  addLicense(): void { this.licenses.push(this.license()); }
+  removeLicense(i: number): void { this.licenses.removeAt(i); }
+  readonly licenseTypes = LICENSE_TYPES;
+  recordExtra(r: { extra?: Record<string, string> | null }): { key: string; value: string }[] { return Object.entries(r.extra ?? {}).map(([key, value]) => ({ key, value })); }
+  licenseLabel(t: LicenseType | string): string { return LICENSE_TYPES.find(l => l.value === t)?.label ?? t; }
   removeOwner(i: number): void { this.owners.removeAt(i); }
 
   onFile(kind: 'bank' | 'financial', event: Event): void {
@@ -156,10 +167,10 @@ export class AssessmentComponent {
   readonly entityTypes = ENTITY_TYPES;
 
   preset(p: Preset): void {
-    this.owners.clear();
+    this.owners.clear(); this.licenses.clear();
     this.bankFile.set(null); this.financialFile.set(null);
     const fin = p === 'sanctioned' ? { bankStatementCsv: '', financialStatementText: '' } : PRESET_FINANCIALS[p];
-    this.form.patchValue({ ...fin, entityType: '' });
+    this.form.patchValue({ ...fin, entityType: '', contactEmail: '', bankAccountHolderName: '', locationCount: '' });
     switch (p) {
       case 'approved':
         this.form.patchValue({ legalName: 'Starbucks Corporation', tradingName: 'Starbucks', country: 'US', addressLine: '2401 Utah Avenue South', city: 'Seattle', region: 'WA', postalCode: '98134',
@@ -187,6 +198,15 @@ export class AssessmentComponent {
           annualVolume: 4_800_000, averageTicket: 45, highestTicket: 900, employeeCount: 2, yearsInBusiness: 0.5, hasPhysicalLocation: 'false', entityType: 'SingleMemberLlc', offersSubscriptions: true, offersFreeTrials: true, deliveryDays: 21 });
         this.owners.push(this.owner('Jane Doe', 'Owner'));
         break;
+      case 'smb':
+        // Registry facts from the Kentucky Secretary of State record (org. no. 1367874); no owner, licence or website
+        // is pre-filled because none is on public record — the analyst supplies them from the merchant's documents.
+        this.form.patchValue({ legalName: 'ALJAZZAR MEAT & GRILL LLC', tradingName: 'Aljazzar Grill', registrationNumber: '1367874', country: 'US', addressLine: '4213 Bardstown Road', city: 'Louisville', region: 'KY', postalCode: '40218',
+          websiteUrl: '', contactEmail: '', businessDescription: 'Independent halal meat & grill restaurant in Louisville, Kentucky: dine-in and take-away grilled meats, shawarma and sides; single location.', merchantCategoryCode: 5812,
+          annualVolume: 420_000, averageTicket: 28, highestTicket: 350, employeeCount: 8, locationCount: 1, yearsInBusiness: 2, hasPhysicalLocation: 'true', entityType: 'MultiMemberLlc',
+          existingRelationship: false, cardNotPresentShare: 0.05, deliveryDays: 0, offersSubscriptions: false, offersFreeTrials: false, bankAccountHolderName: 'ALJAZZAR MEAT & GRILL LLC' });
+        this.licenses.push(this.license('FoodService'));
+        break;
     }
   }
 
@@ -198,7 +218,7 @@ export class AssessmentComponent {
     const req: AssessmentRequest = {
       business: {
         legalName: v.legalName, tradingName: opt(v.tradingName), registrationNumber: opt(v.registrationNumber), taxId: opt(v.taxId),
-        addressLine: opt(v.addressLine), city: opt(v.city), region: opt(v.region), postalCode: opt(v.postalCode), country: opt(v.country), websiteUrl: opt(v.websiteUrl)
+        addressLine: opt(v.addressLine), city: opt(v.city), region: opt(v.region), postalCode: opt(v.postalCode), country: opt(v.country), websiteUrl: opt(v.websiteUrl), contactEmail: opt(v.contactEmail)
       },
       owners: v.owners.filter(o => o.fullName.trim()).map(o => ({
         fullName: o.fullName.trim(), dateOfBirth: opt(o.dateOfBirth), nationality: opt(o.nationality), role: opt(o.role),
@@ -213,7 +233,10 @@ export class AssessmentComponent {
       bankStatementCsv: this.bankFile() ? null : opt(v.bankStatementCsv) ?? null,
       bankAccountHolderName: opt(v.bankAccountHolderName) ?? null,
       financialStatementText: this.financialFile() ? null : opt(v.financialStatementText) ?? null,
-      externalRef: opt(v.externalRef) ?? null, actor: v.actor.trim() || 'analyst', createCase: v.createCase
+      externalRef: opt(v.externalRef) ?? null, actor: v.actor.trim() || 'analyst', createCase: v.createCase,
+      licenses: v.licenses.filter(l => l.type !== '').map(l => ({
+        type: l.type as LicenseType, number: opt(l.number), issuingAuthority: opt(l.issuingAuthority), issueDate: opt(l.issueDate), expiryDate: opt(l.expiryDate), evidenceReference: opt(l.evidenceReference)
+      }))
     };
 
     this.running.set(true); this.error.set(null); this.result.set(null); this.steps.set({}); this.agentReports.set({});

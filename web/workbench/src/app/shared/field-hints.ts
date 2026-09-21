@@ -91,6 +91,10 @@ export const FIELD_HINTS: Record<string, string> = {
     'Volume plausibility only: for online-only merchants (Physical location = No / Unknown) a thin catalogue with large volume is flagged THIN_CATALOGUE_LARGE_VOLUME (−20).',
   hasPhysicalLocation:
     'Volume plausibility only: "Yes" disables the thin-catalogue check; "No / Unknown" keeps it active.',
+  contactEmail:
+    'Local presence / digital footprint: the e-mail domain is looked up in RDAP for registration date (EMAIL_DOMAIN_NEW < 6 months = Medium, EMAIL_DOMAIN_TENURE otherwise); free-mail providers (gmail, yahoo …) are noted as EMAIL_FREE_MAIL (Low); a domain that differs from the website is EMAIL_DOMAIN_MISMATCH. Runs even when there is no website.',
+  licenses:
+    'Licences & permits step: for regulated MCCs (5812/5814 food service, 5813 bar = food + alcohol, 5921 liquor, 5912 pharmacy, 80xx healthcare, 6051/4829 money services, 7995 gaming, 5993 tobacco, 7230/7297 personal care, 8351 child care …) each required permit must be attested here. Missing = LICENSE_MISSING_* (Medium, High for alcohol / pharmacy / healthcare / MSB / gaming), expired = LICENSE_EXPIRED_* (High), no number / issuer = LICENSE_INCOMPLETE_* (Low), no evidence reference = LICENSE_UNEVIDENCED_* (Low), expiring within 60 days = LICENSE_EXPIRING_*. Attested, not verified: the platform records what you sighted. Company registration (SOS) never substitutes for a licence.',
   bankAccountHolderName:
     'Name printed on the bank statement header. Compared with the legal / trading name (BANK_HOLDER_MATCH) and the declared owners (BANK_HOLDER_IS_OWNER); no match = BANK_HOLDER_MISMATCH (High). Blank for a Micro / Small merchant = BANK_HOLDER_UNDECLARED.',
   bankStatement:
