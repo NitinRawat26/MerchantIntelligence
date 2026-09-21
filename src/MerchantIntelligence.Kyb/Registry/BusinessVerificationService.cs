@@ -59,7 +59,8 @@ public sealed class BusinessVerificationService
             return new BusinessVerificationResult(identity, VerificationStatus.NotApplicable, 0, null, null, addressOnly, [], noteFlags, Scope: scope);
         }
 
-        var sourceTasks = _providers.Where(p => p.IsEnabled).Select(async p =>
+        var applicable = _providers.Where(p => p.Covers(identity)).ToList();
+        var sourceTasks = applicable.Where(p => p.IsEnabled).Select(async p =>
         {
             try
             {
@@ -76,7 +77,7 @@ public sealed class BusinessVerificationService
             }
         }).ToList();
 
-        var disabled = _providers.Where(p => !p.IsEnabled)
+        var disabled = applicable.Where(p => !p.IsEnabled)
             .Select(p => new RegistrySourceResult(p.Name, false, Array.Empty<RegistryMatch>(), "Not configured (API key missing)."));
 
         var address = await VerifyAddressAsync(identity, ct);
@@ -107,6 +108,9 @@ public sealed class BusinessVerificationService
                 flags.Add(new KybFlag("REGISTERED_ADDRESS_MISMATCH", $"Declared address does not match registry address '{best.Record.Address}'.", RiskTier.Medium));
             if (best.Record.Status is not null && InactiveStatuses.Any(s => best.Record.Status.Contains(s, StringComparison.OrdinalIgnoreCase)))
                 flags.Add(new KybFlag("INACTIVE_ENTITY", $"Registry status is '{best.Record.Status}'.", RiskTier.High));
+            if (best.Record.Extra is { } extra && extra.TryGetValue("standing", out var standing)
+                && !standing.Contains("good", StringComparison.OrdinalIgnoreCase))
+                flags.Add(new KybFlag("REGISTRY_BAD_STANDING", $"Register reports standing '{standing}' – annual report or fees are outstanding with the state.", RiskTier.Medium));
             if (!string.IsNullOrWhiteSpace(identity.RegistrationNumber) && !string.IsNullOrWhiteSpace(best.Record.RegistrationNumber)
                 && NameMatcher.Normalize(identity.RegistrationNumber).Replace(" ", "") != NameMatcher.Normalize(best.Record.RegistrationNumber).Replace(" ", ""))
                 flags.Add(new KybFlag("REGISTRATION_NUMBER_MISMATCH", $"Declared registration number '{identity.RegistrationNumber}' ≠ registry '{best.Record.RegistrationNumber}'.", RiskTier.High));

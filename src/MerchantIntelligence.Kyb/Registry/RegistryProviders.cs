@@ -36,6 +36,9 @@ public interface IBusinessRegistryProvider
     /// <summary>True when the provider can be used with the current configuration (e.g. API key present).</summary>
     bool IsEnabled { get; }
 
+    /// <summary>True when the register can hold this applicant at all (a state register only covers its own state). Providers that do not cover an applicant are left out of its result rather than reported as a miss.</summary>
+    bool Covers(BusinessIdentity identity) => true;
+
     Task<IReadOnlyList<RegistryRecord>> SearchAsync(BusinessIdentity identity, CancellationToken ct);
 }
 
@@ -51,6 +54,9 @@ public sealed class KybOptions
 
     /// <summary>Optional. Free key from https://developer.company-information.service.gov.uk/.</summary>
     public string? CompaniesHouseApiKey { get; set; }
+
+    /// <summary>Keyless US state business registers driven through their public search pages (currently Kentucky). Set false to skip them.</summary>
+    public bool StateRegistriesEnabled { get; set; } = true;
 
     /// <summary>Optional. Foursquare Places service key (https://foursquare.com/developers, free tier). Without it only OpenStreetMap is searched for local presence.</summary>
     public string? FoursquareApiKey { get; set; }
