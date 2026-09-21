@@ -330,21 +330,29 @@ public sealed class OsmLocalPresenceProvider : ILocalPresenceProvider
     public string Name => "OpenStreetMap (Overpass)";
     public bool IsEnabled => true;
 
+    /// <summary>Server-side Overpass query budget; the client gives each mirror a little longer before moving on.</summary>
+    private const int OverpassQueryTimeoutSeconds = 10;
+    private static readonly TimeSpan MirrorDeadline = TimeSpan.FromSeconds(OverpassQueryTimeoutSeconds + 2);
+
     /// <summary>Public Overpass instances rate-limit per IP (429) and time out under load (504); fall back to the next mirror.</summary>
     private static async Task<JsonDocument> QueryAsync(HttpClient client, string ql, CancellationToken ct)
     {
         Exception? last = null;
         foreach (var endpoint in Endpoints)
         {
+            using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            deadline.CancelAfter(MirrorDeadline);
             try
             {
-                using var response = await client.GetAsync($"{endpoint}?data={Uri.EscapeDataString(ql)}", ct);
+                using var response = await client.GetAsync($"{endpoint}?data={Uri.EscapeDataString(ql)}", deadline.Token);
                 response.EnsureSuccessStatusCode();
-                return await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+                return await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(deadline.Token), cancellationToken: deadline.Token);
             }
-            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException && !ct.IsCancellationRequested)
+            catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException && !ct.IsCancellationRequested)
             {
-                last = ex;
+                last = ex is OperationCanceledException
+                    ? new HttpRequestException($"{endpoint} gave no response within {MirrorDeadline.TotalSeconds:0} s.", ex)
+                    : ex;
             }
         }
         throw last!;
@@ -355,7 +363,7 @@ public sealed class OsmLocalPresenceProvider : ILocalPresenceProvider
         var client = _factory.CreateClient(KybOptions.HttpClientName);
         var lat = centre.Latitude.ToString(System.Globalization.CultureInfo.InvariantCulture);
         var lon = centre.Longitude.ToString(System.Globalization.CultureInfo.InvariantCulture);
-        var ql = $"[out:json][timeout:15];nwr(around:{radiusMeters},{lat},{lon})[name];out center tags 80;";
+        var ql = $"[out:json][timeout:{OverpassQueryTimeoutSeconds}];nwr(around:{radiusMeters},{lat},{lon})[name];out center tags 80;";
         using var doc = await QueryAsync(client, ql, ct);
         var list = new List<PlaceRecord>();
         if (!doc.RootElement.TryGetProperty("elements", out var elements)) return list;
