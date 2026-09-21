@@ -194,6 +194,10 @@ flowchart LR
 | **Rules** | Through `highSeverityReasons`, `score`, `coveragePercent`. |
 | **Case / brief** | Failed checks and their evidence URLs are listed in the explainability narrative and PDF. |
 
+### Brochure sites of card-present SMBs
+
+The refund, delivery, terms-of-sale, currency and checkout checks encode what Visa/Mastercard require of a merchant **selling** on its site. A Micro/Small merchant with a physical location, a card-not-present share of at most 10 % and sells little or nothing through its site, so `WebsiteStep.ApplyBrochureSiteRules` caps those checks: **Low** when the site has no purchase flow (`CHECKOUT_PRESENT` not passed — "Brochure site of a Small card-present merchant … terms-of-sale disclosures apply only if the site starts taking orders"), **Medium** when it exposes an ordering link (e.g. a restaurant's `/order-online`) so the analyst confirms whether those orders settle on this account before boarding. Privacy policy, customer-service contact, TLS, domain age and prohibited-content checks keep their severity because they apply to any live site. The website score and grade are unchanged — only the roll-up severity is, so a restaurant's menu site can no longer refer the application on its own while still appearing in the memo as a remediation item. The rule is bypassed as soon as the merchant declares more than 10 % card-not-present volume or is Mid/Enterprise.
+
 ---
 
 ## 7. Missing input, failures and coverage

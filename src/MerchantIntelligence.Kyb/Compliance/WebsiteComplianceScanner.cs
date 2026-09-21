@@ -155,7 +155,7 @@ public sealed class WebsiteComplianceScanner
             CardLogos.IsMatch(allText) ? "Payment brand or secure-checkout text present." : "No payment brand marks or secure-checkout messaging detected.",
             RiskTier.Low));
 
-        var checkoutLinks = home.InternalLinks.Where(l => Regex.IsMatch(l.AbsolutePath, "checkout|cart|basket|buy|order|shop|pricing|subscribe", RegexOptions.IgnoreCase)).ToList();
+        var checkoutLinks = home.InternalLinks.Where(l => Regex.IsMatch(l.AbsolutePath, @"\b(checkout|cart|basket|buy|order|shop|pricing|subscribe)\b", RegexOptions.IgnoreCase)).ToList();
         checks.Add(new ComplianceCheck("CHECKOUT_PRESENT", "Purchase flow discoverable",
             checkoutLinks.Count > 0 ? CheckStatus.Pass : CheckStatus.Warn,
             checkoutLinks.Count > 0 ? $"Found {checkoutLinks.Count} shop/checkout link(s)." : "No cart/checkout/pricing links found; verify how customers actually pay (possible hidden or off-site checkout).",
