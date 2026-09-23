@@ -7,7 +7,7 @@ pluggable checks; the workflow (agents, checks, order, failure policy) is data y
 
 This is a true Agent-framework-orchestrated deterministic pipeline and no LLM or external model is involved anywhere.
 
-#### [Merchant Intel](https://merchant-intelligence-3gtq.onrender.com/assess) -- [Wiki](https://github.com/NitinRawat26/MerchantIntelligence/blob/base/docs/wiki/Home.md) -- [14 Steps](https://github.com/NitinRawat26/MerchantIntelligence/blob/base/docs/steps/README.md)
+#### [Merchant Intel](https://merchant-intelligence-3gtq.onrender.com/assess) -- [Wiki](https://github.com/NitinRawat26/MerchantIntelligence/blob/base/docs/wiki/Home.md) -- [Steps](https://github.com/NitinRawat26/MerchantIntelligence/blob/base/docs/steps/README.md)
 
 #### Functional flow
 
