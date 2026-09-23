@@ -180,7 +180,7 @@ const restricted: PresetFinancials = {
 };
 
 /**
- * SMB preset (Aljazzar Meat & Grill LLC, Louisville KY): illustrative six-month statement for a single-location
+ * SMB preset (Riverbend Meat & Grill LLC, a fictional Louisville KY restaurant): illustrative six-month statement for a single-location
  * restaurant declaring $420k — one processor, modest rent, steady deposits, no NSF. No P&L: a Micro / Small
  * merchant is not expected to have one, so the financial-statement step is skipped as not applicable.
  */

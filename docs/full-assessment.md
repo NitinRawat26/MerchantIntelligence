@@ -558,6 +558,9 @@ The preset buttons on `/assess` populate the form with reproducible scenarios:
 | **Refer (Apple – MCC mismatch)** | Apple Inc., MCC 5732, $1.2 M, $85 / $1,500 | Website classifier disagrees with MCC → High finding → `HIGH_SEVERITY_REFER` → **Refer** |
 | **Sanctions hit (Rosneft / Bout)** | Rosneft Oil Company (RU), owner Viktor Bout DOB 1967-01-13 | `SANCTIONS_MATCH` hard stop → score ≤ 150 → `HARD_STOP_SANCTIONS` → **Decline** |
 | **Restricted (CBD + free trials)** | CBD / kratom description, free-trial subscription model, online only | `RESTRICTED_BUSINESS`, recurring-billing pricing factors, thin catalogue → **Refer** with licensing actions |
+| **SMB (Riverbend Meat & Grill)** | Fictional single-location Louisville restaurant, MCC 5812, $420 k volume, $28 ticket, no website, illustrative six-month bank statement, one unevidenced food-service permit | Registries find nothing (small private firm) → coverage from local presence and bank evidence; P&L not applicable to the segment → **Refer** with licence / owner actions |
+
+The large-company presets use publicly listed companies and public sanctions-list entries as fixtures for demonstration only; the SMB preset is fictional. All financial figures are illustrative.
 
 Because public sources change, scores vary slightly between runs; the outcome path is stable.
 

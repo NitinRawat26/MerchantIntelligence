@@ -375,6 +375,8 @@ sidebar section collapses by clicking its heading (remembered per browser; the s
 page re-opens on navigation). Every form control has an ⓘ hint stating which calculation it feeds. All pages call the .NET API through the
 `/api` dev proxy (`proxy.conf.json` → `http://localhost:5292`).
 
+The preset buttons on `/assess` use publicly listed companies and public sanctions-list entries as fixtures for demonstration only; the SMB preset is a fictional business. All financial figures are illustrative.
+
 | Route | Page |
 |-------|------|
 | `/assess`, `/assess/:id` | Full assessment (default page): one intake form (business, owners, website, MCC, volumes, statements/uploads), live run grouped into agent lanes (per-check status plus each agent's advisories / actions / observations as they happen), decision card, tabbed explainability report (identity & screening, website/MCC/business type, financials & plausibility, terms, **agents**, run log with owning agent), PDF download and recent-assessment history |
