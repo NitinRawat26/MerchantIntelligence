@@ -154,7 +154,7 @@ Nothing external is called, so the step cannot fail on availability.
 
 ## 8. Worked examples
 
-**Aljazzar Meat & Grill LLC (SMB preset)** — MCC 5812, one `FoodService` row with no number, issuer, dates or evidence (the preset pre-fills the type only; no real permit data is on public record). Result: `Covered=true` (a requirement is matched), `LICENSE_INCOMPLETE_FOODSERVICE` and `LICENSE_UNEVIDENCED_FOODSERVICE` (Low). Clearing the row instead gives `LICENSE_MISSING_FOODSERVICE` (Medium) + `LICENSE_SMB_NO_EVIDENCE`, `Covered=false`.
+**Riverbend Meat & Grill LLC (fictional SMB preset)** — MCC 5812, one `FoodService` row with no number, issuer, dates or evidence (the preset pre-fills the type only). Result: `Covered=true` (a requirement is matched), `LICENSE_INCOMPLETE_FOODSERVICE` and `LICENSE_UNEVIDENCED_FOODSERVICE` (Low). Clearing the row instead gives `LICENSE_MISSING_FOODSERVICE` (Medium) + `LICENSE_SMB_NO_EVIDENCE`, `Covered=false`.
 
 **Bar, MCC 5813** with only a food permit attested → `LICENSE_MISSING_ALCOHOL` (High); KybRisk High.
 

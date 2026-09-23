@@ -199,12 +199,12 @@ export class AssessmentComponent {
         this.owners.push(this.owner('Jane Doe', 'Owner'));
         break;
       case 'smb':
-        // Registry facts from the Kentucky Secretary of State record (org. no. 1367874); no owner or licence details
-        // are pre-filled because none is on public record — the analyst supplies them from the merchant's documents.
-        this.form.patchValue({ legalName: 'ALJAZZAR MEAT & GRILL LLC', tradingName: 'Aljazzar Grill', registrationNumber: '1367874', country: 'US', addressLine: '4213 Bardstown Road', city: 'Louisville', region: 'KY', postalCode: '40218',
-          websiteUrl: 'https://www.aljazzargrill.com', contactEmail: '', businessDescription: 'Independent halal meat & grill restaurant in Louisville, Kentucky: dine-in and take-away grilled meats, shawarma and sides; single location.', merchantCategoryCode: 5812,
+        // Fictional single-location restaurant: registry lookups are expected to find nothing, so verification relies on
+        // local presence and bank evidence. No owner or licence details are pre-filled — the analyst supplies them from the merchant's documents.
+        this.form.patchValue({ legalName: 'RIVERBEND MEAT & GRILL LLC', tradingName: 'Riverbend Grill', registrationNumber: '', country: 'US', addressLine: '2150 Bardstown Road', city: 'Louisville', region: 'KY', postalCode: '40205',
+          websiteUrl: '', contactEmail: '', businessDescription: 'Independent halal meat & grill restaurant in Louisville, Kentucky: dine-in and take-away grilled meats, shawarma and sides; single location.', merchantCategoryCode: 5812,
           annualVolume: 420_000, averageTicket: 28, highestTicket: 350, employeeCount: 8, locationCount: 1, yearsInBusiness: 2, hasPhysicalLocation: 'true', entityType: 'MultiMemberLlc',
-          existingRelationship: false, cardNotPresentShare: 0.05, deliveryDays: 0, offersSubscriptions: false, offersFreeTrials: false, bankAccountHolderName: 'ALJAZZAR MEAT & GRILL LLC' });
+          existingRelationship: false, cardNotPresentShare: 0.05, deliveryDays: 0, offersSubscriptions: false, offersFreeTrials: false, bankAccountHolderName: 'RIVERBEND MEAT & GRILL LLC' });
         this.licenses.push(this.license('FoodService'));
         break;
     }
