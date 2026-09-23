@@ -9,7 +9,7 @@ Use the repo's .NET 10 blueprint and `dotnet run --project src/MerchantIntellige
 Check port 5292 before starting; stop an older API before rebuilding after edits.
 Swagger is at http://localhost:5292/swagger. These API routes do not require authentication.
 
-## Devin Secrets Needed
+## Secrets Needed
 None for the default suite. `Kyb:OpenCorporatesApiToken` and
 `Kyb:CompaniesHouseApiKey` are optional: absent keys should produce explicit
 Not configured source results, not block other registries.
@@ -32,7 +32,7 @@ Not configured source results, not block other registries.
 - GDELT may rate-limit. Require HTTP200 with structured `succeeded=false` and
   an explanatory error, not an API500. No articles returned is not proof that
   a live article-success path was exercised.
-- Apple registry verification can succeed through SEC while Census returns
+- Registry verification can succeed through SEC while Census returns
   ADDRESS_UNVERIFIED; evaluate per-source results instead of only overall status.
 - Low declared owner coverage causes UBO_COVERAGE_LOW and Medium combined risk.
   The README's 0.01% example should not be expected to produce Low overall risk.
