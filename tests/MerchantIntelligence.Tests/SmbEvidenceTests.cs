@@ -28,11 +28,11 @@ public class KentuckySosProviderTests
     [Fact]
     public void Queries_fall_back_from_full_name_to_distinctive_tokens()
     {
-        var q = KentuckySosRegistryProvider.QueriesFor(new BusinessIdentity("Aljazzar Meat & Grill LLC", "Al-Jazzar Grill"));
-        Assert.Equal("Aljazzar Meat & Grill LLC", q[0]);
-        Assert.Contains("Aljazzar Meat", q);
-        Assert.Contains("AljazzarMeat", q);
-        Assert.Contains("Aljazzar", q);
+        var q = KentuckySosRegistryProvider.QueriesFor(new BusinessIdentity("Riverbend Meat & Grill LLC", "Al-Jazzar Grill"));
+        Assert.Equal("Riverbend Meat & Grill LLC", q[0]);
+        Assert.Contains("Riverbend Meat", q);
+        Assert.Contains("RiverbendMeat", q);
+        Assert.Contains("Riverbend", q);
         Assert.Contains("Al-Jazzar Grill", q);
         Assert.DoesNotContain("LLC", q);
         Assert.True(q.Count <= 6);
@@ -41,14 +41,14 @@ public class KentuckySosProviderTests
     [Fact]
     public void Numeric_registration_number_is_searched_first()
     {
-        var q = KentuckySosRegistryProvider.QueriesFor(new BusinessIdentity("Aljazzar Meat & Grill LLC", RegistrationNumber: "1367874"));
+        var q = KentuckySosRegistryProvider.QueriesFor(new BusinessIdentity("Riverbend Meat & Grill LLC", RegistrationNumber: "1367874"));
         Assert.Equal("1367874", q[0]);
     }
 
     [Fact]
     public void Significant_tokens_drop_entity_suffixes_and_conjunctions()
     {
-        Assert.Equal(new[] { "ALJAZZAR", "MEAT", "GRILL" }, KentuckySosRegistryProvider.SignificantTokens("ALJAZZAR MEAT & GRILL LLC"));
+        Assert.Equal(new[] { "Riverbend", "MEAT", "GRILL" }, KentuckySosRegistryProvider.SignificantTokens("Riverbend MEAT & GRILL LLC"));
     }
 
     [Fact]
@@ -56,13 +56,13 @@ public class KentuckySosProviderTests
     {
         const string html = """
             <table><tr><th>Name</th><th>Org</th><th>Status</th><th>Type</th></tr>
-            <tr><td><a href="Profile.aspx?ctr=1367874">ALJAZZAR MEAT &amp; GRILL LLC</a></td><td>1367874</td><td>A - Active</td><td>KLC</td></tr>
-            <tr><td><a href="Profile.aspx?ctr=1367874&amp;an=1">ALJAZZAR MEATS &amp; GRILL</a></td><td>1367874</td><td>A - Active</td><td>ASSUMED</td></tr>
+            <tr><td><a href="Profile.aspx?ctr=1367874">Riverbend MEAT &amp; GRILL LLC</a></td><td>1367874</td><td>A - Active</td><td>KLC</td></tr>
+            <tr><td><a href="Profile.aspx?ctr=1367874&amp;an=1">Riverbend MEATS &amp; GRILL</a></td><td>1367874</td><td>A - Active</td><td>ASSUMED</td></tr>
             </table>
             """;
         var hits = KentuckySosRegistryProvider.ParseSearchResults(html);
         Assert.Equal(2, hits.Count);
-        Assert.Equal("ALJAZZAR MEAT & GRILL LLC", hits[0].Name);
+        Assert.Equal("Riverbend MEAT & GRILL LLC", hits[0].Name);
         Assert.Equal("1367874", hits[0].OrganizationNumber);
         Assert.Equal("Profile.aspx?ctr=1367874&an=1", hits[1].ProfilePath);
     }
@@ -74,7 +74,7 @@ public class KentuckySosProviderTests
             <html><body><script>var x = 1;</script>
             <h2>General Information</h2>
             <div>Organization Number</div><div>1367874</div>
-            <div>Name</div><div>ALJAZZAR MEAT &amp; GRILL LLC</div>
+            <div>Name</div><div>Riverbend MEAT &amp; GRILL LLC</div>
             <div>Company Type</div><div>KLC - Kentucky Limited Liability Company</div>
             <div>Industry</div><div>Eating and Drinking Places</div>
             <div>Number of Employees</div><div>Small (0-19)</div>
@@ -88,7 +88,7 @@ public class KentuckySosProviderTests
             """;
         var p = KentuckySosRegistryProvider.ParseProfile(html);
         Assert.Equal("1367874", p["Organization Number"]);
-        Assert.Equal("ALJAZZAR MEAT & GRILL LLC", p["Name"]);
+        Assert.Equal("Riverbend MEAT & GRILL LLC", p["Name"]);
         Assert.Equal("Eating and Drinking Places", p["Industry"]);
         Assert.Equal("Small (0-19)", p["Number of Employees"]);
         Assert.Equal("G - Good", p["Standing"]);
@@ -105,7 +105,7 @@ public class KentuckySosProviderTests
 public class RegistryStandingTests
 {
     private static RegistryRecord Record(IReadOnlyDictionary<string, string>? extra) =>
-        new("Kentucky SOS", "1367874", "ALJAZZAR MEAT & GRILL LLC", "A - Active", new DateOnly(2024, 5, 28), "US-KY", "1367874", null, "KLC", null, extra);
+        new("Kentucky SOS", "1367874", "Riverbend MEAT & GRILL LLC", "A - Active", new DateOnly(2024, 5, 28), "US-KY", "1367874", null, "KLC", null, extra);
 
     [Fact]
     public void Bad_standing_is_flagged_medium()
@@ -128,9 +128,9 @@ public class DigitalFootprintTests
 {
     [Theory]
     [InlineData("owner@gmail.com", "gmail.com")]
-    [InlineData("  Info@AljazzarGrill.com ", "aljazzargrill.com")]
-    [InlineData("https://www.aljazzargrill.com/menu", "aljazzargrill.com")]
-    [InlineData("aljazzargrill.com", "aljazzargrill.com")]
+    [InlineData("  Info@RiverbendGrill.com ", "Riverbendgrill.com")]
+    [InlineData("https://www.Riverbendgrill.com/menu", "Riverbendgrill.com")]
+    [InlineData("Riverbendgrill.com", "Riverbendgrill.com")]
     [InlineData(null, null)]
     [InlineData("not an email", null)]
     public void Extracts_registrable_domain_from_email_or_url(string? input, string? expected) =>
@@ -141,7 +141,7 @@ public class DigitalFootprintTests
     {
         Assert.True(RdapDomainLookup.IsFreeMail("gmail.com"));
         Assert.True(RdapDomainLookup.IsFreeMail("outlook.com"));
-        Assert.False(RdapDomainLookup.IsFreeMail("aljazzargrill.com"));
+        Assert.False(RdapDomainLookup.IsFreeMail("Riverbendgrill.com"));
     }
 
     [Fact]
@@ -164,7 +164,7 @@ public class PlaceReputationTests
     public void Foursquare_reputation_is_parsed()
     {
         using var doc = JsonDocument.Parse("""
-            {"fsq_place_id":"abc","name":"Aljazzar Grill","rating":8.7,"popularity":0.93,
+            {"fsq_place_id":"abc","name":"Riverbend Grill","rating":8.7,"popularity":0.93,
              "stats":{"total_ratings":142,"total_tips":30},"hours":{"open_now":true},"date_created":"2019-04-02T10:00:00Z"}
             """);
         var rep = FoursquareLocalPresenceProvider.Reputation(doc.RootElement);
@@ -180,7 +180,7 @@ public class PlaceReputationTests
     [Fact]
     public void Missing_reputation_fields_yield_null()
     {
-        using var doc = JsonDocument.Parse("""{"fsq_place_id":"abc","name":"Aljazzar Grill"}""");
+        using var doc = JsonDocument.Parse("""{"fsq_place_id":"abc","name":"Riverbend Grill"}""");
         Assert.Null(FoursquareLocalPresenceProvider.Reputation(doc.RootElement));
     }
 
@@ -188,10 +188,10 @@ public class PlaceReputationTests
     public void Confirmed_presence_with_reputation_adds_reputation_flag()
     {
         var rep = new PlaceReputation(8.7, 10, 142, 0.93, new DateOnly(2019, 4, 2), true);
-        var record = new PlaceRecord("Foursquare", "abc", "Aljazzar Grill", "4213 Bardstown Rd", 38.2, -85.7, "Restaurant", null, null, null, null, rep);
+        var record = new PlaceRecord("Foursquare", "abc", "Riverbend Grill", "4213 Bardstown Rd", 38.2, -85.7, "Restaurant", null, null, null, null, rep);
         var presence = new LocalPresenceResult(LocalPresenceStatus.Confirmed, 90, new PlaceMatch(record, 1, 1, 12, 0.95),
             new[] { new PlaceSourceResult("Foursquare", true, Array.Empty<PlaceMatch>()) }, null);
-        var v = new BusinessVerificationResult(new BusinessIdentity("Aljazzar Meat & Grill LLC", "Aljazzar Grill", AddressLine: "4213 Bardstown Rd"), VerificationStatus.NotFound, 0, null, null, null,
+        var v = new BusinessVerificationResult(new BusinessIdentity("Riverbend Meat & Grill LLC", "Riverbend Grill", AddressLine: "4213 Bardstown Rd"), VerificationStatus.NotFound, 0, null, null, null,
             Array.Empty<RegistrySourceResult>(), Array.Empty<KybFlag>());
         var merged = BusinessVerificationService.WithLocalPresence(v, presence);
         var flag = Assert.Single(merged.Flags, f => f.Code == "LOCAL_PRESENCE_REPUTATION");
@@ -209,7 +209,7 @@ public class OwnerIdentityTests
         MerchantIntelligence.Platform.Profiling.RegistryScope.Local, 1, [], [], []);
 
     private static MerchantIntelligence.Platform.Assessment.AssessmentIntake Intake(params MerchantIntelligence.Kyb.BeneficialOwner[] owners) =>
-        new(new BusinessIdentity("Aljazzar Meat & Grill LLC", AddressLine: "4213 Bardstown Road", City: "Louisville", Region: "KY", PostalCode: "40218", Country: "US"),
+        new(new BusinessIdentity("Riverbend Meat & Grill LLC", AddressLine: "4213 Bardstown Road", City: "Louisville", Region: "KY", PostalCode: "40218", Country: "US"),
             owners, "Restaurant", 5812, 600_000m, 28m, 400m, false, YearsInBusiness: 2);
 
     private static MerchantIntelligence.Platform.Owners.OwnerAssessment Assess(MerchantIntelligence.Platform.Assessment.AssessmentIntake i,
@@ -337,7 +337,7 @@ public class AddressClassifierTests
     [Fact]
     public void Restaurant_poi_at_a_commercial_building_is_commercial_with_no_findings()
     {
-        var c = AddressClassifier.Classify("4213 Bardstown Rd", Hit("amenity", "restaurant"), [Poi("Aljazzar Grill", "amenity / restaurant")], 5812);
+        var c = AddressClassifier.Classify("4213 Bardstown Rd", Hit("amenity", "restaurant"), [Poi("Riverbend Grill", "amenity / restaurant")], 5812);
         Assert.Equal(AddressType.Commercial, c.Type);
         Assert.Empty(c.Flags);
         Assert.True(c.Covered);
@@ -392,7 +392,7 @@ public class BankEvidenceTests
         MerchantIntelligence.Platform.Profiling.RegistryScope.Global, 1, [], [], []);
 
     private static MerchantIntelligence.Platform.Assessment.AssessmentIntake Intake(decimal volume = 600_000m, MerchantIntelligence.Platform.Profiling.EntityType? type = null) =>
-        new(new BusinessIdentity("Aljazzar Meat & Grill LLC", "Aljazzar Grill"), [new BeneficialOwner("Nour Example", Role: "Owner")], "Restaurant", 5812, volume, 28m, 400m, false,
+        new(new BusinessIdentity("Riverbend Meat & Grill LLC", "Riverbend Grill"), [new BeneficialOwner("Nour Example", Role: "Owner")], "Restaurant", 5812, volume, 28m, 400m, false,
             CardNotPresentShare: 0.1, EntityType: type);
 
     private static MerchantIntelligence.Underwriting.Financials.CashFlowAnalysis Statement(decimal monthlyInflows, int months = 6, int nsf = 0, decimal cardMonthly = 0, params int[] dryMonths)
@@ -417,7 +417,7 @@ public class BankEvidenceTests
     [Fact]
     public void Holder_matching_the_business_supports_declared_volume()
     {
-        var r = MerchantIntelligence.Platform.Financial.BankEvidenceAssessor.Assess(Intake(), Small, Statement(50_000m, cardMonthly: 30_000m), "ALJAZZAR MEAT & GRILL LLC");
+        var r = MerchantIntelligence.Platform.Financial.BankEvidenceAssessor.Assess(Intake(), Small, Statement(50_000m, cardMonthly: 30_000m), "Riverbend MEAT & GRILL LLC");
         Assert.True(r.Covered);
         Assert.True(r.HolderNameScore >= 0.85);
         Assert.Equal(1.0m, r.InflowsToDeclaredRatio);

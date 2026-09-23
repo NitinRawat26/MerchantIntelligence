@@ -72,7 +72,7 @@ public sealed partial class KentuckySosRegistryProvider : IBusinessRegistryProvi
     }
 
     /// <summary>
-    /// The register's search is token-based: "Al Jazzar Grill" finds nothing while "Aljazzar" finds "ALJAZZAR MEAT &amp; GRILL LLC".
+    /// The register's search is token-based: "Riverbend Grill" finds nothing while "Riverbend" finds "Riverbend MEAT &amp; GRILL LLC".
     /// Try the declared names first, then progressively shorter distinctive prefixes and the joined form of the first words.
     /// </summary>
     internal static IReadOnlyList<string> QueriesFor(BusinessIdentity identity)

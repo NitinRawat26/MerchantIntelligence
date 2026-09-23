@@ -25,7 +25,7 @@ Some merchant categories cannot lawfully trade without a permit: a restaurant ne
 For an SMB the permit is often the **only independent document** besides the bank statement: a food-service permit proves an inspector stood in the kitchen at 4213 Bardstown Road. Card-brand rules make the acquirer responsible for the legality of the merchant's business; a regulated MCC with no licence evidence is an underwriting gap, not a formality.
 
 ### What it proves — and what it does not
-The step records **what the analyst attested from the merchant's documents** and checks it for **completeness and expiry**. It does **not** verify a licence against an issuing authority — there is no national licence registry and county / state portals are heterogeneous — so *Attested* means "seen and transcribed", never "confirmed with the issuer". **An active Secretary of State registration is not a licence** and never satisfies a requirement here: the Kentucky record for Aljazzar Meat & Grill LLC proves the LLC exists, not that it may serve food.
+The step records **what the analyst attested from the merchant's documents** and checks it for **completeness and expiry**. It does **not** verify a licence against an issuing authority — there is no national licence registry and county / state portals are heterogeneous — so *Attested* means "seen and transcribed", never "confirmed with the issuer". **An active Secretary of State registration is not a licence** and never satisfies a requirement here: the Kentucky record for Riverbend Meat & Grill LLC proves the LLC exists, not that it may serve food.
 
 ---
 
