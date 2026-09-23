@@ -8,7 +8,7 @@ description: Test local underwriting explanations, terms, and statement uploads 
 - Swagger is at `http://127.0.0.1:5292/swagger/index.html`; expand Underwriting operations and use Try it out / Execute. Inspect the actual Server response, not static Example Value.
 - Restart the API after source changes; merely rebuilding does not replace the running process.
 
-# Devin Secrets Needed
+# Secrets Needed
 None for local underwriting endpoints.
 
 # Runtime checks
