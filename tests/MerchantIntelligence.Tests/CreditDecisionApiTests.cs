@@ -56,7 +56,10 @@ public sealed class CreditDecisionApiTests : IClassFixture<WebApplicationFactory
     {
         var response = await _client.PostAsJsonAsync("/api/credit-decision/predict", new
         {
-            merchantCategoryCode = 5411, annualVolume = 500000, averageTicket = 450, highestTicket = 300
+            merchantCategoryCode = 5411,
+            annualVolume = 500000,
+            averageTicket = 450,
+            highestTicket = 300
         });
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -66,7 +69,10 @@ public sealed class CreditDecisionApiTests : IClassFixture<WebApplicationFactory
     {
         var response = await _client.PostAsJsonAsync("/api/credit-decision/predict", new
         {
-            merchantCategoryCode = 0, annualVolume = 500000, averageTicket = 45, highestTicket = 300
+            merchantCategoryCode = 0,
+            annualVolume = 500000,
+            averageTicket = 45,
+            highestTicket = 300
         });
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }

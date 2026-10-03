@@ -31,9 +31,19 @@ public sealed class PlatformApiTests : IClassFixture<WebApplicationFactory<Progr
         var root = await Json(await _client.PostAsJsonAsync("/api/platform/score", new
         {
             application = new { merchantCategoryCode = 5411, annualVolume = 600000, averageTicket = 40, highestTicket = 250 },
-            kybRisk = "Low", businessVerified = true, entityAgeMonths = 60, sanctionsMatch = false, pepMatch = false, adverseMedia = false,
-            prohibitedVerdict = "Acceptable", websiteComplianceScore = 90, volumePlausibilityScore = 85, termsRiskBand = "A",
-            createCase = true, merchantName = "Corner Grocery LLC", actor = "tester"
+            kybRisk = "Low",
+            businessVerified = true,
+            entityAgeMonths = 60,
+            sanctionsMatch = false,
+            pepMatch = false,
+            adverseMedia = false,
+            prohibitedVerdict = "Acceptable",
+            websiteComplianceScore = 90,
+            volumePlausibilityScore = 85,
+            termsRiskBand = "A",
+            createCase = true,
+            merchantName = "Corner Grocery LLC",
+            actor = "tester"
         }));
         var score = root.GetProperty("score");
         Assert.InRange(score.GetProperty("score").GetInt32(), 0, 1000);
@@ -78,7 +88,8 @@ public sealed class PlatformApiTests : IClassFixture<WebApplicationFactory<Progr
 
         var custom = new
         {
-            version = "custom", defaultOutcome = "Refer",
+            version = "custom",
+            defaultOutcome = "Refer",
             rules = new[] { new { id = "ALWAYS_DECLINE", outcome = "Decline", when = new { fact = "score", op = "gte", value = 0 } } }
         };
         var published = await Json(await _client.PostAsJsonAsync("/api/platform/rules/publish", new { ruleSet = custom, author = "risk-lead", comment = "test" }));

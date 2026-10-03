@@ -106,8 +106,12 @@ public sealed class ModelOpsService
             list.Add(new LoggedDecision(r.GetInt64(0), r.IsDBNull(1) ? null : r.GetString(1), r.GetString(2),
                 new MerchantApplication
                 {
-                    MerchantCategoryCode = r.GetFloat(3), AnnualVolume = r.GetFloat(4), AverageTicket = r.GetFloat(5), HighestTicket = r.GetFloat(6),
-                    MatchFound = r.GetInt32(7) == 1, ExistingRelationship = r.GetInt32(8) == 1
+                    MerchantCategoryCode = r.GetFloat(3),
+                    AnnualVolume = r.GetFloat(4),
+                    AverageTicket = r.GetFloat(5),
+                    HighestTicket = r.GetFloat(6),
+                    MatchFound = r.GetInt32(7) == 1,
+                    ExistingRelationship = r.GetInt32(8) == 1
                 },
                 Enum.Parse<Decision>(r.GetString(9)), r.GetDouble(10),
                 r.IsDBNull(11) ? null : Enum.Parse<Decision>(r.GetString(11)),
@@ -179,9 +183,12 @@ public sealed class ModelOpsService
         var labelled = Recent(int.MaxValue, onlyLabelled: true)
             .Select(d => new MerchantApplicationRecord
             {
-                MerchantCategoryCode = d.Application.MerchantCategoryCode, AnnualVolume = d.Application.AnnualVolume,
-                AverageTicket = d.Application.AverageTicket, HighestTicket = d.Application.HighestTicket,
-                MatchFound = d.Application.MatchFound, ExistingRelationship = d.Application.ExistingRelationship,
+                MerchantCategoryCode = d.Application.MerchantCategoryCode,
+                AnnualVolume = d.Application.AnnualVolume,
+                AverageTicket = d.Application.AverageTicket,
+                HighestTicket = d.Application.HighestTicket,
+                MatchFound = d.Application.MatchFound,
+                ExistingRelationship = d.Application.ExistingRelationship,
                 Decision = d.Actual!.Value.ToString()
             }).ToList();
         var synthetic = SyntheticDataGenerator.Generate(syntheticRows, seed: Environment.TickCount).ToList();
@@ -270,7 +277,11 @@ public sealed class ModelOpsService
 
     private static MerchantApplication ToApp(MerchantApplicationRecord r) => new()
     {
-        MerchantCategoryCode = r.MerchantCategoryCode, AnnualVolume = r.AnnualVolume, AverageTicket = r.AverageTicket,
-        HighestTicket = r.HighestTicket, MatchFound = r.MatchFound, ExistingRelationship = r.ExistingRelationship
+        MerchantCategoryCode = r.MerchantCategoryCode,
+        AnnualVolume = r.AnnualVolume,
+        AverageTicket = r.AverageTicket,
+        HighestTicket = r.HighestTicket,
+        MatchFound = r.MatchFound,
+        ExistingRelationship = r.ExistingRelationship
     };
 }

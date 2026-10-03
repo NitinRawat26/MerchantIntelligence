@@ -337,8 +337,14 @@ public sealed class WorkflowTests : IClassFixture<WebApplicationFactory<Program>
             business = new { legalName = "Good Shoes Ltd", country = "US", websiteUrl = "https://goodshoes.example" },
             owners = new[] { new { fullName = "Jane Cobbler", role = "Owner", ownershipPercent = 100 } },
             businessDescription = "Handmade leather shoes sold online.",
-            merchantCategoryCode = 5661, annualVolume = 600000, averageTicket = 120, highestTicket = 900,
-            employeeCount = 6, yearsInBusiness = 4, actor = "tester", createCase = false
+            merchantCategoryCode = 5661,
+            annualVolume = 600000,
+            averageTicket = 120,
+            highestTicket = 900,
+            employeeCount = 6,
+            yearsInBusiness = 4,
+            actor = "tester",
+            createCase = false
         }));
 
         var steps = root.GetProperty("steps").EnumerateArray().Select(s => (Id: s.GetProperty("id").GetString()!, Status: s.GetProperty("status").GetString()!, Summary: s.GetProperty("summary").GetString()!)).ToList();
@@ -372,8 +378,15 @@ public sealed class WorkflowTests : IClassFixture<WebApplicationFactory<Program>
         {
             business = new { legalName = "Good Shoes Ltd", country = "US" },
             owners = new[] { new { fullName = "Jane Cobbler", role = "Owner", ownershipPercent = 100 } },
-            businessDescription = "Handmade leather shoes.", merchantCategoryCode = 5661, annualVolume = 600000, averageTicket = 120, highestTicket = 900,
-            employeeCount = 6, yearsInBusiness = 4, actor = "tester", createCase = false
+            businessDescription = "Handmade leather shoes.",
+            merchantCategoryCode = 5661,
+            annualVolume = 600000,
+            averageTicket = 120,
+            highestTicket = 900,
+            employeeCount = 6,
+            yearsInBusiness = 4,
+            actor = "tester",
+            createCase = false
         }));
         Assert.Equal("Refer", root.GetProperty("decision").GetProperty("outcome").GetString());
         Assert.Contains("disabled", root.GetProperty("decision").GetProperty("summary").GetString());
@@ -485,8 +498,13 @@ public sealed class WorkflowTests : IClassFixture<WebApplicationFactory<Program>
         var request = new
         {
             business = new { legalName = "Good Shoes Ltd", country = "US" },   // no website, no statements, no owners
-            businessDescription = "Shoes.", merchantCategoryCode = 5661, annualVolume = 600000, averageTicket = 120, highestTicket = 900,
-            actor = "tester", createCase = false
+            businessDescription = "Shoes.",
+            merchantCategoryCode = 5661,
+            annualVolume = 600000,
+            averageTicket = 120,
+            highestTicket = 900,
+            actor = "tester",
+            createCase = false
         };
         using var response = await _client.SendAsync(new HttpRequestMessage(HttpMethod.Post, "/api/assessment/run/stream") { Content = JsonContent.Create(request) }, HttpCompletionOption.ResponseHeadersRead);
         using var reader = new StreamReader(await response.Content.ReadAsStreamAsync());
@@ -537,8 +555,15 @@ public sealed class WorkflowTests : IClassFixture<WebApplicationFactory<Program>
         {
             business = new { legalName = "Good Shoes Ltd", country = "US" },
             owners = new[] { new { fullName = "Jane Cobbler", role = "Owner", ownershipPercent = 100 } },
-            businessDescription = "Handmade leather shoes.", merchantCategoryCode = 5661, annualVolume = 600000, averageTicket = 120, highestTicket = 900,
-            employeeCount = 6, yearsInBusiness = 4, actor = "tester", createCase = false
+            businessDescription = "Handmade leather shoes.",
+            merchantCategoryCode = 5661,
+            annualVolume = 600000,
+            averageTicket = 120,
+            highestTicket = 900,
+            employeeCount = 6,
+            yearsInBusiness = 4,
+            actor = "tester",
+            createCase = false
         }));
         var credit = root.GetProperty("steps").EnumerateArray().Single(s => s.GetProperty("id").GetString() == "credit");
         Assert.Equal("Skipped", credit.GetProperty("status").GetString());
@@ -561,8 +586,15 @@ public sealed class WorkflowTests : IClassFixture<WebApplicationFactory<Program>
         {
             business = new { legalName = "Good Shoes Ltd", country = "US" },
             owners = new[] { new { fullName = "Jane Cobbler", role = "Owner", ownershipPercent = 100 } },
-            businessDescription = "Handmade leather shoes.", merchantCategoryCode = 5661, annualVolume = 600000, averageTicket = 120, highestTicket = 900,
-            employeeCount = 6, yearsInBusiness = 4, actor = "tester", createCase = false
+            businessDescription = "Handmade leather shoes.",
+            merchantCategoryCode = 5661,
+            annualVolume = 600000,
+            averageTicket = 120,
+            highestTicket = 900,
+            employeeCount = 6,
+            yearsInBusiness = 4,
+            actor = "tester",
+            createCase = false
         }));
         var agents = root.GetProperty("agents").EnumerateArray().ToDictionary(a => a.GetProperty("id").GetString()!);
         Assert.Equal("Succeeded", agents["kyb"].GetProperty("status").GetString());
@@ -589,8 +621,15 @@ public sealed class WorkflowTests : IClassFixture<WebApplicationFactory<Program>
         {
             business = new { legalName = "QuickCash Advance LLC", country = "US" },
             owners = new[] { new { fullName = "Sam Lender", role = "Owner", ownershipPercent = 100 } },
-            businessDescription = "Payday loans, cash advance and short-term high-interest lending with same-day payday advance.", merchantCategoryCode = 6012,
-            annualVolume = 600000, averageTicket = 80, highestTicket = 400, employeeCount = 6, yearsInBusiness = 2, actor = "tester", createCase = false
+            businessDescription = "Payday loans, cash advance and short-term high-interest lending with same-day payday advance.",
+            merchantCategoryCode = 6012,
+            annualVolume = 600000,
+            averageTicket = 80,
+            highestTicket = 400,
+            employeeCount = 6,
+            yearsInBusiness = 2,
+            actor = "tester",
+            createCase = false
         }));
         var steps = root.GetProperty("steps").EnumerateArray().ToDictionary(s => s.GetProperty("id").GetString()!);
         Assert.Equal("Succeeded", steps["prohibited"].GetProperty("status").GetString());

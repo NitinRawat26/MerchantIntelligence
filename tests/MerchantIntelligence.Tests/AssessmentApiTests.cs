@@ -59,9 +59,18 @@ public sealed class AssessmentApiTests : IClassFixture<WebApplicationFactory<Pro
         business = new { legalName = "Good Shoes Ltd", country = "US", websiteUrl = "https://goodshoes.example", city = "Springfield" },
         owners = new[] { new { fullName = "Jane Cobbler", role = "Owner", ownershipPercent = 100 } },
         businessDescription = "Handmade leather shoes sold online.",
-        merchantCategoryCode = 5661, annualVolume = 600000, averageTicket = 120, highestTicket = 900,
-        existingRelationship = false, employeeCount = 6, yearsInBusiness = 4, hasPhysicalLocation = true,
-        bankStatementCsv = bankCsv, financialStatementText = financials, actor = "tester", createCase
+        merchantCategoryCode = 5661,
+        annualVolume = 600000,
+        averageTicket = 120,
+        highestTicket = 900,
+        existingRelationship = false,
+        employeeCount = 6,
+        yearsInBusiness = 4,
+        hasPhysicalLocation = true,
+        bankStatementCsv = bankCsv,
+        financialStatementText = financials,
+        actor = "tester",
+        createCase
     };
 
     private static async Task<JsonElement> Json(HttpResponseMessage r)
