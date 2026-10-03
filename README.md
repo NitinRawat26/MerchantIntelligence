@@ -1,4 +1,3 @@
-
 # MerchantIntelligence
 
 A suite of tools for merchant acquiring pre-checks and credit checks, built in C# / .NET 10 and Angular. A full
@@ -6,6 +5,8 @@ assessment runs as a **Microsoft Agent Framework workflow** of four rule-based a
 pluggable checks; the workflow (agents, checks, order, failure policy) is data you edit in the UI.
 
 This is a true Agent-framework-orchestrated deterministic pipeline and no LLM or external model is involved anywhere.
+
+https://github.com/user-attachments/assets/c8644e6e-3dbd-4bb2-99a6-38995481b3c8
 
 #### [Wiki](https://github.com/NitinRawat26/MerchantIntelligence/blob/base/docs/wiki/Home.md) -- [Steps](https://github.com/NitinRawat26/MerchantIntelligence/blob/base/docs/steps/README.md)
 
