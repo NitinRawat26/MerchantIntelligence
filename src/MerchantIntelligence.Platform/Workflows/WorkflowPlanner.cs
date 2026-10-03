@@ -81,8 +81,13 @@ public sealed class WorkflowPlanner
 
         var steps = def.Steps.Select(s => new WorkflowStepConfig
         {
-            Id = s.Id, Enabled = s.Enabled, OnFail = s.OnFail, DependsOn = s.DependsOn?.ToList(), Params = s.Params is null ? null : new(s.Params),
-            Slot = s.Slot, StopGate = s.StopGate is null ? null : new StopGateConfig { When = s.StopGate.When, Code = s.StopGate.Code, Scope = s.StopGate.Scope, ForceOutcome = s.StopGate.ForceOutcome }
+            Id = s.Id,
+            Enabled = s.Enabled,
+            OnFail = s.OnFail,
+            DependsOn = s.DependsOn?.ToList(),
+            Params = s.Params is null ? null : new(s.Params),
+            Slot = s.Slot,
+            StopGate = s.StopGate is null ? null : new StopGateConfig { When = s.StopGate.When, Code = s.StopGate.Code, Scope = s.StopGate.Scope, ForceOutcome = s.StopGate.ForceOutcome }
         }).ToList();
         // a definition without an agents block gets the default ownership made explicit; agents missing from an existing block start empty
         var agents = def.Agents?.Select(a => new WorkflowAgentConfig { Id = a.Id, Enabled = a.Enabled, Steps = a.Steps.ToList(), StepOrder = a.StepOrder }).ToList() ?? [];
@@ -109,7 +114,12 @@ public sealed class WorkflowPlanner
 
         return new WorkflowDefinition
         {
-            Name = def.Name, Version = def.Version, Description = def.Description, HaltOnHardStop = def.HaltOnHardStop, Steps = steps, Agents = agents,
+            Name = def.Name,
+            Version = def.Version,
+            Description = def.Description,
+            HaltOnHardStop = def.HaltOnHardStop,
+            Steps = steps,
+            Agents = agents,
             Transitions = def.Transitions?.Select(t => new WorkflowTransition { From = t.From, To = t.To, When = t.When }).ToList()
         };
     }

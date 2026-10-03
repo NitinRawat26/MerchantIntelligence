@@ -51,15 +51,15 @@ public static class StopGates
             case StopGateTrigger.Failed:
                 return ctx.Steps.Any(s => s.Id == stepId && s.Status == StepStatus.Failed) ? "step failed" : null;
             case StopGateTrigger.HighSeverityFlag:
-            {
-                var hit = SignalsOf(stepId, ctx).FirstOrDefault(s => s.Severity >= RiskTier.High);
-                return hit is null ? null : $"{hit.Severity} flag {hit.Code}";
-            }
+                {
+                    var hit = SignalsOf(stepId, ctx).FirstOrDefault(s => s.Severity >= RiskTier.High);
+                    return hit is null ? null : $"{hit.Severity} flag {hit.Code}";
+                }
             case StopGateTrigger.Flag:
-            {
-                var hit = SignalsOf(stepId, ctx).FirstOrDefault(s => string.Equals(s.Code, gate.Code, StringComparison.OrdinalIgnoreCase));
-                return hit is null ? null : $"flag {hit.Code}";
-            }
+                {
+                    var hit = SignalsOf(stepId, ctx).FirstOrDefault(s => string.Equals(s.Code, gate.Code, StringComparison.OrdinalIgnoreCase));
+                    return hit is null ? null : $"flag {hit.Code}";
+                }
             default:
                 return null;
         }

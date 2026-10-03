@@ -195,15 +195,15 @@ public sealed class RulesEngine
         {
             case "contains":
             case "notcontains":
-            {
-                var found = actual switch
                 {
-                    string s => s.Contains(expected.ToString(), StringComparison.OrdinalIgnoreCase),
-                    IEnumerable<string> list => list.Any(x => string.Equals(x, expected.ToString(), StringComparison.OrdinalIgnoreCase)),
-                    _ => false
-                };
-                return op == "contains" ? found : !found;
-            }
+                    var found = actual switch
+                    {
+                        string s => s.Contains(expected.ToString(), StringComparison.OrdinalIgnoreCase),
+                        IEnumerable<string> list => list.Any(x => string.Equals(x, expected.ToString(), StringComparison.OrdinalIgnoreCase)),
+                        _ => false
+                    };
+                    return op == "contains" ? found : !found;
+                }
             case "in":
                 return expected.ValueKind == JsonValueKind.Array && expected.EnumerateArray().Any(e => Compare(actual, e) == 0);
         }

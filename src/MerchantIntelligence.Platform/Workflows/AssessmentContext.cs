@@ -91,8 +91,12 @@ public sealed class AssessmentContext
     /// <summary>Feature vector for the credit model; built on first use so it sees the MATCH result when that step ran first.</summary>
     public MerchantApplication Application => _application ??= new MerchantApplication
     {
-        MerchantCategoryCode = Intake.MerchantCategoryCode, AnnualVolume = (float)Intake.AnnualVolume, AverageTicket = (float)Intake.AverageTicket,
-        HighestTicket = (float)Intake.HighestTicket, MatchFound = Match?.Found == true, ExistingRelationship = Intake.ExistingRelationship
+        MerchantCategoryCode = Intake.MerchantCategoryCode,
+        AnnualVolume = (float)Intake.AnnualVolume,
+        AverageTicket = (float)Intake.AverageTicket,
+        HighestTicket = (float)Intake.HighestTicket,
+        MatchFound = Match?.Found == true,
+        ExistingRelationship = Intake.ExistingRelationship
     };
     public DecisionResult? Credit { get; set; }
     public DecisionExplanation? CreditExplanation { get; set; }

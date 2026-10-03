@@ -128,9 +128,9 @@ public class DigitalFootprintTests
 {
     [Theory]
     [InlineData("owner@gmail.com", "gmail.com")]
-    [InlineData("  Info@RiverbendGrill.com ", "Riverbendgrill.com")]
-    [InlineData("https://www.Riverbendgrill.com/menu", "Riverbendgrill.com")]
-    [InlineData("Riverbendgrill.com", "Riverbendgrill.com")]
+    [InlineData("  Info@RiverbendGrill.com ", "riverbendgrill.com")]
+    [InlineData("https://www.Riverbendgrill.com/menu", "riverbendgrill.com")]
+    [InlineData("Riverbendgrill.com", "riverbendgrill.com")]
     [InlineData(null, null)]
     [InlineData("not an email", null)]
     public void Extracts_registrable_domain_from_email_or_url(string? input, string? expected) =>

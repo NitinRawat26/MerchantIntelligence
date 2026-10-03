@@ -175,8 +175,12 @@ public sealed class PlatformController : ControllerBase
                 return ValidationProblem("highestTicket must be >= averageTicket.");
             app = new MerchantApplication
             {
-                MerchantCategoryCode = a.MerchantCategoryCode, AnnualVolume = (float)a.AnnualVolume, AverageTicket = (float)a.AverageTicket,
-                HighestTicket = (float)a.HighestTicket, MatchFound = a.MatchFound, ExistingRelationship = a.ExistingRelationship
+                MerchantCategoryCode = a.MerchantCategoryCode,
+                AnnualVolume = (float)a.AnnualVolume,
+                AverageTicket = (float)a.AverageTicket,
+                HighestTicket = (float)a.HighestTicket,
+                MatchFound = a.MatchFound,
+                ExistingRelationship = a.ExistingRelationship
             };
             (credit, logId) = _modelOps.PredictAndLog(app);
         }

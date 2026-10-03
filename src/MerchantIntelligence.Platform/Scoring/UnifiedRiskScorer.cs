@@ -39,14 +39,24 @@ public static class ScoreWeights
 {
     public static readonly IReadOnlyDictionary<string, double> Standard = new Dictionary<string, double>
     {
-        ["CreditModel"] = 0.30, ["Kyb"] = 0.20, ["Screening"] = 0.15, ["WebsiteCompliance"] = 0.10,
-        ["VolumePlausibility"] = 0.10, ["BusinessPolicy"] = 0.10, ["Pricing"] = 0.05
+        ["CreditModel"] = 0.30,
+        ["Kyb"] = 0.20,
+        ["Screening"] = 0.15,
+        ["WebsiteCompliance"] = 0.10,
+        ["VolumePlausibility"] = 0.10,
+        ["BusinessPolicy"] = 0.10,
+        ["Pricing"] = 0.05
     };
 
     public static readonly IReadOnlyDictionary<string, double> Smb = new Dictionary<string, double>
     {
-        ["CreditModel"] = 0.25, ["Kyb"] = 0.25, ["Screening"] = 0.15, ["WebsiteCompliance"] = 0.05,
-        ["VolumePlausibility"] = 0.15, ["BusinessPolicy"] = 0.10, ["Pricing"] = 0.05
+        ["CreditModel"] = 0.25,
+        ["Kyb"] = 0.25,
+        ["Screening"] = 0.15,
+        ["WebsiteCompliance"] = 0.05,
+        ["VolumePlausibility"] = 0.15,
+        ["BusinessPolicy"] = 0.10,
+        ["Pricing"] = 0.05
     };
 
     public static IReadOnlyDictionary<string, double> For(MerchantSegment? segment) =>

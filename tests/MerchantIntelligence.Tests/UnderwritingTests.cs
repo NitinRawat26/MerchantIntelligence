@@ -42,8 +42,12 @@ public sealed class DecisionExplainerTests
 
     private static readonly MerchantApplication Risky = new()
     {
-        MerchantCategoryCode = 7995, AnnualVolume = 5_000_000, AverageTicket = 900, HighestTicket = 20_000,
-        MatchFound = true, ExistingRelationship = false
+        MerchantCategoryCode = 7995,
+        AnnualVolume = 5_000_000,
+        AverageTicket = 900,
+        HighestTicket = 20_000,
+        MatchFound = true,
+        ExistingRelationship = false
     };
 
     [Fact]
@@ -275,12 +279,20 @@ public sealed class ReservePricingRecommenderTests
 
     private static MerchantApplication LowRisk => new()
     {
-        MerchantCategoryCode = 5411, AnnualVolume = 600_000, AverageTicket = 40, HighestTicket = 250, ExistingRelationship = true
+        MerchantCategoryCode = 5411,
+        AnnualVolume = 600_000,
+        AverageTicket = 40,
+        HighestTicket = 250,
+        ExistingRelationship = true
     };
 
     private static MerchantApplication HighRisk => new()
     {
-        MerchantCategoryCode = 7995, AnnualVolume = 6_000_000, AverageTicket = 800, HighestTicket = 15_000, MatchFound = true
+        MerchantCategoryCode = 7995,
+        AnnualVolume = 6_000_000,
+        AverageTicket = 800,
+        HighestTicket = 15_000,
+        MatchFound = true
     };
 
     [Fact]

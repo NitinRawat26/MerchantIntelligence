@@ -355,16 +355,40 @@ public static class AddressMatcher
 {
     private static readonly Dictionary<string, string> Abbreviations = new(StringComparer.Ordinal)
     {
-        ["street"] = "st", ["avenue"] = "ave", ["road"] = "rd", ["boulevard"] = "blvd", ["drive"] = "dr",
-        ["lane"] = "ln", ["suite"] = "ste", ["floor"] = "fl", ["building"] = "bldg", ["north"] = "n",
-        ["south"] = "s", ["east"] = "e", ["west"] = "w", ["place"] = "pl", ["court"] = "ct", ["highway"] = "hwy",
-        ["united states"] = "us", ["usa"] = "us", ["united kingdom"] = "gb", ["uk"] = "gb"
+        ["street"] = "st",
+        ["avenue"] = "ave",
+        ["road"] = "rd",
+        ["boulevard"] = "blvd",
+        ["drive"] = "dr",
+        ["lane"] = "ln",
+        ["suite"] = "ste",
+        ["floor"] = "fl",
+        ["building"] = "bldg",
+        ["north"] = "n",
+        ["south"] = "s",
+        ["east"] = "e",
+        ["west"] = "w",
+        ["place"] = "pl",
+        ["court"] = "ct",
+        ["highway"] = "hwy",
+        ["united states"] = "us",
+        ["usa"] = "us",
+        ["united kingdom"] = "gb",
+        ["uk"] = "gb"
     };
 
     private static readonly Dictionary<string, string> NumberWords = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["one"] = "1", ["two"] = "2", ["three"] = "3", ["four"] = "4", ["five"] = "5",
-        ["six"] = "6", ["seven"] = "7", ["eight"] = "8", ["nine"] = "9", ["ten"] = "10"
+        ["one"] = "1",
+        ["two"] = "2",
+        ["three"] = "3",
+        ["four"] = "4",
+        ["five"] = "5",
+        ["six"] = "6",
+        ["seven"] = "7",
+        ["eight"] = "8",
+        ["nine"] = "9",
+        ["ten"] = "10"
     };
 
     /// <summary>"One Apple Park Way" → "1 Apple Park Way" (geocoders need a numeric house number).</summary>

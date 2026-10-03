@@ -12,20 +12,25 @@ public sealed class DecisionPredictorTests
         return new DecisionPredictor(ml, model);
     });
 
-    [Fact]
+    [SkippableFact]
     public void Training_reaches_reasonable_accuracy()
     {
+        Skip.IfNot(LightGbmSupport.Supported, LightGbmSupport.UnsupportedReason);
         var ml = new MLContext(seed: 42);
         var (_, metrics) = ModelTrainer.Train(ml, SyntheticDataGenerator.Generate(5_000));
         Assert.True(metrics.MicroAccuracy > 0.7, $"MicroAccuracy was {metrics.MicroAccuracy}");
     }
 
-    [Fact]
+    [SkippableFact]
     public void Probabilities_sum_to_one_and_cover_all_decisions()
     {
+        Skip.IfNot(LightGbmSupport.Supported, LightGbmSupport.UnsupportedReason);
         var result = Predictor.Value.Predict(new MerchantApplication
         {
-            MerchantCategoryCode = 5411, AnnualVolume = 500_000, AverageTicket = 45, HighestTicket = 300
+            MerchantCategoryCode = 5411,
+            AnnualVolume = 500_000,
+            AverageTicket = 45,
+            HighestTicket = 300
         });
 
         Assert.Equal(3, result.Probabilities.Count);
@@ -34,40 +39,59 @@ public sealed class DecisionPredictorTests
         Assert.Equal(result.Probabilities.Values.Max(), result.Confidence);
     }
 
-    [Fact]
+    [SkippableFact]
     public void Low_risk_grocery_merchant_with_relationship_is_approved()
     {
+        Skip.IfNot(LightGbmSupport.Supported, LightGbmSupport.UnsupportedReason);
         var result = Predictor.Value.Predict(new MerchantApplication
         {
-            MerchantCategoryCode = 5411, AnnualVolume = 800_000, AverageTicket = 40, HighestTicket = 250,
-            MatchFound = false, ExistingRelationship = true
+            MerchantCategoryCode = 5411,
+            AnnualVolume = 800_000,
+            AverageTicket = 40,
+            HighestTicket = 250,
+            MatchFound = false,
+            ExistingRelationship = true
         });
         Assert.Equal(Decision.Approved, result.Decision);
     }
 
-    [Fact]
+    [SkippableFact]
     public void High_risk_mcc_with_match_hit_is_declined()
     {
+        Skip.IfNot(LightGbmSupport.Supported, LightGbmSupport.UnsupportedReason);
         var result = Predictor.Value.Predict(new MerchantApplication
         {
-            MerchantCategoryCode = 7995, AnnualVolume = 15_000_000, AverageTicket = 2_500, HighestTicket = 90_000,
-            MatchFound = true, ExistingRelationship = false
+            MerchantCategoryCode = 7995,
+            AnnualVolume = 15_000_000,
+            AverageTicket = 2_500,
+            HighestTicket = 90_000,
+            MatchFound = true,
+            ExistingRelationship = false
         });
         Assert.Equal(Decision.Declined, result.Decision);
     }
 
-    [Fact]
+    [SkippableFact]
     public void Existing_relationship_outweighs_high_risk_mcc()
     {
+        Skip.IfNot(LightGbmSupport.Supported, LightGbmSupport.UnsupportedReason);
         var withoutRelationship = Predictor.Value.Predict(new MerchantApplication
         {
-            MerchantCategoryCode = 7995, AnnualVolume = 3_000_000, AverageTicket = 600, HighestTicket = 8_000,
-            MatchFound = false, ExistingRelationship = false
+            MerchantCategoryCode = 7995,
+            AnnualVolume = 3_000_000,
+            AverageTicket = 600,
+            HighestTicket = 8_000,
+            MatchFound = false,
+            ExistingRelationship = false
         });
         var withRelationship = Predictor.Value.Predict(new MerchantApplication
         {
-            MerchantCategoryCode = 7995, AnnualVolume = 3_000_000, AverageTicket = 600, HighestTicket = 8_000,
-            MatchFound = false, ExistingRelationship = true
+            MerchantCategoryCode = 7995,
+            AnnualVolume = 3_000_000,
+            AverageTicket = 600,
+            HighestTicket = 8_000,
+            MatchFound = false,
+            ExistingRelationship = true
         });
 
         Assert.NotEqual(Decision.Approved, withoutRelationship.Decision);
@@ -75,9 +99,10 @@ public sealed class DecisionPredictorTests
         Assert.True(withRelationship.Probabilities[Decision.Approved] > withoutRelationship.Probabilities[Decision.Approved] + 0.5);
     }
 
-    [Fact]
+    [SkippableFact]
     public void Save_and_load_round_trips()
     {
+        Skip.IfNot(LightGbmSupport.Supported, LightGbmSupport.UnsupportedReason);
         var ml = new MLContext(seed: 42);
         var records = SyntheticDataGenerator.Generate(2_000).ToList();
         var (model, _) = ModelTrainer.Train(ml, records);

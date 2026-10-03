@@ -153,8 +153,15 @@ public sealed class RulesEngineTests
 
     private static Dictionary<string, object?> Facts(int score = 700, bool match = false, double coverage = 100, params string[] hardStops) => new()
     {
-        ["score"] = score, ["matchFound"] = match, ["hardStops"] = hardStops.ToList(), ["highSeverityReasons"] = 0,
-        ["annualVolume"] = 500_000.0, ["highestTicket"] = 200.0, ["coveragePercent"] = coverage, ["reasonCodes"] = new List<string>(), ["tier"] = "Low"
+        ["score"] = score,
+        ["matchFound"] = match,
+        ["hardStops"] = hardStops.ToList(),
+        ["highSeverityReasons"] = 0,
+        ["annualVolume"] = 500_000.0,
+        ["highestTicket"] = 200.0,
+        ["coveragePercent"] = coverage,
+        ["reasonCodes"] = new List<string>(),
+        ["tier"] = "Low"
     };
 
     [Fact]
@@ -526,9 +533,10 @@ public sealed class ModelOpsTests : IDisposable
         Assert.Throws<InvalidOperationException>(() => _registry.PromoteChallenger("x", null));
     }
 
-    [Fact]
+    [SkippableFact]
     public void Retrain_registers_challenger_that_shadow_scores_and_can_be_promoted()
     {
+        Skip.IfNot(LightGbmSupport.Supported, LightGbmSupport.UnsupportedReason);
         var (_, id) = _ops.PredictAndLog(App());
         _ops.RecordOutcome(id, Decision.Approved, "a");
 

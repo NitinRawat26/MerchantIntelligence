@@ -25,7 +25,12 @@ public sealed class UnderwritingApiTests : IClassFixture<WebApplicationFactory<P
     {
         var response = await _client.PostAsJsonAsync("/api/underwriting/explain", new
         {
-            merchantCategoryCode = 7995, annualVolume = 5000000, averageTicket = 900, highestTicket = 20000, matchFound = true, existingRelationship = false
+            merchantCategoryCode = 7995,
+            annualVolume = 5000000,
+            averageTicket = 900,
+            highestTicket = 20000,
+            matchFound = true,
+            existingRelationship = false
         });
         response.EnsureSuccessStatusCode();
         using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
@@ -41,7 +46,10 @@ public sealed class UnderwritingApiTests : IClassFixture<WebApplicationFactory<P
     {
         var response = await _client.PostAsJsonAsync("/api/underwriting/explain", new
         {
-            merchantCategoryCode = 5812, annualVolume = 100000, averageTicket = 500, highestTicket = 100
+            merchantCategoryCode = 5812,
+            annualVolume = 100000,
+            averageTicket = 500,
+            highestTicket = 100
         });
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -51,8 +59,13 @@ public sealed class UnderwritingApiTests : IClassFixture<WebApplicationFactory<P
     {
         var response = await _client.PostAsJsonAsync("/api/underwriting/recommend-terms", new
         {
-            merchantCategoryCode = 5411, annualVolume = 600000, averageTicket = 40, highestTicket = 250, existingRelationship = true,
-            deliveryDays = 0, cardNotPresentShare = 0.05
+            merchantCategoryCode = 5411,
+            annualVolume = 600000,
+            averageTicket = 40,
+            highestTicket = 250,
+            existingRelationship = true,
+            deliveryDays = 0,
+            cardNotPresentShare = 0.05
         });
         response.EnsureSuccessStatusCode();
         using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
@@ -71,7 +84,11 @@ public sealed class UnderwritingApiTests : IClassFixture<WebApplicationFactory<P
     {
         var response = await _client.PostAsJsonAsync("/api/underwriting/recommend-terms", new
         {
-            merchantCategoryCode = 5411, annualVolume = 600000, averageTicket = 40, highestTicket = 250, cardNotPresentShare
+            merchantCategoryCode = 5411,
+            annualVolume = 600000,
+            averageTicket = 40,
+            highestTicket = 250,
+            cardNotPresentShare
         });
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -81,7 +98,12 @@ public sealed class UnderwritingApiTests : IClassFixture<WebApplicationFactory<P
     {
         var response = await _client.PostAsJsonAsync("/api/underwriting/volume-plausibility", new
         {
-            annualVolume = 20000000, averageTicket = 50, highestTicket = 500, merchantCategoryCode = 5812, employeeCount = 1, yearsInBusiness = 0.2
+            annualVolume = 20000000,
+            averageTicket = 50,
+            highestTicket = 500,
+            merchantCategoryCode = 5812,
+            employeeCount = 1,
+            yearsInBusiness = 0.2
         });
         response.EnsureSuccessStatusCode();
         using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
