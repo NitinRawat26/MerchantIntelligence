@@ -19,7 +19,7 @@ interface NavGroup { title: string; items: NavItem[]; }
   template: `
     @if (intro()) { <app-intro (done)="closeIntro()" /> }
     <mat-sidenav-container class="shell" [hasBackdrop]="handset()">
-      <mat-sidenav [mode]="handset() ? 'over' : 'side'" [opened]="handset() ? opened() : true" (closed)="opened.set(false)" class="nav" [fixedInViewport]="true">
+      <mat-sidenav [mode]="handset() ? 'over' : 'side'" [opened]="handset() ? opened() : !navCollapsed()" (closed)="opened.set(false)" class="nav" [fixedInViewport]="true">
         <a class="brand" routerLink="/assess" (click)="handset() && opened.set(false)">
           <span class="brand-mark"><mat-icon>insights</mat-icon></span>
           <span class="brand-text">
@@ -57,6 +57,12 @@ interface NavGroup { title: string; items: NavItem[]; }
       </mat-sidenav>
 
       <mat-sidenav-content>
+        @if (!handset()) {
+          <button mat-icon-button class="nav-toggle" [style.left.px]="navCollapsed() ? 16 : 250" (click)="toggleNav()"
+                  [matTooltip]="navCollapsed() ? 'Expand menu' : 'Collapse menu'" aria-label="Toggle navigation menu" [attr.aria-expanded]="!navCollapsed()">
+            <mat-icon>{{ navCollapsed() ? 'chevron_right' : 'chevron_left' }}</mat-icon>
+          </button>
+        }
         <header class="topbar">
           @if (handset()) {
             <button mat-icon-button (click)="opened.set(!opened())" aria-label="Toggle navigation"><mat-icon>menu</mat-icon></button>
@@ -129,6 +135,15 @@ interface NavGroup { title: string; items: NavItem[]; }
     }
     .nav-item .ext { margin-left: auto; font-size: 15px; width: 15px; height: 15px; opacity: 0.6; }
     .nav-footer { padding: 12px; border-top: 1px solid rgba(255, 255, 255, 0.06); }
+
+    .nav-toggle {
+      position: fixed; top: 50%; transform: translateY(-50%); z-index: 20;
+      background: #fff; color: #1e293b;
+      border: 1px solid rgba(15, 23, 42, 0.16);
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.28);
+      transition: left 160ms ease;
+    }
+    .nav-toggle:hover { background: #fff; color: #0f172a; box-shadow: 0 6px 18px rgba(15, 23, 42, 0.32); }
     .author { padding: 10px 14px 2px; font-size: 11px; letter-spacing: .02em; color: rgba(255, 255, 255, 0.45); }
     .author strong { color: rgba(255, 255, 255, 0.8); font-weight: 600; }
 
@@ -191,6 +206,19 @@ export class AppComponent {
   private readonly router = inject(Router);
   readonly handset = toSignal(this.bp.observe('(max-width: 900px)').pipe(map(r => r.matches)), { initialValue: false });
   readonly opened = signal(false);
+
+  private static readonly NAV_COLLAPSED_KEY = 'mi.nav.sidebar-collapsed';
+  readonly navCollapsed = signal<boolean>(AppComponent.loadNavCollapsed());
+
+  private static loadNavCollapsed(): boolean {
+    try { return localStorage.getItem(AppComponent.NAV_COLLAPSED_KEY) === '1'; } catch { return false; }
+  }
+  toggleNav(): void {
+    if (this.handset()) { this.opened.set(!this.opened()); return; }
+    const next = !this.navCollapsed();
+    this.navCollapsed.set(next);
+    try { localStorage.setItem(AppComponent.NAV_COLLAPSED_KEY, next ? '1' : '0'); } catch { /* storage unavailable */ }
+  }
 
   private static readonly LANDING_PATHS = new Set(['', '/', '/assess']);
   readonly intro = signal(AppComponent.isLanding(location.pathname));
